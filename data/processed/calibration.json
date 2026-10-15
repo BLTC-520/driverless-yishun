@@ -1,0 +1,35 @@
+{
+  "mult": 0.7867817576820834,
+  "sig_s": 14.119761709645074,
+  "dwell_s": 44.51578617845674,
+  "hub_extra_s": 30.349501676262417,
+  "mult_ci": [
+    0.573,
+    1.05
+  ],
+  "sig_s_ci": [
+    12.508,
+    15.557
+  ],
+  "dwell_s_ci": [
+    38.557,
+    49.745
+  ],
+  "hub_extra_s_ci": [
+    22.387,
+    39.801
+  ],
+  "n_segments_used": 1292,
+  "n_segments_dropped": 198,
+  "n_obs_used": 61815,
+  "segment_mae_s": 35.50173708253473,
+  "segment_r": 0.9584312192191493,
+  "mean_obs_s": 289.19951468090267,
+  "source_files": [
+    "raw/lta/live/bus_arrival_20261015.csv"
+  ],
+  "hours_sgt": [
+    10
+  ],
+  "note": "Running times are differences of LTA BusArrival estimated arrival times for the same GPS-monitored bus at two stops of its route in one polling cycle (LTA estimates, not observed passage times)."
+}
