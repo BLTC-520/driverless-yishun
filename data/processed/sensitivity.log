@@ -20,3 +20,6 @@ SENS_DONE
 pm_peak_roads: parity fleet 475 (bus 13.16 min) [558s]
 widest_search: parity fleet 375 (bus 11.99 min) [886s]
 WIDEST_DONE
+gps_calibration: parity fleet 350 (bus 9.90 min) [567s]
+speed_fast: parity fleet 425 (bus 11.72 min) [692s]
+RERUN_DONE

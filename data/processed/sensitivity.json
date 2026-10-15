@@ -21,7 +21,7 @@
   "bus_kappa": 0.5680649049241908,
   "bus_dwell_s": 40.55909238948731,
   "bus_hub_extra_s": 25.30150290068473,
-  "git": "c8560d3",
+  "git": "ea8f786",
   "pipeline_modified": true
  },
  "fleets": [
@@ -136,44 +136,51 @@
   },
   {
    "id": "speed_fast",
-   "label": "Faster roads: draw at the 2.5th percentile (cruise x0.67, 16 s per signal, bus dwell 44 s)",
+   "label": "Faster roads: draw at the 2.5th percentile (cruise x0.78, 15 s per signal, bus dwell 41 s)",
    "direction": 0,
-   "parity_fleet": 400,
-   "parity_below": 375,
-   "bus_day_min": 11.755779819177853,
-   "shuttle_day_min_at_parity": 6.521542399193915,
+   "parity_fleet": 425,
+   "parity_below": 400,
+   "bus_day_min": 11.72087484794496,
+   "shuttle_day_min_at_parity": 6.208361450675768,
    "evaluated": {
     "550": {
      "ok": true,
      "first_failing_hour": null,
-     "shuttle_min": 5.412971918602295,
-     "bus_min": 11.755779819177853,
+     "shuttle_min": 5.447060525078856,
+     "bus_min": 11.72087484794496,
      "refused": 0.0
     },
     "375": {
      "ok": false,
      "first_failing_hour": 7,
-     "shuttle_min": 10.700660371590551,
-     "bus_min": 11.755779819177853,
-     "refused": 0.00016688409085821162
+     "shuttle_min": 11.889700692873838,
+     "bus_min": 11.72087484794496,
+     "refused": 0.00026050199548598884
     },
     "450": {
      "ok": true,
      "first_failing_hour": null,
-     "shuttle_min": 5.9014176633281075,
-     "bus_min": 11.755779819177853,
+     "shuttle_min": 5.9706187886908655,
+     "bus_min": 11.72087484794496,
      "refused": 0.0
     },
     "400": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 7.047391764759391,
+     "bus_min": 11.72087484794496,
+     "refused": 0.0
+    },
+    "425": {
      "ok": true,
      "first_failing_hour": null,
-     "shuttle_min": 6.521542399193915,
-     "bus_min": 11.755779819177853,
+     "shuttle_min": 6.208361450675768,
+     "bus_min": 11.72087484794496,
      "refused": 0.0
     }
    },
-   "runtime_s": 546.4303421974182,
-   "model_key": "eaa85b967e2b"
+   "runtime_s": 692.4409215450287,
+   "model_key": "8bebee37e675"
   },
   {
    "id": "bus_dwell_low",
@@ -869,44 +876,44 @@
   },
   {
    "id": "gps_calibration",
-   "label": "Calibrated on bus GPS movement instead of LTA estimates (cruise x0.71, 8 s per signal, bus dwell 40 s)",
+   "label": "Robust fit to bus GPS movement (cruise x0.72, 8 s per signal, bus dwell 40 s); tracks typical rather than average speeds",
    "direction": 0,
    "parity_fleet": 350,
    "parity_below": 325,
-   "bus_day_min": 9.939445279594073,
-   "shuttle_day_min_at_parity": 4.810880087306487,
+   "bus_day_min": 9.902305011518893,
+   "shuttle_day_min_at_parity": 4.747386666596212,
    "evaluated": {
     "550": {
      "ok": true,
      "first_failing_hour": null,
-     "shuttle_min": 3.9025150910399966,
-     "bus_min": 9.939445279594073,
+     "shuttle_min": 3.8592531120330427,
+     "bus_min": 9.902305011518893,
      "refused": 0.0
     },
     "375": {
      "ok": true,
      "first_failing_hour": null,
-     "shuttle_min": 4.571684217928908,
-     "bus_min": 9.939445279594073,
+     "shuttle_min": 4.5202031962579,
+     "bus_min": 9.902305011518893,
      "refused": 0.0
     },
     "325": {
      "ok": false,
      "first_failing_hour": 8,
-     "shuttle_min": 5.856041497757646,
-     "bus_min": 9.939445279594073,
+     "shuttle_min": 5.7403893406881235,
+     "bus_min": 9.902305011518893,
      "refused": 0.0
     },
     "350": {
      "ok": true,
      "first_failing_hour": null,
-     "shuttle_min": 4.810880087306487,
-     "bus_min": 9.939445279594073,
+     "shuttle_min": 4.747386666596212,
+     "bus_min": 9.902305011518893,
      "refused": 0.0
     }
    },
-   "runtime_s": 566.6047158241272,
-   "model_key": "d923ec7bb9e6"
+   "runtime_s": 566.7786293029785,
+   "model_key": "f44f8f689b4b"
   },
   {
    "id": "pm_peak_roads",

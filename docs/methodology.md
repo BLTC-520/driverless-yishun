@@ -67,8 +67,9 @@ This document describes how each number on the page is produced. Code references
 - **Collection (observed).** LTA's `v3/BusArrival` returns, for each service at a stop, the
   next three buses. Each comes with an estimated arrival time and, when GPS-monitored, the
   bus's current position, load band and deck type.
-  - We polled the 151 stops coded 59xxx (most of the 180 study stops) every 90 s on Thursday
-    15 October 2026: 10:06–14:57 and 17:30–19:30 SGT.
+  - We polled the 151 stops coded 59xxx (most of the 180 study stops; 150 returned data)
+    every 90 s on Thursday 15 October 2026: 10:06–14:57, with a gap at 12:02–12:33 when the
+    collector restarted, and 17:30–19:30 SGT. That is about 6.3 hours of polling.
 - **Observations for the fit.** In one polling cycle, the same GPS-monitored bus appears at
   stops A and B of its route. It is matched by service, by its reported position and by the
   order of the ETAs.
@@ -119,9 +120,9 @@ This document describes how each number on the page is produced. Code references
     gives dwell = 39.8 s (95 % interval about 35–44 s), confirming the ETA-based dwell. Short
     pairs that pass no stop show pure road time, which is what separates dwell from cruise.
     - It also gives m = 0.72 and s_sig = 8 s, i.e. faster roads. The robust loss tracks
-      typical rather than average times, though: on 5-minute pairs these values underpredict
-      mean bus times by about a quarter (observed/predicted 1.24, against 0.96 for the base
-      calibration).
+      typical rather than average times, though: on a sample of 931 five-minute pairs these
+      values underpredict mean bus times by about a quarter (observed/predicted 1.24, against
+      0.96 for the base calibration on the same sample).
     - So the GPS fit is used to bound the dwell, not as a calibration. Its sensitivity run
       (350 vehicles) is reported but excluded from the range as too optimistic.
 - **Headway regularity.** For random rider arrivals the mean wait is `E[H²]/(2E[H])`,

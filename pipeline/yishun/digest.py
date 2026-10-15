@@ -49,8 +49,8 @@ def findings() -> str:
         f"only below about 10–50 riders per square mile per hour (Li & Quadrifoglio 2010). Averaged over the town, "
         f"Yishun's internal demand at 07:00 is about {n.get('density', '—')}. If the fleet in service could change every "
         f"hour, the off-peak would need far fewer vehicles (about {n.get('midday', '—')} at midday): "
-        f"{n.get('vhlb', '—')} vehicle-hours in service a day instead of {n.get('vh', '—')}. Either way the shuttles "
-        f"spend about {n.get('shdrive', '—')} hours a day driving, against about {n.get('busdrive', '—')} for buses inside "
+        f"{n.get('vhlb', '—')} vehicle-hours in service a day instead of {n.get('vh', '—')}. The fixed fleet spends about "
+        f"{n.get('shdrive', '—')} of its hours driving, against about {n.get('busdrive', '—')} hours of bus driving inside "
         f"Yishun.",
         f"5. **The MRT kerb becomes a bottleneck.** Up to {n.get('kerbmax', '—')} shuttles board or alight at once at the "
         f"Yishun MRT and interchange stops, and {n.get('kerbkhatib', '—')} at Khatib, before idle vehicles waiting "
@@ -110,8 +110,8 @@ def findings() -> str:
 
 LIMITS = """## Limitations
 
-- **Morning peak not observed.** The threshold is set at 07:00–08:00, but live data were collected
-  10:00–15:00 and 17:30–19:30. In the evening peak, LTA's estimates imply buses about 10 % slower than
+- **Morning peak not observed.** The threshold is set in the 07:00–09:00 rush, but live data were
+  collected 10:06–14:57 (with a half-hour gap at 12:00) and 17:30–19:30. In the evening peak, LTA's estimates imply buses about 10 % slower than
   the midday model, while chained GPS positions show almost no slowdown. The sensitivity table applies
   the evening-peak calibration all day as the cautious stand-in.
 - **One day of live data.** The calibration and the GPS check come from Thursday 15 October 2026.

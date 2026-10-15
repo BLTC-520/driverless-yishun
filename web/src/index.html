@@ -18,7 +18,10 @@
   --faint: #5d677a;      /* tertiary labels */
   --sodium: #f2a53a;     /* shuttles, the protagonist: sodium street-lamp amber */
   --sodium-dim: #8a6430; /* empty / repositioning shuttles */
+  --sodium-light: #f7d29a; /* 20-seat series in charts */
+  --sodium-deep: #c77a1e;  /* 4-seat series in charts */
   --bus: #52b6c7;        /* buses: cool teal */
+  --bus-light: #a6dde6;  /* feeder buses in charts */
   --nsl: #d9473a;        /* North-South Line red: MRT stations */
   --rider: #f6eedd;      /* waiting riders */
   --good: #7cc58f;       /* status: keeping up */
@@ -67,7 +70,9 @@ a:hover { color: var(--chalk); }
 
 /* ---- opening ---- */
 .open { padding-block: 40px 28px; }
-.open .inner { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 32px 56px; align-items: end; }
+.open .inner { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 32px 56px; align-items: start; }
+.open .figs { margin-top: 44px; }
+.open p.small { font-size: var(--step--1); color: var(--mute); line-height: 1.55; max-width: 62ch; margin: 14px 0 0; }
 .eyebrow {
   font-family: var(--font-data); font-size: var(--step--1); color: var(--mute);
   letter-spacing: 0.06em; text-transform: uppercase;
@@ -77,7 +82,7 @@ h1 {
   font-size: var(--step-3); line-height: 1.02; letter-spacing: -0.01em;
   margin: 10px 0 14px; text-wrap: balance;
 }
-.dek { font-size: var(--step-1); line-height: 1.45; color: var(--chalk); max-width: 36ch; margin: 0; }
+.dek { font-size: var(--step-1); line-height: 1.45; color: var(--chalk); max-width: 44ch; margin: 0; }
 .dek em { font-style: italic; color: var(--sodium); }
 .answer { margin: 16px 0 0; max-width: 46ch; font-family: var(--font-display); font-weight: 560; font-stretch: 100%; font-size: 1.12rem; line-height: 1.4; color: var(--chalk); border-left: 2px solid var(--sodium); padding-left: 12px; }
 .figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; margin: 0; }
@@ -136,7 +141,7 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
 .seg button[data-kind="bus"][aria-pressed="true"] { border-color: var(--bus); color: var(--bus); }
 #play { width: 40px; font-size: 0.95rem; }
 input[type="range"] { width: 100%; accent-color: var(--sodium); }
-.timeticks { position: relative; height: 1.1em; font-family: var(--font-data); font-size: 0.68rem; color: var(--mute); margin-top: -2px; }
+.timeticks { position: relative; height: 1.2em; font-family: var(--font-data); font-size: 0.75rem; color: var(--mute); margin-top: -2px; }
 .timeticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
 .timeticks span:first-child { transform: none; }
 .toggles { display: flex; flex-wrap: wrap; gap: 6px 12px; font-family: var(--font-data); font-size: 0.75rem; color: var(--mute); }
@@ -172,6 +177,7 @@ h3 { font-family: var(--font-display); font-weight: 650; font-size: 1.05rem; mar
 .chart .grid line { stroke: var(--rule); stroke-opacity: 0.6; }
 .chart .grid path { display: none; }
 .chart .callout { fill: var(--chalk); font-family: var(--font-data); font-size: 12px; }
+.chart .callout, .chart .lab { paint-order: stroke; stroke: var(--night); stroke-width: 3px; stroke-linejoin: round; }
 .chart-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 
 /* ---- method + data ---- */
@@ -180,7 +186,7 @@ h3 { font-family: var(--font-display); font-weight: 650; font-size: 1.05rem; mar
 .card h3 { margin-top: 0; }
 .card p, .card li { font-size: var(--step--1); color: var(--chalk); }
 .card ul { padding-left: 18px; margin: 0; display: grid; gap: 6px; }
-.tag { font-family: var(--font-data); font-size: 0.66rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+.tag { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
 .tag.known { color: var(--good); } .tag.model { color: var(--sodium); } .tag.assumed { color: var(--bad); }
 .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; }
 table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
@@ -208,6 +214,7 @@ footer .inner { display: grid; gap: 10px; max-width: 1240px; }
   .controls { grid-template-columns: auto minmax(0, 1fr); }
   .controls #speed { grid-column: 1 / -1; justify-self: start; }
   .figs { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  th, td { padding: 8px 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
@@ -333,7 +340,7 @@ footer .inner { display: grid; gap: 10px; max-width: 1240px; }
       <p><span class="num sh-t" data-v="parity">—</span> shuttles is <span class="num" data-v="vehx">—</span> the <span class="num bu-t" data-v="busesin">—</span> buses of all services that are inside Yishun at 07:00, and <span class="num" data-v="vehxf">—</span> the <span class="num" data-v="feeders">—</span> feeder buses on the road then. Each bus carries about ten times as many people, so today's buses offer more places (about <span class="num" data-v="busplaces">—</span> seated and standing, against <span class="num" data-v="shplaces">—</span> shuttle seats), and they also carry riders to and from other towns. Singapore's entire autonomous passenger fleet is 16 vehicles.</p>
       <p>The shuttle fleet drives <span class="num sh-t" data-v="vkm">—</span> km inside Yishun per weekday, <span class="num" data-v="vkmx">—</span> the <span class="num bu-t" data-v="buskm">—</span> km that all buses drive on Yishun's roads (<span class="num" data-v="feederkm">—</span> km by feeders). Counting only the rides inside Yishun, buses carry at least <span class="num" data-v="buspaxkm">—</span> riders per kilometre they drive there. The shuttles carry <span class="num" data-v="occ">—</span>, and <span class="num" data-v="empty">—</span> of their kilometres are driven empty, repositioning or heading to the next pickup.</p>
       <p>Feeder-service theory points the same way. In <a href="https://doi.org/10.1016/j.trc.2009.05.015" target="_blank" rel="noopener">Li and Quadrifoglio's analysis (2010)</a> of a single feeder zone, demand-responsive service beats fixed routes only below about 10–50 riders per square mile per hour. Averaged over the town, Yishun's internal demand at 07:00 is about <span class="num" data-v="density">—</span>.</p>
-      <p>If the fleet in service could shrink after the rush, with vehicles parked or charging, far fewer would be needed off-peak: about <span class="num sh-t" data-v="midday">—</span> around midday, a few dozen after midnight. That would be <span class="num" data-v="vhlb">—</span> vehicle-hours in service a day instead of <span class="num" data-v="vh">—</span>. Either way the shuttles spend about <span class="num sh-t" data-v="shdrive">—</span> hours a day driving, against about <span class="num bu-t" data-v="busdrive">—</span> for buses inside Yishun.</p>
+      <p>If the fleet in service could shrink after the rush, with vehicles parked or charging, far fewer would be needed off-peak: about <span class="num sh-t" data-v="midday">—</span> around midday, a few dozen after midnight. That would be <span class="num" data-v="vhlb">—</span> vehicle-hours in service a day instead of <span class="num" data-v="vh">—</span>. The fixed fleet spends about <span class="num sh-t" data-v="shdrive">—</span> of its hours driving, against about <span class="num bu-t" data-v="busdrive">—</span> hours of bus driving inside Yishun.</p>
       <p class="small">Fleets by hour come from separate one-hour simulations with a 45-minute warm-up and no backlog carried over from earlier hours, so they are lower bounds. Each is the smallest fleet whose mean stop-to-stop time in that hour is no worse than the bus, with no refused riders (larger of two demand replicates, 25-vehicle grid). Bus counts and bus-km come from published headways and modelled running times. <span data-v="shkmin">—</span> of shuttle-km fall inside the planning-area boundary, as bus-km do.</p>
     </div>
     <div class="chart"><figure><svg id="ch-frontier" viewBox="0 0 640 320" role="img" aria-label="Fleet needed by hour"></svg><div class="legend-row" id="frontier-legend"></div><figcaption>Vehicles needed to match the bus if the fleet could change size every hour (a lower bound), the fixed fleet of 10-seat shuttles that keeps up all day, and the buses inside Yishun today, from published headways and modelled running times.</figcaption></figure>
@@ -386,7 +393,7 @@ footer .inner { display: grid; gap: 10px; max-width: 1240px; }
       <h3>By subzone</h3>
       <p class="small" id="who-sz-note">Gains by the subzone where rides start. The census share of residents aged 65+ is context only: the fare-card data has no rider ages.</p>
     </div>
-    <div class="table-wrap"><table id="who-sz"><thead><tr><th>Subzone</th><th style="text-align:right">Rides a day</th><th style="text-align:right">Residents 65+</th><th style="text-align:right">Faster by shuttle</th><th style="text-align:right">Mean gain</th></tr></thead><tbody><tr><td colspan="5">—</td></tr></tbody></table></div>
+    <div class="table-wrap"><table id="who-sz"><thead><tr><th>Subzone</th><th style="text-align:right">Rides a day (with a bus option)</th><th style="text-align:right">Residents 65+</th><th style="text-align:right">Faster by shuttle</th><th style="text-align:right">Mean gain</th></tr></thead><tbody><tr><td colspan="5">—</td></tr></tbody></table></div>
   </div>
 </section>
 
@@ -416,12 +423,12 @@ footer .inner { display: grid; gap: 10px; max-width: 1240px; }
       </ul></div>
     </div>
     <div class="chart" style="margin-top:32px"><figure><svg id="ch-cal" viewBox="0 0 640 300" role="img" aria-label="Calibration: modelled against observed bus running times"></svg><figcaption id="cal-cap">Calibration: modelled against observed bus running times for stop sequences of one to six stops.</figcaption></figure></div>
-    <div class="chart" style="margin-top:24px"><figure><svg id="ch-gps" viewBox="0 0 640 260" role="img" aria-label="Observed bus GPS movement against the model, by hour"></svg><figcaption id="gps-cap">Check against observed movement: elapsed time between reported GPS positions of the same bus, divided by the model's time between those positions, pooled by hour (total observed over total modelled; bars: 95% interval over routes). 1 means the model matches what buses did. The positions come from the same live feed and day as the estimates used for fitting (10:00–12:59); later hours are out of sample.</figcaption></figure></div>
+    <div class="chart" style="margin-top:24px"><figure><svg id="ch-gps" viewBox="0 0 640 260" role="img" aria-label="Observed bus GPS movement against the model, by hour"></svg><figcaption id="gps-cap">Check against observed movement: elapsed time between reported GPS positions of the same bus, divided by the model's time between those positions, pooled by hour (total observed over total modelled; bars: 95% interval over routes). 1 means the model matches what buses did. The positions come from the same live feed and day as the estimates used for fitting (10:00–12:59); later hours are out of sample. No data were collected between 15:00 and 17:30, and 17:00 covers only 17:30–17:59.</figcaption></figure></div>
     <div class="prose" style="margin-top:28px">
       <h3>How much the headline moves</h3>
       <p class="small">Smallest fixed fleet of 10-seat shuttles that keeps up with the bus in every hour on all three demand replicates, when one assumption changes at a time. The middle column says which mode the change favours.</p>
     </div>
-    <div class="prose"><p class="small" id="sens-note" style="margin: 0 0 12px;"></p></div>
+    <div class="prose"><p class="small" id="sens-note" style="margin: 0 0 6px;"></p><p class="small" id="sens-excl" style="margin: 0 0 12px;"></p></div>
     <div class="table-wrap"><table id="sens-table"><thead><tr><th>Assumption changed</th><th>Favours</th><th style="text-align:right">Fleet that keeps up all day</th><th style="text-align:right">Bus, day mean</th></tr></thead><tbody><tr><td colspan="4">—</td></tr></tbody></table></div>
   </div>
 </section>

@@ -174,14 +174,14 @@ def who_gains(M, cap: int, fleet: int, seeds=(1, 2, 3)) -> dict:
     short_share_lose = float((lose.dist < 500).mean()) if len(lose) else 0.0
     if longb > short:
         headline = "Longer rides inside the town gain most; the shortest hops gain least"
-        dist_txt = (f"Longer rides gain more: {short:.0%} of rides under 0.5 km are faster, against {longb:.0%} of rides "
-                    f"over 1.5 km, where bus routes loop and stop more often than a direct shuttle.")
+        dist_txt = (f"Longer rides gain more: {short:.0%} of all rides under 0.5 km are faster, against {longb:.0%} of all "
+                    f"rides over 1.5 km, where bus routes loop and stop more often than a direct shuttle.")
     else:
         headline = "The shortest hops gain most"
-        dist_txt = (f"Short rides gain more: {short:.0%} of rides under 0.5 km are faster, against {longb:.0%} of "
+        dist_txt = (f"Short rides gain more: {short:.0%} of all rides under 0.5 km are faster, against {longb:.0%} of all "
                     f"rides over 1.5 km.")
-    tail_txt = (f"The slowest tenth of shuttle rides take more than {sp90:.0f} min, against {bp90:.0f} min by bus "
-                f"({pk_sp90:.0f} against {pk_bp90:.0f} min in the 07:00–09:00 peak).")
+    tail_txt = (f"The slowest tenth of shuttle rides take more than {sp90:.1f} min, against {bp90:.1f} min by bus "
+                f"({pk_sp90:.1f} against {pk_bp90:.1f} min in the 07:00–09:00 peak).")
     text = (f"With {fleet} ten-seat shuttles, pooled over {len(seeds)} simulated weekdays, {share:.0%} of rides "
             f"reach their stop sooner than by bus, comparing each ride with one simulated bus wait "
             f"({share_exp:.0%} beat the bus's average time for that trip). The average saving is {gain:.1f} minutes. "
@@ -325,7 +325,7 @@ def numbers(out: dict, base: dict, demand: dict, cal: dict, gps: dict | None, pm
         "vkm": f(ref["veh_km"]), "buskm": f(base["bus_km_inside_day"]), "feederkm": f(base["feeder_bus_km_inside_day"]),
         "vkmx": f"{ref['veh_km'] / base['bus_km_inside_day']:.1f} times",
         "buspaxkm": f"{R['bus_pax_per_km_lower']:.0f}", "empty": _pct(ref["empty_share"]),
-        "density": f(round(term7 / area_mi2, -2)),
+        "density": f"{round(term7 / area_mi2, -2):,.0f} riders per square mile per hour",
         "midday": f((R["frontier"].get("10") or [None] * len(H))[H.index(12)]),
         "vhlb": f((R.get("vehicle_hours") or {}).get("10")), "vh": f(R["fixed_fleet_vehicle_hours"]),
         "bush": f(base.get("bus_hours_inside_day")), "busdrive": f(base.get("bus_driving_hours_inside_day")),
