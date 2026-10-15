@@ -92,13 +92,16 @@ def variants() -> list[dict]:
         {"id": "loose_pooling", "label": "Looser pooling: rides up to 2x direct + 10 min", "sim": {"alpha": 2.0, "beta": 600.0}, "dir": 0},
         {"id": "wider_search", "label": "Dispatcher searches twice as many vehicles per request (48 nearest + 16 soonest free)",
          "sim": {"k_eta": 48, "k_end": 16}, "dir": -1},
+        {"id": "widest_search", "label": "Dispatcher searches four times as many vehicles per request (96 nearest + 32 soonest free)",
+         "sim": {"k_eta": 96, "k_end": 32}, "dir": -1},
     ]
     gps = PROCESSED / "gps_check.json"
     if gps.exists():
         g = json.loads(gps.read_text()).get("fit", {}).get("10-14")
         if g:
-            out.append({"id": "gps_calibration", "label": f"Calibrated on bus GPS movement instead of LTA estimates (cruise x{g['mult']:.2f}, "
-                                                          f"{g['sig_s']:.0f} s per signal, bus dwell {g['dwell_s']:.0f} s)",
+            out.append({"id": "gps_calibration", "label": f"Robust fit to bus GPS movement (cruise x{g['mult']:.2f}, "
+                                                          f"{g['sig_s']:.0f} s per signal, bus dwell {g['dwell_s']:.0f} s); "
+                                                          f"tracks typical rather than average speeds",
                         "cal": {"mult_arterial": g["mult"], "mult_local": g["mult"], "sig_s": g["sig_s"]},
                         "baseline": replace(bp, dwell_s=g["dwell_s"], hub_extra_s=g["hub_extra_s"]), "dir": 0})
     peak = PROCESSED / "calibration_pm_peak.json"

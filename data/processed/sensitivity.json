@@ -1,0 +1,953 @@
+{
+ "provenance": {
+  "model_key": "198908c99fd0",
+  "demand_months": [
+   "202607",
+   "202608"
+  ],
+  "calibration": {
+   "mult": 0.8766247115736897,
+   "sig_s": 15.094177741558301,
+   "dwell_s": 40.55909238948731,
+   "hub_extra_s": 25.30150290068473,
+   "kappa": 0.5680649049241908,
+   "hours_sgt": [
+    10,
+    11,
+    12
+   ],
+   "n_obs_used": 171838
+  },
+  "bus_kappa": 0.5680649049241908,
+  "bus_dwell_s": 40.55909238948731,
+  "bus_hub_extra_s": 25.30150290068473,
+  "git": "c8560d3",
+  "pipeline_modified": true
+ },
+ "fleets": [
+  300,
+  325,
+  350,
+  375,
+  400,
+  425,
+  450,
+  475,
+  500,
+  550,
+  600,
+  700,
+  800
+ ],
+ "seeds": [
+  1,
+  2,
+  3
+ ],
+ "variants": [
+  {
+   "id": "base",
+   "label": "Calibrated base case",
+   "direction": 0,
+   "parity_fleet": 450,
+   "parity_below": 425,
+   "bus_day_min": 11.990238399770332,
+   "shuttle_day_min_at_parity": 6.630519232146567,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.952383681103991,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 16.191849511181733,
+     "bus_min": 11.990238399770332,
+     "refused": 0.011378645755954405
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.630519232146567,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.484785175237928,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0005026874444143692
+    },
+    "425": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 7.265475152175771,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 680.8190553188324,
+   "model_key": "198908c99fd0"
+  },
+  {
+   "id": "speed_slow",
+   "label": "Slower roads: calibration draw at the 97.5th percentile of road time (cruise x0.82, 19 s per signal, bus dwell 37 s; draws with bus dwell 36-44 s, as measured from bus GPS)",
+   "direction": 0,
+   "parity_fleet": 475,
+   "parity_below": 450,
+   "bus_day_min": 12.264570840663145,
+   "shuttle_day_min_at_parity": 7.270876136586163,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.614869043806991,
+     "bus_min": 12.264570840663145,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 18.148534559665862,
+     "bus_min": 12.264570840663145,
+     "refused": 0.029347177928968432
+    },
+    "450": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 8.18590377339174,
+     "bus_min": 12.264570840663145,
+     "refused": 0.0
+    },
+    "475": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 7.270876136586163,
+     "bus_min": 12.264570840663145,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 548.8598053455353,
+   "model_key": "cf66de42b8e4"
+  },
+  {
+   "id": "speed_fast",
+   "label": "Faster roads: draw at the 2.5th percentile (cruise x0.67, 16 s per signal, bus dwell 44 s)",
+   "direction": 0,
+   "parity_fleet": 400,
+   "parity_below": 375,
+   "bus_day_min": 11.755779819177853,
+   "shuttle_day_min_at_parity": 6.521542399193915,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.412971918602295,
+     "bus_min": 11.755779819177853,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 10.700660371590551,
+     "bus_min": 11.755779819177853,
+     "refused": 0.00016688409085821162
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.9014176633281075,
+     "bus_min": 11.755779819177853,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.521542399193915,
+     "bus_min": 11.755779819177853,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 546.4303421974182,
+   "model_key": "eaa85b967e2b"
+  },
+  {
+   "id": "bus_dwell_low",
+   "label": "Bus dwell 19 s (+6 s at stations), lower 95% CI",
+   "direction": 1,
+   "parity_fleet": 450,
+   "parity_below": 425,
+   "bus_day_min": 10.187668965078672,
+   "shuttle_day_min_at_parity": 6.630519232146567,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.952383681103991,
+     "bus_min": 10.187668965078672,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 16.191849511181733,
+     "bus_min": 10.187668965078672,
+     "refused": 0.011378645755954405
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.630519232146567,
+     "bus_min": 10.187668965078672,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.484785175237928,
+     "bus_min": 10.187668965078672,
+     "refused": 0.0005026874444143692
+    },
+    "425": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 7.265475152175771,
+     "bus_min": 10.187668965078672,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 667.9756367206573,
+   "model_key": "f20a1668c2b5"
+  },
+  {
+   "id": "bus_dwell_high",
+   "label": "Bus dwell 57 s (+41 s at stations), upper 95% CI",
+   "direction": -1,
+   "parity_fleet": 450,
+   "parity_below": 425,
+   "bus_day_min": 13.44115192497037,
+   "shuttle_day_min_at_parity": 6.630519232146567,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.952383681103991,
+     "bus_min": 13.44115192497037,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 16.191849511181733,
+     "bus_min": 13.44115192497037,
+     "refused": 0.011378645755954405
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.630519232146567,
+     "bus_min": 13.44115192497037,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.484785175237928,
+     "bus_min": 13.44115192497037,
+     "refused": 0.0005026874444143692
+    },
+    "425": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 7.265475152175771,
+     "bus_min": 13.44115192497037,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 814.4430594444275,
+   "model_key": "f73c04ea47a6"
+  },
+  {
+   "id": "bus_regular",
+   "label": "More regular buses: wait factor 0.54 (lower quartile across services and stops)",
+   "direction": 1,
+   "parity_fleet": 450,
+   "parity_below": 425,
+   "bus_day_min": 11.807984848742773,
+   "shuttle_day_min_at_parity": 6.630519232146567,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.952383681103991,
+     "bus_min": 11.807984848742773,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 16.191849511181733,
+     "bus_min": 11.807984848742773,
+     "refused": 0.011378645755954405
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.630519232146567,
+     "bus_min": 11.807984848742773,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.484785175237928,
+     "bus_min": 11.807984848742773,
+     "refused": 0.0005026874444143692
+    },
+    "425": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 7.265475152175771,
+     "bus_min": 11.807984848742773,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 785.7675175666809,
+   "model_key": "4a510e278755"
+  },
+  {
+   "id": "bus_irregular",
+   "label": "Less regular buses: wait factor 0.61 (upper quartile)",
+   "direction": -1,
+   "parity_fleet": 450,
+   "parity_below": 425,
+   "bus_day_min": 12.255703849200343,
+   "shuttle_day_min_at_parity": 6.630519232146567,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.952383681103991,
+     "bus_min": 12.255703849200343,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 16.191849511181733,
+     "bus_min": 12.255703849200343,
+     "refused": 0.011378645755954405
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.630519232146567,
+     "bus_min": 12.255703849200343,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.484785175237928,
+     "bus_min": 12.255703849200343,
+     "refused": 0.0005026874444143692
+    },
+    "425": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 7.265475152175771,
+     "bus_min": 12.255703849200343,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 813.8055231571198,
+   "model_key": "d71cab3ffddd"
+  },
+  {
+   "id": "bus_bunched",
+   "label": "Bunched buses: wait factor 0.75 (headway CV 0.7, typical of congested peaks)",
+   "direction": -1,
+   "parity_fleet": 450,
+   "parity_below": 425,
+   "bus_day_min": 13.040950127391978,
+   "shuttle_day_min_at_parity": 6.630519232146567,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.952383681103991,
+     "bus_min": 13.040950127391978,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 16.191849511181733,
+     "bus_min": 13.040950127391978,
+     "refused": 0.011378645755954405
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.630519232146567,
+     "bus_min": 13.040950127391978,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.484785175237928,
+     "bus_min": 13.040950127391978,
+     "refused": 0.0005026874444143692
+    },
+    "425": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 7.265475152175771,
+     "bus_min": 13.040950127391978,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 827.0289402008057,
+   "model_key": "b9b7a3ee53e1"
+  },
+  {
+   "id": "bus_app_riders",
+   "label": "Bus riders time their arrival with live-arrival apps (wait factor 0.35)",
+   "direction": 1,
+   "parity_fleet": 450,
+   "parity_below": 425,
+   "bus_day_min": 10.725164484083843,
+   "shuttle_day_min_at_parity": 6.630519232146567,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.952383681103991,
+     "bus_min": 10.725164484083843,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 16.191849511181733,
+     "bus_min": 10.725164484083843,
+     "refused": 0.011378645755954405
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.630519232146567,
+     "bus_min": 10.725164484083843,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.484785175237928,
+     "bus_min": 10.725164484083843,
+     "refused": 0.0005026874444143692
+    },
+    "425": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 7.265475152175771,
+     "bus_min": 10.725164484083843,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 710.2497246265411,
+   "model_key": "c78faa896a7e"
+  },
+  {
+   "id": "stop_slow",
+   "label": "Shuttle stop takes 40 s + 4 s per rider (base 20 s)",
+   "direction": 1,
+   "parity_fleet": 500,
+   "parity_below": 475,
+   "bus_day_min": 11.990238399770332,
+   "shuttle_day_min_at_parity": 7.269666650719779,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.68129680328625,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 20.430686055173098,
+     "bus_min": 11.990238399770332,
+     "refused": 0.06009658925551379
+    },
+    "450": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 13.156085180932779,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0034028073160357296
+    },
+    "475": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 8.555872551161356,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "500": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 7.269666650719779,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 712.5662200450897,
+   "model_key": "198908c99fd0"
+  },
+  {
+   "id": "stop_fast",
+   "label": "Shuttle stop takes 15 s + 4 s per rider",
+   "direction": -1,
+   "parity_fleet": 425,
+   "parity_below": 400,
+   "bus_day_min": 11.990238399770332,
+   "shuttle_day_min_at_parity": 6.767023684391432,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.7842289030358245,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 13.179925799917239,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0023791158806493826
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.354905719757273,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 8.258197501226135,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "425": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.767023684391432,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 680.1286227703094,
+   "model_key": "198908c99fd0"
+  },
+  {
+   "id": "demand_sep",
+   "label": "September 2026 demand (includes the one-week school holiday)",
+   "direction": -1,
+   "parity_fleet": 425,
+   "parity_below": 400,
+   "bus_day_min": 12.028344713023149,
+   "shuttle_day_min_at_parity": 6.705424318494224,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.879555906028412,
+     "bus_min": 12.028344713023149,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 12.030839520417167,
+     "bus_min": 12.028344713023149,
+     "refused": 0.00034378031804952125
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.436396800295738,
+     "bus_min": 12.028344713023149,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 7.45329823574517,
+     "bus_min": 12.028344713023149,
+     "refused": 0.0
+    },
+    "425": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.705424318494224,
+     "bus_min": 12.028344713023149,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 659.2265086174011,
+   "model_key": "c16af99597e1"
+  },
+  {
+   "id": "demand_up",
+   "label": "Demand +20% (same pattern)",
+   "direction": 1,
+   "parity_fleet": 550,
+   "parity_below": 500,
+   "bus_day_min": 11.968731170413744,
+   "shuttle_day_min_at_parity": 6.333426995277748,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.333426995277748,
+     "bus_min": 11.968731170413744,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 21.383431056682973,
+     "bus_min": 11.968731170413744,
+     "refused": 0.069314894971787
+    },
+    "450": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 15.653225026458376,
+     "bus_min": 11.968731170413744,
+     "refused": 0.008907584655923374
+    },
+    "475": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.335058254853541,
+     "bus_min": 11.968731170413744,
+     "refused": 0.0003708671178036538
+    },
+    "500": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 7.714619934125881,
+     "bus_min": 11.968731170413744,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 846.2503056526184,
+   "model_key": "198908c99fd0"
+  },
+  {
+   "id": "demand_down",
+   "label": "Demand -20% (same pattern)",
+   "direction": -1,
+   "parity_fleet": 375,
+   "parity_below": 350,
+   "bus_day_min": 11.969968557504945,
+   "shuttle_day_min_at_parity": 6.679874134103382,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.636427815799952,
+     "bus_min": 11.969968557504945,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.679874134103382,
+     "bus_min": 11.969968557504945,
+     "refused": 0.0
+    },
+    "325": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.512611606165581,
+     "bus_min": 11.969968557504945,
+     "refused": 4.5833831988449875e-05
+    },
+    "350": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 7.359470500883808,
+     "bus_min": 11.969968557504945,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 453.65565156936646,
+   "model_key": "198908c99fd0"
+  },
+  {
+   "id": "no_rebalance",
+   "label": "Idle shuttles stay where they are (no repositioning)",
+   "direction": 1,
+   "parity_fleet": 475,
+   "parity_below": 450,
+   "bus_day_min": 11.990238399770332,
+   "shuttle_day_min_at_parity": 7.874399430894171,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 7.722725733695771,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 17.048205481318632,
+     "bus_min": 11.990238399770332,
+     "refused": 0.014215675300544002
+    },
+    "450": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 8.22501263529933,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "475": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 7.874399430894171,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 513.2472984790802,
+   "model_key": "198908c99fd0"
+  },
+  {
+   "id": "loose_pooling",
+   "label": "Looser pooling: rides up to 2x direct + 10 min",
+   "direction": 0,
+   "parity_fleet": 450,
+   "parity_below": 425,
+   "bus_day_min": 11.990238399770332,
+   "shuttle_day_min_at_parity": 6.6077218246950205,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.952383681103991,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 16.33326826332844,
+     "bus_min": 11.990238399770332,
+     "refused": 0.009422845617969753
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.6077218246950205,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 11.34774146804141,
+     "bus_min": 11.990238399770332,
+     "refused": 5.291446783309149e-05
+    },
+    "425": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 7.168893493071648,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 680.5712463855743,
+   "model_key": "198908c99fd0"
+  },
+  {
+   "id": "wider_search",
+   "label": "Dispatcher searches twice as many vehicles per request (48 nearest + 16 soonest free)",
+   "direction": -1,
+   "parity_fleet": 400,
+   "parity_below": 375,
+   "bus_day_min": 11.990238399770332,
+   "shuttle_day_min_at_parity": 7.024849026581281,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.889326053668498,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 8.238907030326583,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "450": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.412099725762578,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "400": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 7.024849026581281,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 655.4681394100189,
+   "model_key": "198908c99fd0"
+  },
+  {
+   "id": "widest_search",
+   "label": "Dispatcher searches four times as many vehicles per request (96 nearest + 32 soonest free)",
+   "direction": -1,
+   "parity_fleet": 375,
+   "parity_below": 350,
+   "bus_day_min": 11.990238399770332,
+   "shuttle_day_min_at_parity": 7.145617415901541,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 5.883570877276256,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 7.145617415901541,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "325": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 9.788484454555284,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    },
+    "350": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 7.874958563987138,
+     "bus_min": 11.990238399770332,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 886.0269267559052,
+   "model_key": "198908c99fd0"
+  },
+  {
+   "id": "gps_calibration",
+   "label": "Calibrated on bus GPS movement instead of LTA estimates (cruise x0.71, 8 s per signal, bus dwell 40 s)",
+   "direction": 0,
+   "parity_fleet": 350,
+   "parity_below": 325,
+   "bus_day_min": 9.939445279594073,
+   "shuttle_day_min_at_parity": 4.810880087306487,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 3.9025150910399966,
+     "bus_min": 9.939445279594073,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 4.571684217928908,
+     "bus_min": 9.939445279594073,
+     "refused": 0.0
+    },
+    "325": {
+     "ok": false,
+     "first_failing_hour": 8,
+     "shuttle_min": 5.856041497757646,
+     "bus_min": 9.939445279594073,
+     "refused": 0.0
+    },
+    "350": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 4.810880087306487,
+     "bus_min": 9.939445279594073,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 566.6047158241272,
+   "model_key": "d923ec7bb9e6"
+  },
+  {
+   "id": "pm_peak_roads",
+   "label": "Evening-peak calibration all day (cruise x1.00, 15 s per signal, bus dwell 46 s, wait factor 0.62)",
+   "direction": 1,
+   "parity_fleet": 475,
+   "parity_below": 450,
+   "bus_day_min": 13.162474991056987,
+   "shuttle_day_min_at_parity": 7.004609972142672,
+   "evaluated": {
+    "550": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 6.429470908990528,
+     "bus_min": 13.162474991056987,
+     "refused": 0.0
+    },
+    "375": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 17.88313396909212,
+     "bus_min": 13.162474991056987,
+     "refused": 0.02724281024668318
+    },
+    "450": {
+     "ok": false,
+     "first_failing_hour": 7,
+     "shuttle_min": 7.708836087075253,
+     "bus_min": 13.162474991056987,
+     "refused": 0.0
+    },
+    "475": {
+     "ok": true,
+     "first_failing_hour": null,
+     "shuttle_min": 7.004609972142672,
+     "bus_min": 13.162474991056987,
+     "refused": 0.0
+    }
+   },
+   "runtime_s": 558.1925940513611,
+   "model_key": "bed0a7561680"
+  }
+ ]
+}

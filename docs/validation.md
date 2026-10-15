@@ -57,18 +57,28 @@ project; what they found and what was done about it is listed at the end.
   real information beyond distance.
 - **Other hours (pass).** The fit, scored without refitting on 13:00–14:59 data
   (137,868 observations): observed/predicted = 1.00.
-- **Observed GPS movement (pass).** Chained positions of the same bus, 5–20 minutes apart.
-  - Observed/modelled time is 0.99 at 10:00–12:59 and 1.00 at 13:00–14:59, with route-level
-    bootstrap intervals of about ±5 %.
-  - These are observed movements, not LTA's estimates, so this tests the calibration
-    against independent data.
-- **Evening peak (finding).** Both the LTA-estimate data (×1.07) and GPS movement (×1.07) show
-  buses about 7 % slower at 17:30–19:30 than the midday model. A sensitivity case applies the
-  evening-peak calibration all day.
+- **Observed GPS movement (pass).** Chained positions of the same bus, about 5 minutes apart.
+  - Observed/modelled time (pooled) is 0.99 at 10:00–12:59 and 1.00 at 13:00–14:59, with
+    route-level bootstrap intervals of about ±5 %.
+  - A second design, with pairs chosen by distance rather than time, agrees.
+  - The positions come from the same feed and day as the fitting data, but they are observed
+    positions, not LTA's predictions.
+  - Per-pair medians from the time-based design (about 1.06–1.11) are not used: with time
+    fixed, slow buses cover less distance, which skews per-pair ratios upwards. Pooled
+    ratios and the distance design do not have this problem.
+- **Evening peak (unresolved).** At 17:30–19:30 the measures disagree.
+  - LTA's estimates imply buses 10 % slower than the midday model (×1.10).
+  - Chained GPS positions show ×1.02 (95 % interval 0.98–1.07; 1,191 pairs); the distance
+    design gives ×1.00.
+  - Speed bands on bus-route links show ×1.035.
+  - An early read on the first half hour (105 GPS pairs, ×1.07) was too small to rely on.
+  - A sensitivity case applies the evening-peak calibration all day.
 - **Cruise vs dwell (weakness found and bounded).** The LTA-estimate data cannot separate road
   time from stop dwell: across service-bootstrap draws they correlate at −0.95.
-  - The GPS fit measures dwell directly: 39.7 s (35.6–44.5 s), consistent with the
+  - The GPS fit measures dwell directly: about 40 s (35–44 s), consistent with the
     estimate-based 40.6 s.
+  - Its road-speed values are biased fast (robust loss; mean bus times underpredicted by
+    about a quarter), so they are not used as a calibration.
   - Speed sensitivity uses only jointly fitted draws consistent with that dwell (road time
     −8 % to +10 %).
 - **Estimator check.** On data generated from the model's own form, the estimator recovers the
@@ -126,6 +136,7 @@ project; what they found and what was done about it is listed at the end.
 | Speed sensitivity at marginal intervals ignored the cruise–dwell trade-off (found while fixing) | Jointly fitted draws, constrained by the GPS-measured dwell |
 | Calibration on LTA estimates, in-sample, with optimistic intervals (science, expert) | Service-cluster bootstrap, service hold-out against a distance baseline, other-hour scoring, GPS check on observed movement |
 | Peak hours uncalibrated (science, expert) | Evening peak collected and calibrated; sensitivity case; the morning peak is still unobserved (stated) |
+| "Yes" stated without its conditions; "8 % slower" from one half hour of GPS; GPS check called independent; threshold prose ("cannot clear for hours") not matching the curves; unsourced kerb and block-age claims; vehicle-hours not like for like (second review) | Answer now conditional with the size and sensitivity ranges; evening peak reported from both measures over the full window; GPS check described as the same feed, different quantity; threshold text quotes the 08:00 hour by fleet; unsourced claims removed or sourced (HDB property data: 61 % of blocks from the 1980s); driving hours compared for both modes |
 | September includes the school holidays (expert) | Base changed to July + August; September is a sensitivity case |
 | "Share faster" compared realised shuttle with expected bus (science) | One simulated bus wait per ride; both measures reported; p90 for both modes |
 | Vehicles and km compared across units and service sets (science) | Buses of all services inside Yishun, seats/places, in-area shuttle-km share |
@@ -137,7 +148,7 @@ project; what they found and what was done about it is listed at the end.
 | Repositioning untested (engineering) | Randomized invariant tests with repositioning |
 | Gap claim ignored Mo et al. 2021 (expert) | Added and the claim narrowed |
 | Equity view computed but not shown (science, expert) | Shown as a subzone table with the ecological caveat and a rank correlation |
-| Dispatcher not benchmarked against batch optimisation (expert) | Not done; listed as a limitation and next step |
+| Dispatcher not benchmarked against batch optimisation (expert) | Partly: wider candidate searches (two and four times as many vehicles per request) quantify how much the heuristic's search limit costs; a batch optimiser is the next step |
 
 ## Known weaknesses
 
@@ -149,4 +160,7 @@ project; what they found and what was done about it is listed at the end.
 - **No traffic feedback.** Hundreds of shuttles do not congest roads in the model.
 - **Dispatcher.** Immediate insertion with exact travel times; neither a batch optimiser nor
   realistic travel-time noise.
+  - The fleet depends on it: searching two or four times as many vehicles per request lowers
+    the threshold from 450 to 400 or 375. A batch optimiser could lower it further.
+  - 450 is what this simple dispatcher needs, not a floor.
 - **Stages, not trips.** Two-bus trips inside Yishun stay two requests.

@@ -26,6 +26,12 @@ from .paths import PROCESSED, WEB_DATA
 
 HOURS = list(range(5, 26))
 EXP = PROCESSED / "experiments"
+# sensitivity cases computed but not shown as plausible alternatives, with the reason
+SENS_EXCLUDED = {
+    "gps_calibration": ("a robust fit to bus GPS movement",
+                        "it tracks typical rather than average speeds: on 5-minute GPS pairs it underpredicts mean bus "
+                        "times by about a quarter, so it is too optimistic to simulate with"),
+}
 
 
 def _load_fixed() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -159,6 +165,7 @@ def who_gains(M, cap: int, fleet: int, seeds=(1, 2, 3)) -> dict:
     pk_sp90, pk_bp90 = float(peak.total.quantile(0.9) / 60), float(peak.b_total_draw.quantile(0.9) / 60)
     pk7 = r[r.hour == 7]
     waits = {"shuttle_mean_min": float(r.wait.mean() / 60), "bus_mean_min": float(r.b_wait.mean() / 60),
+             "shuttle_mean_79_min": float(peak.wait.mean() / 60), "bus_mean_79_min": float(peak.b_wait.mean() / 60),
              "shuttle_p90_7_min": float(pk7.wait.quantile(0.9) / 60), "bus_p90_7_min": float(pk7.b_wait_draw.quantile(0.9) / 60),
              "shuttle_ride_min": float(r.ride.mean() / 60), "bus_ride_min": float(r.b_ivt.mean() / 60)}
     lose = r[~r.faster]
@@ -247,6 +254,18 @@ def shuttle_km_inside_share(M, fleet: int, cap: int = 10) -> float:
     return ins / tot if tot else float("nan")
 
 
+def shuttle_driving_hours(M, fleet: int, cap: int = 10, seed: int = 1) -> dict:
+    """Hours the fixed fleet spends driving (with riders or empty), from one recorded day."""
+    from .experiments import service_day_requests
+    from .sim import SimConfig, Simulator
+    req = service_day_requests(M, seed)
+    cfg = SimConfig(fleet=fleet, capacity=cap, seed=seed, start_s=4.75 * 3600, record_legs=True)
+    res = Simulator(M.R, M.study_idx, M.origin_rates, M.hub_idx, cfg).run(req[["t", "o", "d", "hour"]], M.stop_index)
+    moving = sum(((lg.cut_t if lg.cut_t is not None else lg.t[-1]) - lg.t[0]) for lg in res.legs)
+    loaded = sum(((lg.cut_t if lg.cut_t is not None else lg.t[-1]) - lg.t[0]) for lg in res.legs if lg.onboard > 0)
+    return {"driving_h": moving / 3600, "loaded_h": loaded / 3600}
+
+
 def calibration_points(M) -> dict:
     """Observed vs modelled bus running time per stop sequence, with the fitted parameters."""
     import glob
@@ -309,7 +328,8 @@ def numbers(out: dict, base: dict, demand: dict, cal: dict, gps: dict | None, pm
         "density": f(round(term7 / area_mi2, -2)),
         "midday": f((R["frontier"].get("10") or [None] * len(H))[H.index(12)]),
         "vhlb": f((R.get("vehicle_hours") or {}).get("10")), "vh": f(R["fixed_fleet_vehicle_hours"]),
-        "bush": f(base.get("bus_hours_inside_day")),
+        "bush": f(base.get("bus_hours_inside_day")), "busdrive": f(base.get("bus_driving_hours_inside_day")),
+        "shdrive": f((R.get("shuttle_hours") or {}).get("driving_h")),
         "shkmin": _pct(R.get("shuttle_km_inside_share"), 1),
         "kerbmax": f(max([v for v in ref["kerb"].get("Yishun", []) if v is not None], default=None)),
         "kerbkhatib": f(max([v for v in ref["kerb"].get("Khatib", []) if v is not None], default=None)),
@@ -319,18 +339,49 @@ def numbers(out: dict, base: dict, demand: dict, cal: dict, gps: dict | None, pm
         "kappa": f"{cal['kappa']:.2f}", "d0": f"{SimConfig().d0:.0f}",
         "gpsn": f((gps or {}).get("all", {}).get("n_pairs")),
         "gpsratio": f"{mid['pooled_ratio']:.2f}" if mid else None,
-        "pmpct": _pct(pmw["pooled_ratio"] / mid["pooled_ratio"] - 1) if (pmw and mid) else None,
+        "pm_gps": f"{pmw['pooled_ratio']:.2f}" if pmw else None,
+        "pm_gps_ci": f"{pmw['pooled_ratio_ci'][0]:.2f}–{pmw['pooled_ratio_ci'][1]:.2f}" if pmw else None,
+        "pm_eta": (f"{cal['holdout_hours']['17-19']['obs_over_pred']:.2f}"
+                   if cal.get("holdout_hours", {}).get("17-19") else None),
         "ho_mape": _pct(hc.get("model", {}).get("mape")), "ho_dist_mape": _pct(hc.get("distance_only", {}).get("mape")),
         "in_mape": _pct(cal.get("in_sample", {}).get("mape")),
         "share_faster": _pct(R["who"]["share_faster"]), "gain": f"{R['who']['mean_gain_min']:.1f} min",
     }
     wt = R["who"].get("waits", {})
-    for k, key in (("shwait", "shuttle_mean_min"), ("buswait", "bus_mean_min"), ("shwait90", "shuttle_p90_7_min"),
+    for k, key in (("shwait", "shuttle_mean_min"), ("buswait", "bus_mean_min"), ("shwait79", "shuttle_mean_79_min"),
+                   ("buswait79", "bus_mean_79_min"), ("shwait90", "shuttle_p90_7_min"),
                    ("buswait90", "bus_p90_7_min"), ("shride", "shuttle_ride_min"), ("busride", "bus_ride_min")):
         if key in wt:
             n[k] = f"{wt[key]:.1f} min"
     if pm:
         n["pm_mult"] = f"{pm['mult']:.2f}"
+    # threshold detail: 08:00 means and refusals around the parity fleet
+    h8, h7, rf = R.get("h8", {}), R.get("h7", {}), R.get("refused10", {})
+    lo = det.get("below")
+    for key, fl in (("p", par), ("lo", lo), ("lo2", (lo - 25) if lo else None), ("lo3", (lo - 50) if lo else None)):
+        if fl is None or str(fl) not in h8:
+            continue
+        n[f"f_{key}"] = f(fl)
+        n[f"h8_{key}"] = f"{h8[str(fl)]:.1f} min" if h8.get(str(fl)) is not None else None
+        n[f"h7_{key}"] = f"{h7[str(fl)]:.1f} min" if h7.get(str(fl)) is not None else None
+        n[f"ref_{key}"] = _pct(rf.get(str(fl)), 1)
+    n["bus8"] = f"{R['bus_total_min'][H.index(8)]:.1f} min"
+    n["bus7"] = f"{R['bus_total_min'][H.index(7)]:.1f} min"
+    sizes = R["all_day_parity"]
+    if all(sizes.get(k) for k in ("4", "20")):
+        n["par4"], n["par20"] = f(sizes["4"]), f(sizes["20"])
+    s = R.get("sensitivity") or []
+    byid = {r["id"]: r["parity_fleet"] for r in s}
+    if byid.get("wider_search"):
+        n["disp2"] = f(byid["wider_search"])
+    if byid.get("widest_search"):
+        n["disp4"] = f(byid["widest_search"])
+    if byid.get("pm_peak_roads"):
+        n["pmfleet"] = f(byid["pm_peak_roads"])
+    vals = [r["parity_fleet"] for r in s if r.get("parity_fleet") and r["id"] != "base"]
+    if vals:
+        n["sens_lo"], n["sens_hi"] = f(min(vals)), f(max(vals))
+        n["sens_n"] = f(len([r for r in s if r["id"] != "base"]))
     return {k: v for k, v in n.items() if v is not None}
 
 
@@ -394,6 +445,10 @@ def run() -> dict:
                         "places_per_bus": base.get("places_per_bus")},
         "who": who_gains(M, 10, ref_n),
         "shuttle_km_inside_share": shuttle_km_inside_share(M, ref_n),
+        "shuttle_hours": shuttle_driving_hours(M, ref_n),
+        "h8": {str(n): _num(c10[n]["byHour"]["m"][HOURS.index(8)]) for n in c10},
+        "h7": {str(n): _num(c10[n]["byHour"]["m"][HOURS.index(7)]) for n in c10},
+        "refused10": {str(n): c10[n]["refused"] for n in c10},
         "anim": {"reference": f"s10_{ref_n}", "undersized": f"s10_{under}"},
         "vehicle_hours": ({k: int(np.nansum([x for x in v if x is not None])) for k, v in frontier.items()}
                           if hourly else None),
@@ -417,15 +472,18 @@ def run() -> dict:
     if sp.exists():
         sj = json.loads(sp.read_text())
         rows = sj["variants"] if isinstance(sj, dict) else sj
-        out["sensitivity"] = [{k: r.get(k) for k in ("id", "label", "direction", "parity_fleet", "parity_below",
-                                                     "bus_day_min", "shuttle_day_min_at_parity")} for r in rows]
+        keep = ("id", "label", "direction", "parity_fleet", "parity_below", "bus_day_min", "shuttle_day_min_at_parity")
+        out["sensitivity"] = [{k: r.get(k) for k in keep} for r in rows if r["id"] not in SENS_EXCLUDED]
+        out["sensitivity_excluded"] = [{**{k: r.get(k) for k in keep}, "name": SENS_EXCLUDED[r["id"]][0],
+                                        "reason": SENS_EXCLUDED[r["id"]][1]}
+                                       for r in rows if r["id"] in SENS_EXCLUDED]
     cal = json.loads((PROCESSED / "calibration.json").read_text())
     gp, pmp = PROCESSED / "gps_check.json", PROCESSED / "calibration_pm_peak.json"
     gps = json.loads(gp.read_text()) if gp.exists() else None
     pm = json.loads(pmp.read_text()) if pmp.exists() else None
     if gps:
         out["gps_check"] = {k: gps.get(k) for k in ("all", "by_window", "by_hour", "fit", "n_fixes_on_route", "n_tracks",
-                                                    "speedbands")}
+                                                    "speedbands", "distance_design")}
     if pm:
         out["calibration_pm_peak"] = {k: pm.get(k) for k in ("mult", "sig_s", "dwell_s", "hub_extra_s", "kappa",
                                                               "n_obs_used", "hours_sgt", "holdout_hours")}

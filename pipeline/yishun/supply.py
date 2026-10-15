@@ -29,19 +29,24 @@ def _hhmm(s):
     return (v // 100) * 60 + v % 100
 
 
-def inside_minutes(baseline, study_codes: set[str]) -> dict[tuple[str, int], float]:
-    """Modelled minutes each service-direction spends between consecutive in-area stops."""
+def inside_minutes(baseline, study_codes: set[str], driving_only: bool = False) -> dict[tuple[str, int], float]:
+    """Modelled minutes each service-direction spends between consecutive in-area stops:
+    running plus dwell, or running only (driving_only)."""
     out = {}
     for ln, pos, cum in baseline.segments:
-        m = sum(cum[k] - cum[k - 1] for k in range(1, len(ln.stops))
-                if ln.stops[k - 1] in study_codes and ln.stops[k] in study_codes and np.isfinite(cum[k] - cum[k - 1]))
+        m = 0.0
+        for k in range(1, len(ln.stops)):
+            a, b = ln.stops[k - 1], ln.stops[k]
+            if a in study_codes and b in study_codes and np.isfinite(cum[k] - cum[k - 1]):
+                m += baseline.T[baseline.idx[a], baseline.idx[b]] if driving_only else cum[k] - cum[k - 1]
         if m > 0:
             out[(ln.service, ln.direction)] = m / 60.0
     return out
 
 
 def bus_supply(study_codes: set[str], cycle_min: dict[tuple[str, int], float] | None = None,
-               inside_min: dict[tuple[str, int], float] | None = None) -> pd.DataFrame:
+               inside_min: dict[tuple[str, int], float] | None = None,
+               driving_min: dict[tuple[str, int], float] | None = None) -> pd.DataFrame:
     routes = pd.DataFrame(json.loads((RAW / "lta" / "bus_routes.json").read_text()))
     svc = pd.DataFrame(json.loads((RAW / "lta" / "bus_services.json").read_text())).set_index(
         ["ServiceNo", "Direction"])
@@ -71,9 +76,10 @@ def bus_supply(study_codes: set[str], cycle_min: dict[tuple[str, int], float] | 
             trips = active / hw
             buses = (cycle_min or {}).get((sno, int(d)), np.nan) / hw if s.Category == "FEEDER" else np.nan
             inside = (inside_min or {}).get((sno, int(d)), np.nan) * trips / 60.0
+            driving = (driving_min or {}).get((sno, int(d)), np.nan) * trips / 60.0
             rows.append({"service": sno, "direction": int(d), "category": s.Category, "hour": hour,
                          "trips": trips, "km_inside": trips * inside_km, "buses_on_road": buses,
-                         "buses_inside": inside})
+                         "buses_inside": inside, "buses_driving_inside": driving})
     return pd.DataFrame(rows)
 
 

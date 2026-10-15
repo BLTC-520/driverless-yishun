@@ -54,4 +54,6 @@ profiles), used only for the "places" comparison.
     datasets under the SODL.
   - For that reason this repository commits only **derived** outputs (`data/processed`,
     `web/public/data`), never raw LTA files.
-- **OpenStreetMap.** Derived map data is © OpenStreetMap contributors under ODbL 1.0.
+- **OpenStreetMap.** Derived map data is © OpenStreetMap contributors under ODbL 1.0. The
+  files in `web/public/data` that contain OSM-derived geometry (`buildings.json`,
+  `town.json`, `paths.json` and the animation files) are made available under the ODbL 1.0.

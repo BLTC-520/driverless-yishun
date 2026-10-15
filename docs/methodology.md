@@ -11,8 +11,8 @@ This document describes how each number on the page is produced. Code references
 - **Demand (observed)** is LTA DataMall *Passenger Volume by Origin Destination Bus Stops*.
   For each calendar month it gives the number of fare-card rides by day type and hour of
   tap-in. Each ride has a tap-in stop and a tap-out stop.
-  - We keep weekday rides whose origin **and** destination lie in the study area. Same-stop
-    tap-in/tap-out pairs are dropped.
+  - We keep weekday rides whose origin **and** destination lie in the study area. (Same-stop
+    tap-in/tap-out records would be dropped; none occur in these months.)
   - **Base months: July and August 2026**, both full school-term months: 43 weekdays, after
     excluding the National Day holiday on Monday 10 August. Monthly totals are summed and
     divided by 43.
@@ -93,25 +93,37 @@ This document describes how each number on the page is produced. Code references
     30.1 % for a distance-only model fitted the same way. In-sample it is 16.7 %
     (r = 0.96).
   - **Other hours.** The 10:00–12:59 fit scored on 13:00–14:59 data (137,868 observations):
-    observed/predicted = 1.00, bias +0.2 s per sequence. On 17:00–19:59 data it is 1.07:
-    buses are about 6.5 % slower in the evening peak.
+    observed/predicted = 1.00, bias +0.2 s per sequence. On 17:30–19:30 data it is about
+    1.10 (see *Evening peak*).
 - **GPS check (observed movement, `gps_check.py`).**
   - Each distinct reported position of a bus on a route pattern is a fix, timed at the first
     poll that reports it.
   - The fix is placed on the route's network path within the 2.5 km before the next stop
     the bus is reported heading to. Fixes more than 40 m off the path are rejected.
   - Fixes of the same bus are chained across polling cycles.
-  - For pairs of fixes 5–20 minutes apart, observed elapsed time is compared with the
-    model's running time between the two positions (road times plus dwell at the stops in
-    between).
-  - Result: observed/modelled = 0.99 at 10:00–12:59 and 1.00 at 13:00–14:59 (95 % interval
-    over routes about ±5 %), and 1.07 in the evening peak.
+  - For pairs of fixes about 5 minutes apart, observed elapsed time is compared with the
+    model's running time between the two positions: road times plus dwell at the stops in
+    between.
+  - Not fully independent of the calibration: the positions come from the same feed and day.
+    But they are observed positions, not LTA's predictions.
+  - **Summary statistic.** Pairs are chosen by elapsed time, so distance travelled is the
+    random part. The consistent summary is the pooled ratio, total observed time over total
+    modelled time (a ratio of average speeds). Per-pair ratios are skewed upwards, because a
+    bus that happened to be slow covers less distance in the same time.
+  - A second design picks pairs by distance travelled (about 1.2 km) instead. It gives the
+    same pooled result, with per-pair medians near 1.
+  - **Result:** observed/modelled = 0.99 at 10:00–12:59 and 1.00 at 13:00–14:59 (95 %
+    interval over routes about ±5 %). The evening-peak results are under *Evening peak*
+    below.
   - **GPS fit.** Fitting the same four parameters on short pairs of fixes (robust loss)
-    gives dwell = 39.7 s (95 % interval 35.6–44.5 s), confirming the ETA-based dwell. Short
+    gives dwell = 39.8 s (95 % interval about 35–44 s), confirming the ETA-based dwell. Short
     pairs that pass no stop show pure road time, which is what separates dwell from cruise.
-    It also gives m = 0.71 and s_sig = 8 s: somewhat faster roads, within the intervals.
-  - Fix times carry tens of seconds of noise, so single pairs are noisy; the summaries pool
-    hundreds of pairs.
+    - It also gives m = 0.72 and s_sig = 8 s, i.e. faster roads. The robust loss tracks
+      typical rather than average times, though: on 5-minute pairs these values underpredict
+      mean bus times by about a quarter (observed/predicted 1.24, against 0.96 for the base
+      calibration).
+    - So the GPS fit is used to bound the dwell, not as a calibration. Its sensitivity run
+      (350 vehicles) is reported but excluded from the range as too optimistic.
 - **Headway regularity.** For random rider arrivals the mean wait is `E[H²]/(2E[H])`,
   written κ·E[H]. κ is estimated from the gaps between successive predicted arrivals of the
   same service at the same stop.
@@ -120,8 +132,16 @@ This document describes how each number on the page is produced. Code references
   - Result: κ = 0.568 (median over service–stop pairs, IQR 0.54–0.61); 0.556 without the
     monitored filter. A perfectly regular service has κ = 0.5; exponential headways give
     κ = 1.
-- **Evening peak.** Collection ran 17:30–19:30 SGT. `calibration_pm_peak.json` refits the
-  model on those hours. A sensitivity case applies it all day.
+- **Evening peak (17:30–19:30 SGT).** The measures disagree.
+  - LTA's estimates imply buses 10 % slower than the midday model (×1.10, 124,962
+    observations).
+  - Chained GPS positions show ×1.02 (95 % interval 0.98–1.07); pairs chosen by distance
+    give ×1.00.
+  - Speed bands on the 1,708 bus-route links (probe vehicles, 10 km/h bands) show ×1.035.
+  - The evening refit on the estimates gives cruise ×1.00, 15 s per signal, bus dwell
+    46 s (+49 s at stations) and κ = 0.62: slower and less regular buses.
+  - `calibration_pm_peak.json` refits the model on the estimates for those hours. A
+    sensitivity case applies it all day, as the cautious reading.
 - **Not covered.** The morning peak (07:00–09:00), which sets the headline fleet, was not
   observed. The evening-peak case is the stand-in.
 
@@ -235,14 +255,16 @@ This document describes how each number on the page is produced. Code references
   experiment repeats the parity fleet (and +50) with 30, 20, 14, 10 and 7 berths per
   station.
 - **Sensitivity.** The all-day parity fleet is recomputed under alternative assumptions, on
-  the same three replicates. Cases push in both directions:
+  the same three replicates, by a bracket search over a 25–100-vehicle grid. Cases push in
+  both directions:
   - **Road speeds:** calibration draws at the 2.5th and 97.5th percentile of road time,
     among draws whose bus dwell matches the GPS-measured dwell. Also the GPS-based fit and
     the evening-peak calibration.
   - **Better bus:** lower dwell, more regular buses, riders timing their arrival with apps.
   - **Worse bus:** higher dwell, less regular buses, bunched peak-style headways
     (κ = 0.75).
-  - **Shuttle:** stop time 15 s or 40 s, no repositioning, looser pooling.
+  - **Shuttle:** stop time 15 s or 40 s, no repositioning, looser pooling, and a dispatcher
+    that searches two or four times as many vehicles per request.
   - **Demand:** September 2026, and ±20 %.
 - **Provenance.** Every output records the calibration values, demand months, model cache
   key and git revision it was computed from (`config.json`, `evaluated.json`,

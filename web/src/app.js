@@ -588,6 +588,18 @@
       const d = r.id === "base" ? "" : fav[String(r.direction ?? 0)] || "either";
       return `<tr><td>${r.label}</td><td>${d}</td><td class="n">${n}${diff}</td><td class="n">${r.bus_day_min != null ? r.bus_day_min.toFixed(1) + " min" : "—"}</td></tr>`;
     }).join("");
+    // what moves the threshold and what does not, read from the table itself
+    const note = document.getElementById("sens-note");
+    if (note && base && base.parity_fleet != null) {
+      const bus = S.filter((r) => r.id.startsWith("bus_")), others = S.filter((r) => r.id !== "base" && !r.id.startsWith("bus_"));
+      const still = bus.length && bus.every((r) => r.parity_fleet === base.parity_fleet);
+      const moved = others.filter((r) => r.parity_fleet !== base.parity_fleet).map((r) => r.parity_fleet).filter((v) => v != null);
+      let t = still ? `None of the ${bus.length} bus assumptions moves the threshold: below it, the morning queue builds whatever the bus offers. ` : "";
+      if (moved.length) t += `Road speeds, shuttle stop time, the dispatcher and demand do, between ${fmtInt(d3.min(moved))} and ${fmtInt(d3.max(moved))} vehicles.`;
+      const ex = D.results.sensitivity_excluded || [];
+      if (ex.length) t += " Not shown: " + ex.map((r) => `${r.name} (${r.parity_fleet ?? "n/a"} vehicles), because ${r.reason}.`).join(" ");
+      note.textContent = t;
+    }
   }
 
   function renderSubzones() {
@@ -614,7 +626,11 @@
     const pass = tight.filter((r) => r.h7_ok).sort((a, b) => a.berths - b.berths)[0];
     let txt = `Capping the kerb shows how much it matters. With ${fmtInt(ref)} shuttles and no limit, the 07:00 hour averages ${free.h7_total_min.toFixed(1)} min stop to stop (bus ${free.h7_bus_min.toFixed(1)}).`;
     if (pass) txt += ` Limiting each station to ${pass.berths} shuttles boarding at once still keeps up (${pass.h7_total_min.toFixed(1)} min; ${Math.round(100 * pass.peak_queued_share)}% of station stops queue, on average ${Math.round(pass.peak_queue_wait_mean_s)} s).`;
-    if (fail) txt += ` With ${fail.berths}, queues at the kerb push the 07:00 hour to ${fail.h7_total_min.toFixed(1)} min and the fleet no longer matches the bus.`;
+    if (fail) {
+      txt += ` With ${fail.berths}, queues at the kerb push the 07:00 hour to ${fail.h7_total_min.toFixed(1)} min and the fleet no longer matches the bus.`;
+      const more = K.find((r) => r.fleet > ref && r.berths === fail.berths);
+      if (more && more.h7_total_min > fail.h7_total_min) txt += ` Adding vehicles does not help: ${fmtInt(more.fleet)} shuttles with the same kerb take ${more.h7_total_min.toFixed(1)} min, because the extra vehicles queue too.`;
+    }
     document.getElementById("kerb-exp-text").textContent = txt;
   }
 

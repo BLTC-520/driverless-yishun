@@ -7,6 +7,19 @@ A simulation study of Yishun (221,610 residents, Census 2020). It replays every 
 ![Yishun in the morning peak with 10-seat shuttles](docs/img/stage_desktop.png)
 
 <!-- FINDINGS -->
+## Findings
+
+1. **The demand is short, hub-bound feeder riding.** 163,745 rides per average school-term weekday (July–August 2026) start and end inside Yishun. The median is 1.06 km in a straight line, and 66% start or end at an MRT station or the interchange. Today's buses deliver 12.0 min stop to stop on average (3.3 waiting + 8.7 riding).
+2. **There is a sharp capacity threshold.** With 10-seat shuttles, 450 vehicles keep up with the bus in every hour of all three simulated weekdays (6.9 min at 08:00 against the bus's 10.5 min). With 425, the queue left by the 07:00 rush pushes the 08:00 hour to 11.0 min before it clears; with 375, to 39.6 min, and 1.1% of the day's riders are refused. Above the threshold the shuttle is 45 % faster stop to stop over the day (6.6 vs 12.0 min). Bigger vehicles help less than their seats suggest: 700 four-seat, 450 ten-seat or 375 twenty-seat vehicles, because at the threshold a shuttle carries 1.8 riders on average. Matching the bus's 90th-percentile time in every hour instead needs 450 ten-seat shuttles.
+3. **It takes more vehicles than today's buses, and far more driving.** In the model, 450 shuttles is 3.0 times the 152 buses of all services inside Yishun at 07:00 (81 of them feeders). Each bus carries about ten times as many people (about 16,200 places against 4,500 shuttle seats). The fleet drives 160,133 km inside Yishun per weekday, 4.7 times the 33,871 km all buses drive there, carrying 1.8 riders on average against at least 8 per bus-km. Singapore's whole autonomous passenger fleet is 16 vehicles (MOT, Sep 2026).
+4. **Feeder theory points the same way.** In a single feeder zone, demand-responsive service beats fixed routes only below about 10–50 riders per square mile per hour (Li & Quadrifoglio 2010). Averaged over the town, Yishun's internal demand at 07:00 is about 2,000. If the fleet in service could change every hour, the off-peak would need far fewer vehicles (about 200 at midday): 5,225 vehicle-hours in service a day instead of 9,450. Either way the shuttles spend about 6,632 hours a day driving, against about 1,463 for buses inside Yishun.
+5. **The MRT kerb becomes a bottleneck.** Up to 27 shuttles board or alight at once at the Yishun MRT and interchange stops, and 15 at Khatib, before idle vehicles waiting for work.
+6. **Who gains.** With 450 ten-seat shuttles, pooled over 3 simulated weekdays, 92% of rides reach their stop sooner than by bus, comparing each ride with one simulated bus wait (94% beat the bus's average time for that trip). The average saving is 5.4 minutes. Longer rides gain more: 78% of rides under 0.5 km are faster, against 97% of rides over 1.5 km, where bus routes loop and stop more often than a direct shuttle. After 20:00, when buses run less often, 98% are faster; in the 07:00–09:00 peak, 78%. The slowest tenth of shuttle rides take more than 11 min, against 20 min by bus (13 against 17 min in the 07:00–09:00 peak). Of the rides that are slower by shuttle, 19% are under 0.5 km; in 94% the shuttle wait is longer than the bus wait, and in 18% the shuttle ride is longer than the bus ride.
+7. **Kerb capacity is a hard constraint.** Limiting each station to 14 shuttles boarding at once still keeps up at 07:00 (9.4 min). At 10, kerb queues push the 07:00 hour to 41.6 min and the fleet no longer matches the bus. Adding vehicles makes it worse: 500 shuttles with the same kerb take 42.2 min, because the extra vehicles queue too.
+8. **The dispatcher is a lever as big as the vehicle.** The simple dispatcher used here considers up to 32 shuttles per request. Considering twice or four times as many lowers the threshold from 450 to 400 or 375.
+9. **Sensitivity.** Across 18 alternative assumptions, pushing both ways, the all-day 10-seat fleet ranges 375–550 (base 450). The largest moves: demand +20% (same pattern) (550); demand -20% (same pattern) (375); dispatcher searches four times as many vehicles per request (96 nearest + 32 soonest free) (375).
+
+*Calibration: 171,838 matched LTA arrival estimates on 1,297 stop sequences (10:00–12:59). With whole services held out, error is 18 % against 30 % for distance alone. Observed bus GPS movement takes 0.99× the modelled time at midday and 1.02× in the evening peak, where LTA's estimates imply 1.10×. Fleets are the smallest simulated on a 25-vehicle grid; demand replicates are Poisson draws around the observed average weekday.*
 
 ## Why this question (and not the one in the brief)
 
@@ -49,7 +62,7 @@ flowchart LR
 | Demand | Rides between every pair of the 180 Yishun stops, by hour, average school-term weekday (July + August 2026; September as a check); Poisson replicates | **Observed** (LTA DataMall `PV/ODBus`) |
 | Roads | OSM drive network; stops snapped to the left-hand kerb; routed distances match LTA route distances (median ratio 1.02) | **Observed + checked** |
 | Speeds | Cruise multiplier, delay per signal-controlled location, bus dwell per stop and at stations, fitted on 171,838 live arrival-estimate pairs (10:00–12:59); held-out services 18 % error vs 30 % for distance alone | **Calibrated** |
-| Speed check | Chained GPS positions of the same bus: observed/modelled time 0.99 at midday, about 1.07 in the evening peak; dwell measured independently (40 s) | **Observed** |
+| Speed check | Chained GPS positions of the same bus (same feed, observed positions rather than LTA's estimates): observed/modelled time 0.99 at midday. Evening peak: about 1.01 by GPS, against 1.10 by LTA's estimates. Dwell measured directly (40 s) | **Observed** |
 | Bus | Common-lines model over LTA routes and published headways; wait factor κ = 0.57 from GPS-monitored headways; one simulated wait per ride for tails | **Modelled** |
 | Shuttles | Event-driven simulation; immediate insertion dispatch (kernel verified against brute force); re-routing at any node; demand-led repositioning | **Simulated** |
 | Not modelled | Demand change, fares, congestion feedback, charging, safety operators, bus crowding, the morning-peak road speeds | **Assumed away** (see limitations) |
@@ -82,6 +95,26 @@ data/processed/    calibration and experiment outputs (raw data is never committ
 ```
 
 <!-- LIMITATIONS -->
+## Limitations
+
+- **Morning peak not observed.** The threshold is set at 07:00–08:00, but live data were collected
+  10:00–15:00 and 17:30–19:30. In the evening peak, LTA's estimates imply buses about 10 % slower than
+  the midday model, while chained GPS positions show almost no slowdown. The sensitivity table applies
+  the evening-peak calibration all day as the cautious stand-in.
+- **One day of live data.** The calibration and the GPS check come from Thursday 15 October 2026.
+- **Demand held fixed.** Same riders, stops and times as today. Faster trips would attract riders,
+  and a $4 fare (Punggol's announced fare) would deter some; neither is modelled. Rides are fare-card
+  stages, so a two-bus trip inside Yishun stays two requests.
+- **No congestion feedback.** Hundreds of shuttles do not slow each other or the buses. LTA's open
+  traffic-volume data covers only expressways near Yishun, so the added flow could not be compared with
+  measured traffic. Kerb space is unlimited in the base case (a limit is tested separately).
+- **Bus side.** Running times are calibrated to LTA's real-time *estimates*, checked against GPS
+  movement. Crowding and denied boarding are not modelled, which flatters the bus at peaks. Waits
+  assume riders arrive at random; riders using live-arrival apps wait less (tested in sensitivity).
+- **Dispatcher.** Immediate insertion with exact travel times: neither a batch optimiser (which could
+  need fewer vehicles) nor travel-time noise (which would widen tails).
+- **Not modelled:** charging and depots, safety operators, breakdowns, fares, costs, emissions, and
+  walking to stops (identical in both modes because both serve the same stops).
 
 ## Credits and licences
 

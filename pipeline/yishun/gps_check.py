@@ -208,10 +208,18 @@ def _track(f: pd.DataFrame, max_dt: float = 240.0, vmax: float = 22.0) -> np.nda
 
 
 def pairs(fx: pd.DataFrame, min_dt: float = 300.0, max_dt: float = 1200.0, min_ds: float = 400.0,
-          end_margin: float = 150.0, moving_only: bool = False) -> pd.DataFrame:
-    """Non-overlapping pairs of fixes of one bus, away from both terminals. With moving_only,
-    fixes within 25 m of a stop are dropped (the bus may be dwelling there), so that the stops
-    a pair spans are passed in full."""
+          end_margin: float = 150.0, moving_only: bool = False, design: str = "time",
+          by_dist: float = 1200.0) -> pd.DataFrame:
+    """Non-overlapping pairs of fixes of one bus, away from both terminals.
+
+    design="time": the second fix is the first one at least `min_dt` later. Elapsed time is
+    then (nearly) fixed and distance varies, so the right summary is the pooled ratio
+    sum(observed)/sum(modelled), a ratio of average speeds; per-pair ratios are skewed upwards
+    (a bus that happened to be slow covers less distance in the same time).
+    design="distance": the second fix is the first one at least `by_dist` metres further on, so
+    distance is (nearly) fixed and elapsed time varies: a check on the first design.
+    With moving_only, fixes within 25 m of a stop are dropped (the bus may be dwelling there),
+    so that the stops a pair spans are passed in full."""
     out = []
     routes = fx.attrs.get("routes", {})
     for (route, tr_), g in fx.groupby(["route", "track"]):
@@ -221,15 +229,16 @@ def pairs(fx: pd.DataFrame, min_dt: float = 300.0, max_dt: float = 1200.0, min_d
         if len(g) < 2:
             continue
         t = np.array([x.timestamp() for x in g.t])
+        sv = g.s.to_numpy()
         i = 0
         while i < len(g) - 1:
             dt = t[i + 1:] - t[i]
-            js = np.flatnonzero(dt >= min_dt)
+            js = np.flatnonzero(dt >= min_dt) if design == "time" else np.flatnonzero(sv[i + 1:] - sv[i] >= by_dist)
             if not len(js):
                 break
             j = i + 1 + js[0]
             a, b = g.iloc[i], g.iloc[j]
-            if dt[js[0]] <= max_dt and b.s - a.s >= min_ds:
+            if (min_dt if design == "distance" else 0) <= dt[js[0]] <= max_dt and b.s - a.s >= min_ds:
                 ns, nh = routes[route].stops_between(a.s, b.s) if route in routes else (np.nan, np.nan)
                 out.append({"route": route, "service": a.service, "t0": a.t, "obs_s": float(dt[js[0]]),
                             "model_s": float(b.clock - a.clock), "dist_m": float(b.s - a.s),
@@ -258,6 +267,7 @@ def summarise(p: pd.DataFrame) -> dict:
             boots.append(pick.obs_s.sum() / pick.model_s.sum())
         return {"n_pairs": int(len(x)), "n_routes": int(len(routes)),
                 "pooled_ratio": float(x.obs_s.sum() / x.model_s.sum()),
+                "mean_pair_ratio": float(x.ratio.mean()),
                 "pooled_ratio_ci": [float(np.percentile(boots, 2.5)), float(np.percentile(boots, 97.5))],
                 "median_ratio": float(x.ratio.median()), "iqr_ratio": [float(x.ratio.quantile(.25)), float(x.ratio.quantile(.75))],
                 "km_per_h_obs": float(x.dist_m.sum() / x.obs_s.sum() * 3.6),
@@ -376,6 +386,9 @@ def run(paths: list[str] | None = None) -> dict:
     fx = collect(M, paths)
     pr = pairs(fx)
     res = summarise(pr)
+    # second design: pairs chosen by distance travelled (about 1.2 km) rather than by time
+    pd2 = pairs(fx, min_dt=60.0, max_dt=1800.0, design="distance")
+    res["distance_design"] = summarise(pd2)
     short = pairs(fx, min_dt=45.0, max_dt=600.0, min_ds=100.0, moving_only=True)
     short["hour"] = short.t0.dt.hour
     res["fit"] = {}

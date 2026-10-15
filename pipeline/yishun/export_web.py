@@ -214,7 +214,8 @@ def deck_mix(study: set[str]) -> dict | None:
 def export_baseline(M, req: pd.DataFrame) -> None:
     from .supply import bus_supply, feeder_cycle_minutes, inside_minutes
     study = set(M.stops.index[M.stops.in_study])
-    sup = bus_supply(study, feeder_cycle_minutes(M.baseline, None), inside_minutes(M.baseline, study))
+    sup = bus_supply(study, feeder_cycle_minutes(M.baseline, None), inside_minutes(M.baseline, study),
+                     inside_minutes(M.baseline, study, driving_only=True))
     hours = list(range(5, 26))
     g = req.groupby("hour")
     cal = json.loads((PROCESSED / "calibration.json").read_text())
@@ -230,6 +231,7 @@ def export_baseline(M, req: pd.DataFrame) -> None:
                                  .buses_on_road.sum().reindex(hours, fill_value=0)],
         "buses_inside_all": [round(float(v)) for v in inside],
         "bus_hours_inside_day": round(float(inside.sum())),
+        "bus_driving_hours_inside_day": round(float(sup.buses_driving_inside.sum())),
         "deck_mix": mix, "places_per_bus": round(places, 1) if places else None,
         "no_bus_share": [round(float(g.b_total.apply(lambda x: x.isna().mean()).get(h, np.nan)), 4) for h in hours],
         "no_bus_share_day": round(float(req.b_total.isna().mean()), 4),
