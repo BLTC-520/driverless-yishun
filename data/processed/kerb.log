@@ -1,0 +1,25 @@
+[1/24] N450 berths=-1 s2: day 6.63 min, 07h 8.18 vs bus 10.39, queued 0%
+[2/24] N450 berths=30 s1: day 6.60 min, 07h 8.21 vs bus 10.44, queued 0%
+[3/24] N450 berths=-1 s1: day 6.60 min, 07h 8.21 vs bus 10.44, queued 0%
+[4/24] N450 berths=30 s2: day 6.64 min, 07h 8.18 vs bus 10.39, queued 0%
+[5/24] N450 berths=20 s1: day 6.67 min, 07h 8.44 vs bus 10.44, queued 13%
+[6/24] N450 berths=20 s2: day 6.65 min, 07h 8.22 vs bus 10.39, queued 14%
+[7/24] N450 berths=14 s1: day 9.26 min, 07h 9.55 vs bus 10.44, queued 64%
+[8/24] N450 berths=14 s2: day 8.82 min, 07h 9.16 vs bus 10.39, queued 63%
+[9/24] N450 berths=10 s1: day 54.94 min, 07h 42.10 vs bus 10.44, queued 67%
+[10/24] N450 berths=7 s1: day 89.95 min, 07h 82.72 vs bus 10.44, queued 68%
+[11/24] N450 berths=7 s2: day 90.24 min, 07h 81.58 vs bus 10.39, queued 68%
+[12/24] N450 berths=10 s2: day 54.59 min, 07h 41.04 vs bus 10.39, queued 67%
+[13/24] N500 berths=-1 s1: day 6.20 min, 07h 7.08 vs bus 10.44, queued 0%
+[14/24] N500 berths=-1 s2: day 6.21 min, 07h 6.94 vs bus 10.39, queued 0%
+[15/24] N500 berths=30 s1: day 6.19 min, 07h 7.08 vs bus 10.44, queued 0%
+[16/24] N500 berths=30 s2: day 6.21 min, 07h 6.94 vs bus 10.39, queued 0%
+[17/24] N500 berths=20 s2: day 6.21 min, 07h 6.93 vs bus 10.39, queued 14%
+[18/24] N500 berths=20 s1: day 6.19 min, 07h 6.98 vs bus 10.44, queued 11%
+[19/24] N500 berths=14 s1: day 8.21 min, 07h 8.47 vs bus 10.44, queued 66%
+[20/24] N500 berths=14 s2: day 7.01 min, 07h 7.94 vs bus 10.39, queued 65%
+[21/24] N500 berths=10 s1: day 61.48 min, 07h 43.06 vs bus 10.44, queued 68%
+[22/24] N500 berths=7 s1: day 99.53 min, 07h 86.29 vs bus 10.44, queued 67%
+[23/24] N500 berths=7 s2: day 99.22 min, 07h 86.65 vs bus 10.39, queued 69%
+[24/24] N500 berths=10 s2: day 60.32 min, 07h 41.28 vs bus 10.39, queued 68%
+EXP_DONE
