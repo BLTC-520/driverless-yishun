@@ -40,9 +40,20 @@ def segment_observations(path, max_gap: int = 6) -> pd.DataFrame:
     pairs = pd.DataFrame(pairs, columns=["service", "a", "b", "gap", "seq"])
     pairs = pairs.drop_duplicates(["service", "a", "b"])
     d["cyc"] = (d.poll.astype("int64") // 10**9 // 90).astype(int)
-    A = d.rename(columns={"stop": "a"})[["cyc", "service", "a", "poll", "eta_t", "lat", "lon"]]
-    B = d.rename(columns={"stop": "b"})[["cyc", "service", "b", "poll", "eta_t", "lat", "lon"]]
-    m = pairs.merge(A, on=["service", "a"]).merge(B, on=["service", "b", "cyc"], suffixes=("_a", "_b"))
+    # The same bus reports the same GPS fix at both stops: join on a coarse position key
+    # (~110 m cells, plus the neighbouring cell to avoid edge effects) so the merge stays
+    # close to one-to-one, then keep only (service, a, b) pairs that are on a route.
+    d["la"] = (d.lat * 1000).round().astype(int)
+    d["lo"] = (d.lon * 1000).round().astype(int)
+    A = d.rename(columns={"stop": "a"})[["cyc", "service", "a", "poll", "eta_t", "lat", "lon", "la", "lo"]]
+    B = d.rename(columns={"stop": "b"})[["cyc", "service", "b", "poll", "eta_t", "lat", "lon", "la", "lo"]]
+    parts = []
+    for dla in (-1, 0, 1):
+        for dlo in (-1, 0, 1):
+            Bs = B.assign(la=B.la + dla, lo=B.lo + dlo)
+            parts.append(A.merge(Bs, on=["cyc", "service", "la", "lo"], suffixes=("_a", "_b")))
+    m = pd.concat(parts, ignore_index=True)
+    m = m[m.a != m.b].merge(pairs, on=["service", "a", "b"])
     lat0 = np.deg2rad(1.42)
     dist = np.hypot((m.lat_a - m.lat_b) * 111_320, (m.lon_a - m.lon_b) * 111_320 * np.cos(lat0))
     dt_poll = (m.poll_b - m.poll_a).dt.total_seconds().abs()
@@ -160,6 +171,29 @@ def fit(seg: pd.DataFrame, n_boot: int = 300, seed: int = 0) -> dict:
     return out
 
 
+def headway_kappa(paths: list) -> dict:
+    """kappa = E[W] / E[H] for random rider arrivals, E[W] = E[H^2] / (2 E[H]), from the
+    instantaneous headways between successive predicted arrivals (NextBus, NextBus2,
+    NextBus3) of each service at each polled stop. Returns the median over service-stops
+    with >= 10 headways, its IQR and the pooled headway CV."""
+    d = pd.concat([pd.read_csv(p, dtype={"stop": str, "service": str}) for p in paths], ignore_index=True)
+    d["eta_t"] = pd.to_datetime(d.eta)
+    w = d.pivot_table(index=["poll_ts", "stop", "service"], columns="k", values="eta_t", aggfunc="first")
+    hs = []
+    for a, b in ((1, 2), (2, 3)):
+        if a in w and b in w:
+            x = ((w[b] - w[a]).dt.total_seconds() / 60).rename("h").reset_index()
+            hs.append(x)
+    hw = pd.concat(hs, ignore_index=True).dropna()
+    hw = hw[(hw.h > 0.5) & (hw.h < 60)]
+    k = hw.groupby(["service", "stop"]).h.apply(
+        lambda s: (s.pow(2).mean() / (2 * s.mean())) / s.mean() if len(s) >= 10 else np.nan).dropna()
+    cv = hw.groupby("service").h.apply(lambda s: s.std() / s.mean())
+    n = hw.groupby("service").size()
+    return {"kappa": float(k.median()), "kappa_iqr": [float(k.quantile(.25)), float(k.quantile(.75))],
+            "kappa_n_service_stops": int(len(k)), "headway_cv_pooled": float(np.average(cv, weights=n))}
+
+
 def run(paths: list, out_path=None) -> dict:
     """Fit on the given live BusArrival logs and write data/processed/calibration.json."""
     from .model import build_model
@@ -170,6 +204,7 @@ def run(paths: list, out_path=None) -> dict:
     hubs = set(M.stops.index[M.stops.is_hub])
     seg = segment_table(obs, M.R, M.stop_index, hubs)
     res = fit(seg)
+    res.update(headway_kappa(paths))
     res["source_files"] = [str(p).split("data/")[-1] for p in paths]
     res["hours_sgt"] = sorted(int(h) for h in obs.hour.unique())
     res["note"] = ("Running times are differences of LTA BusArrival estimated arrival times for the same "

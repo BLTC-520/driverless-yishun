@@ -46,6 +46,7 @@ class SimConfig:
     start_s: float = 4.5 * 3600
     seed: int = 0
     record_legs: bool = False
+    berths: int | None = None   # shuttles that can board/alight at once per station (None = no limit)
 
 
 @dataclass
@@ -56,6 +57,7 @@ class Leg:
     dist: np.ndarray     # cumulative metres at points
     onboard: int
     rebal: bool
+    cut_t: float | None = None   # set when the vehicle was re-routed before the end
 
 
 @dataclass
@@ -66,12 +68,14 @@ class SimResult:
     veh_km_by_hour: np.ndarray            # (26,) metres driven per hour of day
     pax_km: float
     hub_visits: pd.DataFrame              # stop, t_arrive, t_depart (dwell intervals at hubs)
+    hub_idle: pd.DataFrame                # stop, t_start, t_end (idle vehicles staging at hubs)
     legs: list = field(default_factory=list)
+    hub_queue: pd.DataFrame | None = None  # stop, t_arrive, t_berth (waits for a free berth)
 
 
 class Simulator:
     def __init__(self, R: Routing, study_idx: np.ndarray, origin_rates: np.ndarray, hub_idx: np.ndarray,
-                 cfg: SimConfig):
+                 cfg: SimConfig, stop_group: np.ndarray | None = None):
         """origin_rates: (24, S) expected requests per second by hour and origin stop."""
         self.R, self.cfg = R, cfg
         self.study_idx = study_idx
@@ -103,6 +107,12 @@ class Simulator:
         self.km_by_hour = np.zeros(26)
         self.pax_m = 0.0
         self.hub_visits: list[tuple[int, float, float]] = []
+        self.hub_idle: list[tuple[int, float, float]] = []
+        self.idle_since = np.full(N, np.nan)
+        # kerb capacity: stop -> station group (-1 = unlimited); one heap of berth release times per group
+        self.stop_group = stop_group if stop_group is not None else np.full(len(R.codes), -1)
+        self.berth_heaps: dict[int, list[float]] = {}
+        self.hub_queue: list[tuple[int, float, float]] = []
         self.legs_out: list[Leg] = []
 
     # ------------------------------------------------------------------ helpers
@@ -158,11 +168,23 @@ class Simulator:
             if 0 <= h < 26:
                 self.km_by_hour[h] += lg.dist[a + 1] - lg.dist[a]
         if self.cfg.record_legs:
-            self.legs_out.append(Leg(v, lg.t[:k + 1].copy(), lg.pts[:k + 1], lg.dist[:k + 1].copy(),
-                                     lg.onboard, lg.rebal))
+            cut = float(lg.t[k]) if idx_end is not None else None
+            self.legs_out.append(Leg(v, lg.t, lg.pts, lg.dist, lg.onboard, lg.rebal, cut))
         self.leg[v] = None
 
+    def _begin_idle(self, v, t):
+        self.st[v] = IDLE
+        if self.hub[self.stop[v]]:
+            self.idle_since[v] = t
+
+    def _end_idle(self, v, t):
+        if self.st[v] == IDLE and not np.isnan(self.idle_since[v]):
+            if t > self.idle_since[v]:
+                self.hub_idle.append((int(self.stop[v]), float(self.idle_since[v]), float(t)))
+            self.idle_since[v] = np.nan
+
     def _start_leg(self, v, t0, start, target, rebal=False):
+        self._end_idle(v, t0)
         lg, t_arr = self._make_leg(v, t0, start, target, rebal)
         self.leg[v] = lg
         self.leg_arr[v] = t_arr
@@ -225,20 +247,44 @@ class Simulator:
             self.n_ev[v] = n - k
         return k
 
+    def _berth_start(self, s, t, k_events):
+        """Earliest time the vehicle can start boarding at stop s (kerb capacity), and book it."""
+        g = int(self.stop_group[s])
+        if self.cfg.berths is None or g < 0 or k_events == 0:
+            return t
+        h = self.berth_heaps.setdefault(g, [])
+        while h and h[0] <= t:
+            heapq.heappop(h)
+        if len(h) < self.cfg.berths:
+            return t
+        start = heapq.heappop(h)
+        self.hub_queue.append((int(s), float(t), float(start)))
+        return start
+
     def _on_arrive(self, v, t):
+        self._end_idle(v, t)
         self._close_leg(v, t)
-        k = self._process_stop_events(v, t)
+        s = self.stop[v]
+        n = self.n_ev[v]
+        k_here = 0
+        while k_here < n and self.ev_stop[v, k_here] == s:
+            k_here += 1
+        t_start = self._berth_start(s, t, k_here)
+        k = self._process_stop_events(v, t_start)
         if k:
             self.st[v] = DWELL
-            self.dwell_start[v] = t
-            self.t_free[v] = t + self.cfg.d0 + self.cfg.d1 * k
+            self.dwell_start[v] = t_start
+            self.t_free[v] = t_start + self.cfg.d0 + self.cfg.d1 * k
+            g = int(self.stop_group[s])
+            if self.cfg.berths is not None and g >= 0:
+                heapq.heappush(self.berth_heaps.setdefault(g, []), float(self.t_free[v]))
             self.version[v] += 1
             self._push(self.t_free[v], DEPART, v, self.version[v])
         elif self.n_ev[v] > 0:
             self.st[v] = IDLE
             self._on_depart(v, t)
         else:
-            self.st[v] = IDLE
+            self._begin_idle(v, t)
         self._recompute_plan_end(v, t)
 
     def _on_depart(self, v, t):
@@ -246,7 +292,7 @@ class Simulator:
         if self.st[v] == DWELL and self.hub[s]:
             self.hub_visits.append((s, self.dwell_start[v], t))
         if self.n_ev[v] == 0:
-            self.st[v] = IDLE
+            self._begin_idle(v, t)
             self._recompute_plan_end(v, t)
             return
         target = self.ev_stop[v, 0]
@@ -394,6 +440,8 @@ class Simulator:
         w = w / w.sum() if w.sum() > 0 else np.full(len(self.study_idx), 1 / len(self.study_idx))
         self.stop[:] = rng.choice(self.study_idx, size=self.N, p=w)
         self.st[:] = IDLE
+        for v in range(self.N):
+            self._begin_idle(v, cfg.start_s)
         self.plan_end_t[:] = cfg.start_s
         self.plan_end_stop[:] = self.stop
         for rid in range(n):
@@ -424,6 +472,11 @@ class Simulator:
         out["ride"] = out["t_drop"] - out["t_pick"]
         out["total"] = out["t_drop"] - out["t"]
         out["direct"] = self.R.T[self.r_o, self.r_d]
+        t_last = float(np.nanmax(self.r_drop)) if n else cfg.start_s
+        for v in range(self.N):
+            self._end_idle(v, max(t_last, float(self.idle_since[v]) if not np.isnan(self.idle_since[v]) else t_last))
         hv = pd.DataFrame(self.hub_visits, columns=["stop", "t_arrive", "t_depart"])
+        hi = pd.DataFrame(self.hub_idle, columns=["stop", "t_start", "t_end"])
+        hq = pd.DataFrame(self.hub_queue, columns=["stop", "t_arrive", "t_berth"])
         return SimResult(out, self.km_loaded / 1000, self.km_empty / 1000, self.km_by_hour / 1000,
-                         self.pax_m / 1000, hv, self.legs_out)
+                         self.pax_m / 1000, hv, hi, self.legs_out, hq)

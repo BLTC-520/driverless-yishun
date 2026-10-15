@@ -75,6 +75,7 @@ def default_baseline_params() -> BaselineParams:
     from .calibrate import load
     try:
         c = load()
-        return BaselineParams(dwell_s=c["dwell_s"], hub_extra_s=c["hub_extra_s"])
+        return BaselineParams(dwell_s=c["dwell_s"], hub_extra_s=c["hub_extra_s"],
+                              kappa=c.get("kappa", BaselineParams.kappa))
     except FileNotFoundError:
         return BaselineParams()

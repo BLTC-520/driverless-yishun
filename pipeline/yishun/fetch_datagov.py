@@ -27,6 +27,7 @@ DATASETS = {
     "census2020_subzone_age_sex": ("d_d95ae740c0f8961a0b10435836660ce0", "csv"),
     "census2020_mode_to_work": ("d_1f8f5ec7201964e365c77551cab99503", "csv"),
     "lta_mrt_station_exit": ("d_b39d3a0871985372d7e1637193335da5", "geojson"),
+    "mp2019_land_use": ("d_90d86daa5bfaa371668b84fa5f01424f", "geojson"),  # 174 MB, base map only
 }
 
 
