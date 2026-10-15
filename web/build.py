@@ -22,40 +22,27 @@ HEAD = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230c111b'/%3E%3Ccircle cx='8' cy='8' r='4' fill='%23f2a53a'/%3E%3C/svg%3E">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 """
 
 
 def numbers() -> dict[str, str]:
-    """The same values app.js#fillNumbers computes, so the first frame shows real figures."""
-    j = lambda n: json.loads((DATA / n).read_text())  # noqa: E731
-    dm, bl, rs = j("demand.json"), j("baseline.json"), j("results.json")
-    cal = bl["calibration"]
-    pad = lambda h: f"{h:02d}"  # noqa: E731
-    return {
-        "rides": f"{dm['rides_per_weekday']:,}", "pairs": f"{dm['od_pairs']:,}",
-        "median": f"{dm['straight_line_pct_m']['50'] / 1000:.2f} km", "hubshare": f"{round(100 * dm['hub_share'])}%",
-        "frontier": f"{rs['frontier_peak']['10']['fleet']:,}", "feeders": f"{max(bl['feeder_buses_on_road']):,}",
-        "vkm": f"{rs['reference']['veh_km']:,.0f}", "buskm": f"{bl['bus_km_inside_day']:,}",
-        "feederkm": f"{bl['feeder_bus_km_inside_day']:,}",
-        "vkmx": f"{rs['reference']['veh_km'] / bl['bus_km_inside_day']:.1f}×",
-        "kerbmax": f"{max(v for v in rs['reference']['kerb']['Yishun'] if v is not None):.0f}",
-        "kerbkhatib": f"{max(v for v in rs['reference']['kerb'].get('Khatib', [0]) if v is not None):.0f}",
-        "calobs": f"{cal['n_obs_used']:,}",
-        "calhours": f"{pad(cal['hours_sgt'][0])}:00–{pad(cal['hours_sgt'][-1] + 1)}:00",
-        "sig": f"{cal['sig_s']:.0f}", "dwell": f"{cal['dwell_s']:.0f}", "hubx": f"{cal['hub_extra_s']:.0f}",
-        "kappa": f"{cal['kappa']:.2f}", "cliffgap": f"{rs['cliff_gap']:,}" if rs.get("cliff_gap") else "—",
-    }
+    """The page's quoted numbers, formatted once by the pipeline (results.json "numbers"), so the
+    first frame shows real figures; app.js fills the same values at runtime."""
+    return json.loads((DATA / "results.json").read_text()).get("numbers", {})
 
 
 def main() -> None:
     page = (SRC / "index.html").read_text()
     try:
         vals = numbers()
-        page = re.sub(r'(data-v="([a-z0-9]+)">)—(</span>)',
+        page = re.sub(r'(data-v="([a-z0-9_]+)">)—(</(?:span|td)>)',
                       lambda m: m.group(1) + vals.get(m.group(2), "—") + m.group(3), page)
         rs = json.loads((DATA / "results.json").read_text())
         page = page.replace('<span id="who-text">—</span>', f'<span id="who-text">{rs["who"]["text"]}</span>')
+        if rs["who"].get("headline"):
+            page = page.replace('<h2 id="who-h2">Who gains, and who does not</h2>', f'<h2 id="who-h2">{rs["who"]["headline"]}</h2>')
     except FileNotFoundError as e:
         print(f"numbers not pre-filled ({e})")
     DIST.mkdir(exist_ok=True)

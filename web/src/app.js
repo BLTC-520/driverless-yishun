@@ -14,6 +14,7 @@
   const pad = (n) => String(n).padStart(2, "0");
   const clockOf = (min) => { const m = Math.floor(min) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const still = location.hash === "#still"; // no autoplay (thumbnails, screenshots)
 
   const state = {
     t: 7.5 * 60, playing: false, speed: 120, scenario: null,
@@ -48,7 +49,9 @@
     const n = t.pid.length, t0 = new Float64Array(n);
     let acc = 0;
     for (let i = 0; i < n; i++) { acc += t.t0[i]; t0[i] = acc; }
-    return { n, pid: t.pid, t0, dur: t.dur, cut: t.cut, veh: t.veh, occ: t.occ, maxDur: Math.max(...t.dur.slice(0, 50000), 1800) };
+    let maxDur = 1800;
+    for (let i = 0; i < n; i++) if (t.dur[i] > maxDur) maxDur = t.dur[i];
+    return { n, pid: t.pid, t0, dur: t.dur, cut: t.cut, veh: t.veh, occ: t.occ, maxDur };
   }
 
   function decodeWaiting(w) {
@@ -150,6 +153,7 @@
   }
 
   function layers() {
+    if (!D.town) return [];
     const tSec = state.t * 60;
     const hourIdx = Math.max(0, Math.min(D.stops.hours.length - 1, Math.floor(state.t / 60) - 5));
     const L = [];
@@ -182,10 +186,12 @@
         const busWait = D.baseline.wait_min[hourIdx] || 3.5;
         for (const s of D.stops.stops) { const w = (s.o[hourIdx] / 60) * busWait; if (w > 0.2) data.push({ s, w }); }
       }
-      L.push(new deck.ColumnLayer({
-        id: "waiting", data, getPosition: (d) => [d.s.x, d.s.y], getElevation: (d) => d.w, elevationScale: 9, radius: 22,
-        diskResolution: 12, extruded: true, getFillColor: [...C.rider, 220], pickable: true,
-        updateTriggers: { getElevation: [state.t, state.scenario && state.scenario.id] },
+      // flat discs whose AREA is proportional to riders waiting (radius = 12 m x sqrt(riders))
+      L.push(new deck.ScatterplotLayer({
+        id: "waiting", data, getPosition: (d) => [d.s.x, d.s.y], getRadius: (d) => 12 * Math.sqrt(d.w), radiusUnits: "meters",
+        radiusMinPixels: 1, stroked: true, getLineColor: [...C.rider, 230], lineWidthMinPixels: 1,
+        getFillColor: [...C.rider, 110], pickable: true,
+        updateTriggers: { getRadius: [state.t, state.scenario && state.scenario.id] },
       }));
     }
     L.push(new deck.ScatterplotLayer({
@@ -236,6 +242,8 @@
     const hi = D.stops.hours.indexOf(hour);
     const busMin = hi >= 0 ? D.baseline.total_min[hi] : null;
     document.getElementById("r-rides").textContent = hi >= 0 ? fmtInt(D.demand.rides_by_hour[hi]) : "—";
+    document.getElementById("l-veh").textContent = sc.kind === "bus" ? "Buses driving now (modelled)" : `Shuttles driving now (of ${fmtInt(sc.fleet)})`;
+    document.getElementById("l-wait").textContent = sc.kind === "bus" ? "Riders waiting (expected)" : "Riders waiting (simulated)";
     document.getElementById("r-veh").innerHTML = state._active != null ? `<span class="${sc.kind === "bus" ? "bu" : "sh"}">${fmtInt(state._active)}</span>` : "—";
     const A = anim[sc.id];
     let waiting = "—";
@@ -243,7 +251,11 @@
       let s = 0; const m = minute - 300;
       for (const k in A.waiting) { const a = A.waiting[k]; if (m >= 0 && m < a.length) s += a[m]; }
       waiting = fmtInt(s);
-    } else if (A) { waiting = "n/a"; }
+    } else if (A) {
+      let s = 0; const hw = D.baseline.wait_min[hi] || 0;
+      for (const st of D.stops.stops) s += (st.o[hi] || 0) / 60 * hw;
+      waiting = `≈ ${fmtInt(s)}`;
+    }
     document.getElementById("r-wait").textContent = waiting;
     const pill = document.getElementById("status");
     if (sc.kind === "bus") {
@@ -262,8 +274,8 @@
     const sc = state.scenario;
     const el = document.getElementById("legend");
     const items = sc.kind === "bus"
-      ? [["--bus", "bus (modelled)"], ["--rider", "riders waiting (expected)"], ["--nsl", "MRT / interchange stop"]]
-      : [["--sodium", "shuttle with riders"], ["--sodium-dim", "empty shuttle"], ["--rider", "riders waiting"], ["--nsl", "MRT / interchange stop"]];
+      ? [["--bus", "bus (modelled)"], ["--rider", "riders waiting, expected (disc area)"], ["--nsl", "MRT / interchange stop"]]
+      : [["--sodium", "shuttle with riders"], ["--sodium-dim", "empty shuttle"], ["--rider", "riders waiting (disc area)"], ["--nsl", "MRT / interchange stop"]];
     el.innerHTML = items.map(([v, l]) => `<span><i style="background:var(${v})"></i>${l}</span>`).join("");
   }
 
@@ -271,10 +283,16 @@
     state.scenario = sc;
     for (const b of document.querySelectorAll("#scenarios button")) b.setAttribute("aria-pressed", String(b.dataset.id === sc.id));
     setLegend();
-    document.getElementById("loading").hidden = false;
-    document.getElementById("loading").textContent = `Loading ${sc.label}…`;
-    await loadScenario(sc.id);
-    document.getElementById("loading").hidden = true;
+    const ld = document.getElementById("loading");
+    ld.hidden = false; ld.textContent = `Loading ${sc.label}…`;
+    try {
+      await loadScenario(sc.id);
+    } catch (e) {
+      ld.textContent = `Could not load this scenario (${e.message}).`;
+      state.scenario = null;
+      return;
+    }
+    ld.hidden = true;
     tripCache.id = null;
     redraw();
   }
@@ -304,7 +322,9 @@
     deckgl.setProps({ initialViewState: { ...view, transitionDuration: reduceMotion ? 0 : 1800, transitionInterpolator: new deck.FlyToInterpolator() } });
   }
 
-  const HOME = { longitude: 103.8352, latitude: 1.4215, zoom: 13.35, pitch: 52, bearing: -22 };
+  const HOME = window.innerWidth < 640
+    ? { longitude: 103.8352, latitude: 1.4262, zoom: 12.85, pitch: 45, bearing: -20 }
+    : { longitude: 103.8318, latitude: 1.4228, zoom: 13.75, pitch: 54, bearing: -24 };
 
   function show(what) {
     const R = D.results;
@@ -349,25 +369,38 @@
   // ------------------------------------------------------------------ charts
   function axis(g, ax, cls) { g.attr("class", `axis ${cls || ""}`).call(ax); }
 
+  // charts are drawn at the container's real pixel width so labels keep their size on phones
+  function frame(id, H) {
+    const svg = d3.select(id); svg.selectAll("*").remove();
+    const host = svg.node().parentNode;
+    const W = Math.max(320, Math.min(760, Math.round(host.getBoundingClientRect().width || 640)));
+    svg.attr("viewBox", `0 0 ${W} ${H}`).attr("width", W).attr("height", H);
+    return { svg, W, H };
+  }
+  const hourLabel = (h) => (h === 24 ? "24" : pad(h % 24));
+  function describe(svg, text) { svg.attr("aria-label", text); }
+
   function chartDemand() {
-    const svg = d3.select("#ch-demand"); const W = 640, H = 300, m = { t: 16, r: 12, b: 34, l: 52 };
+    const { svg, W, H } = frame("#ch-demand", 300); const m = { t: 16, r: 12, b: 34, l: 52 };
     const hrs = D.demand.hours, v = D.demand.rides_by_hour;
     const x = d3.scaleBand().domain(hrs).range([m.l, W - m.r]).padding(0.18);
     const y = d3.scaleLinear().domain([0, d3.max(v) * 1.08]).nice().range([H - m.b, m.t]);
     svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
     svg.append("g").selectAll("rect").data(hrs).join("rect").attr("x", (h) => x(h)).attr("width", x.bandwidth())
       .attr("y", (h, i) => y(v[i])).attr("height", (h, i) => y(0) - y(v[i])).attr("fill", tok("--rider")).attr("opacity", 0.82);
-    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat((h) => pad(h % 24)));
+    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat(hourLabel));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickFormat(d3.format("~s")));
     const pk = d3.maxIndex(v);
+    describe(svg, `Bar chart of rides per hour inside Yishun: peak ${fmtInt(v[pk])} rides at ${pad(hrs[pk])}:00, evening peak ${fmtInt(v[hrs.indexOf(18)])} at 18:00, ${fmtInt(d3.sum(v))} per weekday.`);
     svg.append("text").attr("class", "callout").attr("x", x(hrs[pk]) + x.bandwidth() + 6).attr("y", y(v[pk]) + 10).text(`${fmtInt(v[pk])} rides, ${pad(hrs[pk])}:00–${pad(hrs[pk] + 1)}:00`);
   }
 
   function chartCliff(mode) {
-    const R = D.results; const svg = d3.select("#ch-cliff"); svg.selectAll("*").remove();
-    const W = 640, H = 340, m = { t: 16, r: 16, b: 40, l: 52 };
+    const R = D.results; const { svg, W, H } = frame("#ch-cliff", 340);
+    const m = { t: 16, r: 16, b: 40, l: 44 };
     const caps = R.capacities; const hi = (h) => R.hours.indexOf(h);
-    const pick = (c) => (mode === "all" ? c.all : { m: c.byHour.m[hi(mode)], lo: c.byHour.lo[hi(mode)], hi: c.byHour.hi[hi(mode)] });
+    const pick = (c) => (mode === "all" ? { ...c.all, ref: c.refused }
+      : { m: c.byHour.m[hi(mode)], lo: c.byHour.lo[hi(mode)], hi: c.byHour.hi[hi(mode)], ref: c.refusedByHour[hi(mode)], lb: (c.lbByHour || [])[hi(mode)] });
     const allF = caps.flatMap((k) => R.curves[k].map((c) => c.fleet));
     const x = d3.scaleLinear().domain(d3.extent(allF)).nice().range([m.l, W - m.r]);
     const ymax = 45;
@@ -383,45 +416,81 @@
         .attr("d", d3.area().x((p) => x(p.f)).y0((p) => y(Math.min(ymax, p.lo))).y1((p) => y(Math.min(ymax, p.hi))));
       svg.append("path").datum(pts).attr("fill", "none").attr("stroke", tok("--sodium")).attr("stroke-width", k === 10 ? 2.4 : 1.6)
         .attr("stroke-dasharray", dash[k]).attr("d", d3.line().x((p) => x(p.f)).y((p) => y(Math.min(ymax, p.m))));
+      // whisker: mean if each refused rider counts as 45 min + a direct ride (a lower bound)
+      svg.append("g").selectAll("line").data(pts.filter((p) => p.ref > 0 && p.lb != null && p.lb > p.m)).join("line")
+        .attr("x1", (p) => x(p.f)).attr("x2", (p) => x(p.f)).attr("y1", (p) => y(Math.min(ymax, p.m))).attr("y2", (p) => y(Math.min(ymax, p.lb)))
+        .attr("stroke", tok("--sodium")).attr("stroke-width", 1).attr("stroke-dasharray", "2 2");
+      // filled = no refused riders; open = the fleet also refused riders (waits over 45 min)
       svg.append("g").selectAll("circle").data(pts).join("circle").attr("cx", (p) => x(p.f)).attr("cy", (p) => y(Math.min(ymax, p.m)))
-        .attr("r", k === 10 ? 3 : 2.2).attr("fill", tok("--sodium"));
-      const lastP = pts[pts.length - 1];
-      svg.append("text").attr("class", "lab").attr("x", x(lastP.f) + 4).attr("y", y(lastP.m) + (k === 4 ? -6 : k === 20 ? 12 : 3)).text(`${k} seats`);
+        .attr("r", k === 10 ? 3.4 : 2.6).attr("fill", (p) => (p.ref > 0 ? tok("--night") : tok("--sodium")))
+        .attr("stroke", tok("--sodium")).attr("stroke-width", 1.4)
+        .append("title").text((p) => `${k} seats, ${p.f} vehicles: ${p.m.toFixed(1)} min${p.ref > 0 ? `, ${(100 * p.ref).toFixed(1)}% refused` + (p.lb != null ? ` (at least ${p.lb.toFixed(1)} min counting them)` : "") : ""}`);
+      if (k === 10) {
+        const worst = pts.filter((p) => p.ref > 0.005).slice(-1)[0];
+        if (worst) svg.append("text").attr("class", "lab").attr("x", x(worst.f) + 8).attr("y", y(Math.min(ymax, worst.m)) + 14)
+          .text(`${(100 * worst.ref).toFixed(0)}% refused`);
+      }
     }
-    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).ticks(7));
+    const lg = svg.append("g").attr("transform", `translate(${W - m.r - 150},${m.t + 6})`);
+    caps.forEach((k, i) => {
+      lg.append("line").attr("x1", 0).attr("x2", 26).attr("y1", i * 16).attr("y2", i * 16).attr("stroke", tok("--sodium"))
+        .attr("stroke-width", k === 10 ? 2.4 : 1.6).attr("stroke-dasharray", dash[k]);
+      lg.append("text").attr("class", "lab").attr("x", 32).attr("y", i * 16 + 4).text(`${k}-seat shuttles`);
+    });
+    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).ticks(W < 500 ? 5 : 7));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(6).tickFormat((d) => `${d}`));
     svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 6).attr("text-anchor", "end").text("vehicles in the fleet");
-    svg.append("text").attr("class", "lab").attr("x", m.l - 44).attr("y", m.t - 4).text("min");
+    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 4).text("min");
+    const p10 = R.curves["10"].map((c) => ({ f: c.fleet, ...pick(c) }));
+    describe(svg, `Line chart: mean stop-to-stop minutes against fleet size (${mode === "all" ? "whole day" : pad(mode) + ":00 hour"}). Bus: ${bus.toFixed(1)} min. Ten-seat shuttles: ` + p10.map((p) => `${p.f} vehicles ${p.m.toFixed(1)} min${p.ref > 0 ? " with " + (100 * p.ref).toFixed(0) + "% refused" : ""}`).join("; ") + ".");
   }
 
   function chartFrontier() {
-    const R = D.results; const svg = d3.select("#ch-frontier"); const W = 640, H = 320, m = { t: 16, r: 16, b: 34, l: 52 };
+    const R = D.results, B = D.baseline; const { svg, W, H } = frame("#ch-frontier", 320); const m = { t: 16, r: 16, b: 34, l: 44 };
     const hrs = R.hours.filter((h) => h <= 24);
     const x = d3.scaleLinear().domain([hrs[0], hrs[hrs.length - 1]]).range([m.l, W - m.r]);
-    const vals = [...Object.values(R.frontier).flat(), ...D.baseline.feeder_buses_on_road].filter((v) => v != null);
+    const busAll = B.buses_inside_all || [];
+    const fixed = R.all_day_parity && R.all_day_parity["10"];
+    const vals = [...Object.values(R.frontier || {}).flat(), ...B.feeder_buses_on_road, ...busAll, fixed || 0].filter((v) => v != null);
     const y = d3.scaleLinear().domain([0, d3.max(vals) * 1.1]).nice().range([H - m.b, m.t]);
     svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
     const line = d3.line().defined((d) => d.v != null).x((d) => x(d.h)).y((d) => y(d.v)).curve(d3.curveStepAfter);
-    const fb = hrs.map((h) => ({ h, v: D.baseline.feeder_buses_on_road[D.baseline.hours.indexOf(h)] }));
-    svg.append("path").datum(fb).attr("fill", "none").attr("stroke", tok("--bus")).attr("stroke-width", 2.2).attr("d", line);
+    const series = (arr) => hrs.map((h) => ({ h, v: arr[B.hours.indexOf(h)] }));
+    const fb = series(B.feeder_buses_on_road), ab = series(busAll);
+    if (busAll.length) svg.append("path").datum(ab).attr("fill", "none").attr("stroke", tok("--bus")).attr("stroke-width", 2.2).attr("d", line);
+    svg.append("path").datum(fb).attr("fill", "none").attr("stroke", tok("--bus")).attr("stroke-width", 1.6).attr("stroke-dasharray", "5 4").attr("d", line);
+    if (fixed) {
+      svg.append("line").attr("x1", x(hrs[0])).attr("x2", x(hrs[hrs.length - 1])).attr("y1", y(fixed)).attr("y2", y(fixed))
+        .attr("stroke", tok("--sodium")).attr("stroke-width", 1).attr("opacity", 0.8);
+      svg.append("text").attr("class", "callout").attr("x", x(hrs[hrs.length - 1])).attr("y", y(fixed) - 6).attr("text-anchor", "end")
+        .text(`fixed fleet: ${fmtInt(fixed)}`);
+    }
     const dash = { 4: "5 4", 10: null, 20: "1.5 4" };
     for (const k of R.capacities) {
-      const d = hrs.map((h) => ({ h, v: R.frontier[k][R.hours.indexOf(h)] }));
+      const fr = (R.frontier || {})[k]; if (!fr) continue;
+      const d = hrs.map((h) => ({ h, v: fr[R.hours.indexOf(h)] }));
       svg.append("path").datum(d).attr("fill", "none").attr("stroke", tok("--sodium")).attr("stroke-width", k === 10 ? 2.4 : 1.5).attr("stroke-dasharray", dash[k]).attr("d", line);
     }
-    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat((h) => pad(h % 24)));
+    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat(hourLabel));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5));
-    const pk = R.frontier_peak["10"];
-    svg.append("text").attr("class", "callout").attr("x", x(pk.hour) + 6).attr("y", y(pk.fleet) - 6).text(`${pk.fleet} shuttles at ${pad(pk.hour)}:00`);
-    const fbmax = d3.max(fb, (d) => d.v);
-    svg.append("text").attr("class", "callout").attr("fill", tok("--bus")).attr("x", x(hrs[1])).attr("y", y(fbmax) - 6).text(`≈ ${fbmax} feeder buses`);
+    const pk = R.frontier_peak && R.frontier_peak["10"];
+    const f10 = (R.frontier || {})["10"] || [];
+    describe(svg, `Step chart of vehicles needed by hour if the fleet could change size every hour. Ten-seat shuttles: ` + hrs.map((h) => `${pad(h % 24)}:00 ${f10[R.hours.indexOf(h)] ?? "n/a"}`).join(", ") + `. Fixed fleet all day: ${fixed}. Buses of all services inside Yishun peak at about ${d3.max(ab, (d) => d.v)}; feeder buses on the road at about ${d3.max(fb, (d) => d.v)}.`);
+    if (pk) svg.append("text").attr("class", "callout").attr("x", x(pk.hour) + 6).attr("y", y(pk.fleet) - 8).text(`${pk.fleet} at ${pad(pk.hour)}:00 (hourly)`);
+    const leg = document.getElementById("frontier-legend");
+    if (leg) {
+      const items = [...R.capacities.map((k) => ["--sodium", k === 10 ? "solid" : k === 4 ? "dashed" : "dotted", `${k}-seat, fleet changes hourly`]),
+        ["--sodium", "solid thin", "fixed 10-seat fleet, all day"], ["--bus", "solid", "buses inside Yishun"], ["--bus", "dashed", "feeder buses on the road"]];
+      leg.innerHTML = items.map(([c, st, lab]) => `<span><i style="border-top:${st.includes("thin") ? 1 : 2}px ${st.split(" ")[0]} var(${c})"></i>${lab}</span>`).join("");
+    }
   }
 
   function chartKerb() {
-    const R = D.results.reference; const svg = d3.select("#ch-kerb"); const W = 640, H = 300, m = { t: 16, r: 90, b: 34, l: 44 };
+    const R = D.results.reference; const { svg, W, H } = frame("#ch-kerb", 300); const m = { t: 16, r: 96, b: 34, l: 40 };
     const hrs = D.results.hours.filter((h) => h <= 24);
     const x = d3.scaleBand().domain(hrs).range([m.l, W - m.r]).padding(0.15);
-    const st = Object.keys(R.kerb);
+    const st = Object.keys(R.kerb || {});
+    if (!st.length) return;
     const y = d3.scaleLinear().domain([0, d3.max(st.flatMap((s) => R.kerb[s])) * 1.1]).nice().range([H - m.b, m.t]);
     svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
     const colors = { Yishun: tok("--sodium"), Khatib: tok("--rider"), Springleaf: tok("--mute") };
@@ -429,16 +498,22 @@
       const d = hrs.map((h) => ({ h, v: R.kerb[s][D.results.hours.indexOf(h)] }));
       svg.append("path").datum(d).attr("fill", "none").attr("stroke", colors[s] || tok("--chalk")).attr("stroke-width", s === "Yishun" ? 2.4 : 1.6)
         .attr("d", d3.line().x((p) => x(p.h) + x.bandwidth() / 2).y((p) => y(p.v || 0)));
-      const lp = d[d.length - 1];
-      svg.append("text").attr("class", "lab").attr("x", W - m.r + 6).attr("y", y(lp.v || 0) + 4).text(`${s} MRT`);
     }
-    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat((h) => pad(h % 24)));
+    // direct labels at the right, spread so they never overlap
+    const ends = st.map((s) => ({ s, v: R.kerb[s][D.results.hours.indexOf(hrs[hrs.length - 1])] || 0 })).sort((a, b) => b.v - a.v);
+    let lastY = -1e9;
+    for (const e of ends) {
+      let yy = Math.max(y(e.v) + 4, lastY + 14); lastY = yy;
+      svg.append("text").attr("class", "lab").style("fill", colors[e.s] || tok("--chalk")).attr("x", W - m.r + 6).attr("y", yy).text(`${e.s} MRT`);
+    }
+    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat(hourLabel));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5));
+    describe(svg, "Line chart of the most shuttles stopped at once, by hour: " + st.map((s) => `${s} MRT up to ${d3.max(R.kerb[s])}`).join(", ") + ".");
   }
 
   function chartWho() {
-    const R = D.results.who; const svg = d3.select("#ch-who"); const W = 640, H = 300, m = { t: 16, r: 16, b: 46, l: 52 };
-    const labels = R.bands_m.slice(0, -1).map((b, i) => `${b / 1000}–${R.bands_m[i + 1] / 1000} km`);
+    const R = D.results.who; const { svg, W, H } = frame("#ch-who", 300); const m = { t: 16, r: 16, b: 50, l: 44 };
+    const labels = R.bands_m.slice(0, -1).map((b, i) => `${b / 1000}–${R.bands_m[i + 1] / 1000}${W < 500 ? "" : " km"}`);
     const x0 = d3.scaleBand().domain(labels).range([m.l, W - m.r]).padding(0.22);
     const x1 = d3.scaleBand().domain(["hub", "estate"]).range([0, x0.bandwidth()]).padding(0.08);
     const y = d3.scaleLinear().domain([0, 1]).range([H - m.b, m.t]);
@@ -452,12 +527,17 @@
     });
     axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x0));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")));
-    svg.append("text").attr("class", "lab").attr("x", m.l).attr("y", H - 8).text("■ to or from a station").attr("fill", tok("--sodium"));
-    svg.append("text").attr("class", "lab").attr("x", m.l + 150).attr("y", H - 8).text("■ within the estates").attr("fill", tok("--rider"));
+    const key = svg.append("g").attr("transform", `translate(${m.l},${H - 10})`);
+    [["to or from a station", tok("--sodium")], ["within the estates", tok("--rider")]].forEach(([lab, col], i) => {
+      const g = key.append("g").attr("transform", `translate(${i * 170},0)`);
+      g.append("rect").attr("x", 0).attr("y", -9).attr("width", 10).attr("height", 10).attr("fill", col);
+      g.append("text").attr("class", "lab").attr("x", 15).attr("y", 0).text(lab);
+    });
+    describe(svg, "Bar chart: share of rides faster by shuttle than by bus, by straight-line length. To or from a station: " + labels.map((l, i) => `${l} ${Math.round(100 * (R.hub[i] || 0))}%`).join(", ") + ". Within estates: " + labels.map((l, i) => `${l} ${Math.round(100 * (R.estate[i] || 0))}%`).join(", ") + ".");
   }
 
   function chartCal() {
-    const P = D.calpts; const svg = d3.select("#ch-cal"); const W = 640, H = 300, m = { t: 16, r: 16, b: 40, l: 52 };
+    const P = D.calpts; const { svg, W, H } = frame("#ch-cal", 300); const m = { t: 16, r: 16, b: 40, l: 44 };
     const mx = d3.max(P.points, (p) => Math.max(p[0], p[1])) / 60;
     const x = d3.scaleLinear().domain([0, Math.ceil(mx)]).range([m.l, W - m.r]);
     const y = d3.scaleLinear().domain([0, Math.ceil(mx)]).range([H - m.b, m.t]);
@@ -469,25 +549,98 @@
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(6));
     svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 6).attr("text-anchor", "end").text("observed median running time (min)");
     svg.append("text").attr("class", "lab").attr("x", m.l + 6).attr("y", m.t + 4).text("modelled (min)");
+    describe(svg, `Scatter plot of modelled against observed bus running times for ${P.points.length} stop sequences; points lie close to the diagonal.`);
+  }
+
+  function chartGps() {
+    const G = D.results.gps_check; if (!G || !G.by_hour) return;
+    const rows = Object.entries(G.by_hour).map(([h, b]) => ({ h: +h, ...b })).filter((r) => r.n_pairs >= 20).sort((a, b) => a.h - b.h);
+    if (!rows.length) return;
+    const { svg, W, H } = frame("#ch-gps", 260); const m = { t: 30, r: 16, b: 34, l: 44 };
+    const hrs = d3.range(10, 20);
+    const x = d3.scaleBand().domain(hrs).range([m.l, W - m.r]).padding(0.3);
+    const lo = Math.min(0.8, d3.min(rows, (r) => r.pooled_ratio_ci[0])), hi = Math.max(1.2, d3.max(rows, (r) => r.pooled_ratio_ci[1]));
+    const y = d3.scaleLinear().domain([lo, hi]).nice().range([H - m.b, m.t]);
+    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
+    svg.append("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", y(1)).attr("y2", y(1)).attr("stroke", tok("--mute")).attr("stroke-dasharray", "3 4");
+    svg.append("rect").attr("x", x(10) - 4).attr("width", x(12) + x.bandwidth() - x(10) + 8).attr("y", m.t).attr("height", H - m.b - m.t)
+      .attr("fill", tok("--bus")).attr("opacity", 0.07);
+    svg.append("text").attr("class", "lab").attr("x", x(10)).attr("y", m.t + 12).text("fitted here");
+    const g = svg.append("g").selectAll("g").data(rows).join("g").attr("transform", (r) => `translate(${x(r.h) + x.bandwidth() / 2},0)`);
+    g.append("line").attr("y1", (r) => y(r.pooled_ratio_ci[0])).attr("y2", (r) => y(r.pooled_ratio_ci[1])).attr("stroke", tok("--bus")).attr("stroke-width", 1.6);
+    g.append("circle").attr("cy", (r) => y(r.pooled_ratio)).attr("r", 4).attr("fill", tok("--bus"))
+      .append("title").text((r) => `${pad(r.h)}:00: ${r.pooled_ratio.toFixed(2)} (${r.pooled_ratio_ci[0].toFixed(2)}–${r.pooled_ratio_ci[1].toFixed(2)}), ${r.n_pairs} pairs`);
+    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickFormat((h) => `${pad(h)}:00`));
+    axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickFormat(d3.format(".2f")));
+    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", 12).text("observed ÷ model");
+    describe(svg, "Dot plot of observed over modelled bus running time by hour: " + rows.map((r) => `${pad(r.h)}:00 ${r.pooled_ratio.toFixed(2)}`).join(", ") + ".");
+  }
+
+  function renderSensitivity() {
+    const S = D.results.sensitivity; if (!S || !S.length) return;
+    const base = S.find((r) => r.id === "base");
+    const fav = { 1: "bus", "-1": "shuttle", 0: "either" };
+    const tb = document.querySelector("#sens-table tbody");
+    tb.innerHTML = S.map((r) => {
+      const n = r.parity_fleet == null ? "more than 800" : fmtInt(r.parity_fleet);
+      const diff = r.parity_fleet != null && base && base.parity_fleet != null && r.id !== "base"
+        ? ` <span style="color:var(--faint)">(${r.parity_fleet - base.parity_fleet >= 0 ? "+" : ""}${r.parity_fleet - base.parity_fleet})</span>` : "";
+      const d = r.id === "base" ? "" : fav[String(r.direction ?? 0)] || "either";
+      return `<tr><td>${r.label}</td><td>${d}</td><td class="n">${n}${diff}</td><td class="n">${r.bus_day_min != null ? r.bus_day_min.toFixed(1) + " min" : "—"}</td></tr>`;
+    }).join("");
+  }
+
+  function renderSubzones() {
+    const W = D.results.who; const rows = (W && W.by_subzone) || [];
+    const tb = document.querySelector("#who-sz tbody"); if (!tb || !rows.length) return;
+    tb.innerHTML = rows.map((r) => `<tr><td>${r.subzone}</td><td class="n">${fmtInt(r.rides_per_day)}</td><td class="n">${(100 * r.share65).toFixed(0)}%</td>`
+      + `<td class="n">${(100 * r.share_faster).toFixed(0)}%</td><td class="n">${r.mean_gain_min.toFixed(1)} min</td></tr>`).join("");
+    if (W.subzone_rho_65 != null) {
+      const rho = W.subzone_rho_65, p = W.subzone_rho_p;
+      const clear = p != null && p < 0.05;
+      const word = clear ? (rho > 0 ? "rises with" : "falls with") : "shows no clear relation to";
+      document.getElementById("who-sz-note").textContent = `Gains by the subzone where rides start. Across these ${rows.length} subzones the mean gain ${word} the census share of residents aged 65+ (Spearman ρ = ${rho.toFixed(2)}${p != null ? `, p = ${p.toFixed(2)}` : ""}). That share is context only: the fare-card data has no rider ages.`;
+    }
+  }
+
+  function renderKerbExperiment() {
+    const K = D.results.kerb_experiment; if (!K || !K.length) return;
+    const ref = D.results.reference.fleet;
+    const rows = K.filter((r) => r.fleet === ref).sort((a, b) => (b.berths === -1 ? 1e9 : b.berths) - (a.berths === -1 ? 1e9 : a.berths));
+    const free = rows.find((r) => r.berths === -1);
+    const tight = rows.filter((r) => r.berths !== -1);
+    if (!free || !tight.length) return;
+    const fail = tight.filter((r) => !r.h7_ok).sort((a, b) => b.berths - a.berths)[0];
+    const pass = tight.filter((r) => r.h7_ok).sort((a, b) => a.berths - b.berths)[0];
+    let txt = `Capping the kerb shows how much it matters. With ${fmtInt(ref)} shuttles and no limit, the 07:00 hour averages ${free.h7_total_min.toFixed(1)} min stop to stop (bus ${free.h7_bus_min.toFixed(1)}).`;
+    if (pass) txt += ` Limiting each station to ${pass.berths} shuttles boarding at once still keeps up (${pass.h7_total_min.toFixed(1)} min; ${Math.round(100 * pass.peak_queued_share)}% of station stops queue, on average ${Math.round(pass.peak_queue_wait_mean_s)} s).`;
+    if (fail) txt += ` With ${fail.berths}, queues at the kerb push the 07:00 hour to ${fail.h7_total_min.toFixed(1)} min and the fleet no longer matches the bus.`;
+    document.getElementById("kerb-exp-text").textContent = txt;
   }
 
   // ------------------------------------------------------------------ numbers in text
   function fillNumbers() {
-    const R = D.results, B = D.baseline, cal = B.calibration;
-    const v = {
-      rides: fmtInt(D.demand.rides_per_weekday), pairs: fmtInt(D.demand.od_pairs),
-      median: `${(D.demand.straight_line_pct_m["50"] / 1000).toFixed(2)} km`, hubshare: `${Math.round(100 * D.demand.hub_share)}%`,
-      frontier: fmtInt(R.frontier_peak["10"].fleet), feeders: fmtInt(d3.max(B.feeder_buses_on_road)),
-      vkm: fmtInt(R.reference.veh_km), buskm: fmtInt(B.bus_km_inside_day), feederkm: fmtInt(B.feeder_bus_km_inside_day),
-      vkmx: `${(R.reference.veh_km / B.bus_km_inside_day).toFixed(1)}×`,
-      kerbmax: fmtInt(d3.max(R.reference.kerb.Yishun)), kerbkhatib: fmtInt(d3.max(R.reference.kerb.Khatib || [0])),
-      calobs: fmtInt(cal.n_obs_used), calhours: `${pad(cal.hours_sgt[0])}:00–${pad(cal.hours_sgt[cal.hours_sgt.length - 1] + 1)}:00`,
-      sig: cal.sig_s.toFixed(0), dwell: cal.dwell_s.toFixed(0), hubx: cal.hub_extra_s.toFixed(0), kappa: cal.kappa.toFixed(2),
-      cliffgap: fmtInt(R.cliff_gap),
-    };
+    const R = D.results, cal = D.baseline.calibration || {}, v = R.numbers || {};
     for (const el of document.querySelectorAll("[data-v]")) { const k = el.dataset.v; if (v[k] != null) el.textContent = v[k]; }
-    document.getElementById("who-text").textContent = R.who.text;
-    document.getElementById("cal-cap").textContent = `Calibration on ${fmtInt(cal.n_segments_used)} stop sequences of one to six stops, ${fmtInt(cal.n_obs_used)} matched observations: correlation ${cal.segment_r.toFixed(2)}, mean absolute error ${Math.round(cal.segment_mae_s)} s. Each dot is the median of one sequence; dashed line is perfect agreement.`;
+    if (R.who) {
+      document.getElementById("who-text").textContent = R.who.text;
+      if (R.who.headline) document.getElementById("who-h2").textContent = R.who.headline;
+    }
+    if (cal.n_obs_used) {
+      const ho = cal.holdout_services, g = R.gps_check && R.gps_check.by_window && R.gps_check.by_window["10-12"];
+      let t = `Calibration on ${fmtInt(cal.n_segments_used)} stop sequences of one to six stops (${fmtInt(cal.n_obs_used)} matched observations): mean absolute error ${Math.round(cal.segment_mae_s)} s`;
+      if (cal.in_sample) t += ` (${Math.round(100 * cal.in_sample.mape)}%)`;
+      if (ho) t += `. With whole bus services held out it is ${Math.round(100 * ho.model.mape)}%, against ${Math.round(100 * ho.distance_only.mape)}% for a distance-only model`;
+      if (g) t += `. Against observed bus GPS movement at the same hours, buses take ${g.pooled_ratio.toFixed(2)} times the modelled time (95% interval ${g.pooled_ratio_ci[0].toFixed(2)}–${g.pooled_ratio_ci[1].toFixed(2)})`;
+      document.getElementById("cal-cap").textContent = t + ". Each dot is the median of one sequence; the dashed line is perfect agreement.";
+    }
+  }
+
+  let cliffMode = 7;
+  function drawCharts() {
+    for (const f of [chartDemand, chartFrontier, chartKerb, chartWho, chartCal, chartGps, () => chartCliff(cliffMode)]) {
+      try { f(); } catch (e) { console.error(e); }
+    }
   }
 
   // ------------------------------------------------------------------ init
@@ -501,17 +654,17 @@
       document.getElementById("loading").textContent = `Could not load the data (${e.message}). The page needs its data files next to it.`;
       return;
     }
-    fillNumbers();
-    chartDemand(); chartFrontier(); chartKerb(); chartWho(); chartCal();
+    try { fillNumbers(); } catch (e) { console.error(e); }
     const tabs = document.getElementById("cliff-tabs");
     const modes = [["7", "07:00–08:00"], ["12", "12:00–13:00"], ["18", "18:00–19:00"], ["all", "whole day"]];
     for (const [k, lab] of modes) {
       const b = document.createElement("button"); b.type = "button"; b.textContent = lab; b.dataset.mode = k;
       b.setAttribute("aria-pressed", String(k === "7"));
-      b.onclick = () => { for (const x of tabs.children) x.setAttribute("aria-pressed", String(x === b)); chartCliff(k === "all" ? "all" : +k); };
+      b.onclick = () => { for (const x of tabs.children) x.setAttribute("aria-pressed", String(x === b)); cliffMode = k === "all" ? "all" : +k; chartCliff(cliffMode); };
       tabs.appendChild(b);
     }
-    chartCliff(7);
+    const safe = (f) => { try { f(); } catch (e) { console.error(e); } };
+    safe(drawCharts); safe(renderSensitivity); safe(renderKerbExperiment); safe(renderSubzones);
 
     const el = document.getElementById("scenarios");
     for (const sc of D.anim_index.scenarios) {
@@ -528,9 +681,6 @@
       })],
       parameters: { clearColor: [0, 0, 0, 0] },
     });
-    const ref = D.anim_index.scenarios.find((s) => s.id === D.results.anim.reference) || D.anim_index.scenarios[0];
-    await selectScenario(ref);
-
     document.getElementById("play").onclick = () => setPlaying(!state.playing);
     document.getElementById("time").oninput = (e) => { state.t = +e.target.value; redraw(); };
     document.getElementById("speed").onchange = (e) => { state.speed = +e.target.value; };
@@ -538,8 +688,28 @@
     document.getElementById("t-flows").onchange = (e) => { state.showFlows = e.target.checked; redraw(); };
     document.getElementById("t-age").onchange = (e) => { state.showAge = e.target.checked; redraw(); };
     for (const b of document.querySelectorAll("[data-show]")) b.onclick = () => show(b.dataset.show);
-    if (!reduceMotion) setPlaying(true);
+    const ids = new Set(D.anim_index.scenarios.map((x) => x.id));
+    const cliffBtn = document.querySelector('[data-show="cliff"]');
+    if (cliffBtn && !ids.has(D.results.anim.undersized)) cliffBtn.hidden = true;
+    const kerbBtn = document.querySelector('[data-show="kerb"]');
+    if (kerbBtn && !ids.has(D.results.anim.reference)) kerbBtn.hidden = true;
+    // keyboard: space plays/pauses, arrows step five minutes (when focus is not in a form control)
+    document.addEventListener("keydown", (e) => {
+      if (/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(document.activeElement.tagName)) return;
+      const r = document.getElementById("stage").getBoundingClientRect();
+      if (r.bottom < 0 || r.top > window.innerHeight) return;
+      if (e.key === " ") { e.preventDefault(); setPlaying(!state.playing); }
+      else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault(); state.t = Math.max(300, Math.min(1559, state.t + (e.key === "ArrowRight" ? 5 : -5))); redraw();
+      }
+    });
+    const ref = D.anim_index.scenarios.find((s) => s.id === D.results.anim.reference) || D.anim_index.scenarios[0];
+    await selectScenario(ref);
+    let rz = null;
+    window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(drawCharts, 200); });
+    if (!reduceMotion && !still) setPlaying(true);
     requestAnimationFrame(tick);
+    document.documentElement.dataset.ready = "1";
   }
   init();
 })();

@@ -170,6 +170,8 @@ def snap_stops(G: nx.MultiDiGraph, stops, max_dist: float = 60.0) -> dict[str, S
             u, v, k, d = edges[i]
             line = geoms[i]
             dist = line.distance(pt)
+            if dist > max_dist:  # the STRtree query is by bounding box
+                continue
             off = line.project(pt)
             # direction of the local segment at the projection point
             a = line.interpolate(max(0.0, off - 1.0))

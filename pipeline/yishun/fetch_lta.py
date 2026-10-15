@@ -97,8 +97,12 @@ def fetch_paged() -> None:
         print(f"{endpoint}: {len(rows)} records -> {out.relative_to(ROOT)}")
 
 
-def fetch_pv(month: str | None = None) -> None:
+def fetch_pv(month: str | None = None, only: tuple[str, ...] | None = None) -> None:
+    """Passenger-volume files for a month (default: the latest). DataMall serves only the last
+    three months, so the Yishun-filtered OD table is also kept in data/processed."""
     for endpoint, stem in PV.items():
+        if only and endpoint not in only:
+            continue
         params = {"Date": month} if month else None
         link = _get(endpoint, params)["value"][0]["Link"]
         # The month is embedded in the signed link path, e.g. .../202609/origin_destination_bus_202609.zip
@@ -144,7 +148,9 @@ def main(argv: list[str]) -> None:
         fetch_paged()
     if cmd in ("pv", "all"):
         fetch_pv(argv[2] if len(argv) > 2 else None)
-    if cmd in ("geo", "all"):
+    if cmd == "pv-od":   # origin-destination bus volumes only, for one month: pv-od 202607
+        fetch_pv(argv[2] if len(argv) > 2 else None, only=("PV/ODBus",))
+    if cmd == "geo":   # not used by the model; kept for exploration
         fetch_geo()
     if cmd in ("speedbands", "all"):
         fetch_speedbands()

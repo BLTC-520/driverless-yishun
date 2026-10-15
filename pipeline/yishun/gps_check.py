@@ -306,6 +306,67 @@ def fit_gps(p: pd.DataFrame, n_boot: int = 300, seed: int = 0) -> dict | None:
     return out
 
 
+def route_buffer(M, width: float = 20.0):
+    """Area within `width` metres of the network paths of every bus route serving the study area."""
+    from shapely.ops import unary_union
+    lines = []
+    for ln, pos, cum in M.baseline.segments:
+        for a, b in zip(ln.stops[:-1], ln.stops[1:]):
+            if a in M.stop_index and b in M.stop_index:
+                g = leg_line(M.R, M.stop_index[a], M.stop_index[b])
+                if g is not None:
+                    lines.append(g)
+    return unary_union(lines).buffer(width)
+
+
+def speedband_check(paths: list[str] | None = None, M=None) -> dict | None:
+    """A third, independent look at time-of-day speeds: LTA Traffic Speed Bands (probe-vehicle
+    speed ranges per road link, 15-minute snapshots) on non-expressway links inside the
+    planning area. For each link and window we take the band midpoint (capped at 70 km/h);
+    the ratio of link-length-weighted travel times between windows is reported."""
+    from shapely.geometry import LineString as _LS
+
+    from .paths import CRS_METRIC
+    from .study_area import boundary
+    paths = paths or sorted(glob.glob(str(RAW / "lta" / "live" / "speedbands_*.csv")))
+    if not paths:
+        return None
+    d = pd.concat([pd.read_csv(p, on_bad_lines="skip") for p in paths], ignore_index=True)
+    d = d[~d.RoadName.astype(str).str.contains("EXPRESSWAY", case=False)]
+    t = pd.to_datetime(d.snap_ts)
+    d["hour"] = t.dt.hour + t.dt.minute / 60
+    import geopandas as gpd
+    B = boundary()  # SVY21 metres
+    links = d.drop_duplicates("LinkID")[["LinkID", "StartLon", "StartLat", "EndLon", "EndLat"]]
+    geo = gpd.GeoSeries([_LS([(a, b_), (c, e)]) for a, b_, c, e in zip(links.StartLon, links.StartLat, links.EndLon, links.EndLat)],
+                        index=links.LinkID, crs=4326).to_crs(CRS_METRIC)
+    inside = set(geo.index[geo.centroid.within(B)])
+    on_route = set(geo.index[geo.centroid.within(route_buffer(M))]) & inside if M is not None else set()
+    d = d[d.LinkID.isin(inside)].copy()
+    d["len_m"] = d.LinkID.map(geo.length)
+    d["v"] = ((d.MinimumSpeed + d.MaximumSpeed.clip(upper=70)) / 2).clip(lower=5)
+    win = {"10-13": (10, 13), "13-15": (13, 15), "17:30-19:30": (17.5, 19.5)}
+    L = d.groupby("LinkID").len_m.first()
+
+    def ratios(sub):
+        per = {k: sub[(sub.hour >= a) & (sub.hour < b_)].groupby("LinkID").v.mean() for k, (a, b_) in win.items()}
+        base, res = per["10-13"], {}
+        for k, v in per.items():
+            common = base.index.intersection(v.index)
+            if len(common) < 50:
+                continue
+            res[k] = {"n_links": int(len(common)),
+                      "travel_time_ratio_vs_10_13": float((L[common] / v[common]).sum() / (L[common] / base[common]).sum()),
+                      "n_snapshots": int(sub[(sub.hour >= win[k][0]) & (sub.hour < win[k][1])].snap_ts.nunique())}
+        return res
+
+    out = {"n_links": int(len(inside)), "all_links": ratios(d)}
+    if on_route:
+        out["bus_route_links"] = ratios(d[d.LinkID.isin(on_route)])
+        out["n_bus_route_links"] = int(len(on_route))
+    return out
+
+
 def run(paths: list[str] | None = None) -> dict:
     from .model import build_model
     paths = paths or sorted(glob.glob(str(RAW / "lta" / "live" / "bus_arrival_*.csv")))
@@ -326,6 +387,7 @@ def run(paths: list[str] | None = None) -> dict:
                 "source_files": [str(p).split("data/")[-1] for p in paths],
                 "note": "Observed: elapsed time between two GPS positions of the same bus. Modelled: calibrated "
                         "road time plus bus dwell between those positions. Ratio > 1: buses slower than the model."})
+    res["speedbands"] = speedband_check(M=M)
     (PROCESSED / "gps_check.json").write_text(json.dumps(res, indent=1, default=str))
     sample = pr.sample(min(len(pr), 1500), random_state=0) if len(pr) else pr
     (PROCESSED / "gps_pairs_sample.csv").write_text(sample.to_csv(index=False))

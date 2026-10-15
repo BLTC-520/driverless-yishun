@@ -132,3 +132,19 @@ def test_real_baseline_covers_observed_rides(real_model):
     od = M.od[M.od.hour == 12]
     missing = sum(r.rides_per_weekday for r in od.itertuples() if M.baseline.expected(r.o, r.d, 12 * 60 + 30) is None)
     assert missing / od.rides_per_weekday.sum() < 0.02
+
+
+def test_keeps_up_hour_without_bus_option():
+    from yishun.experiments import keeps_up
+    r = pd.DataFrame({"hour": [4, 4], "refused": [False, False], "total": [600.0, 700.0], "b_total": [np.nan, np.nan]})
+    assert keeps_up(r, 4)[0]
+    r.loc[0, "refused"] = True
+    assert not keeps_up(r, 4)[0]
+
+
+@pytest.mark.parametrize("true", [None, 250, 300, 375, 425, 450, 600, 800])
+def test_bracket_search_finds_smallest_passing_fleet(true):
+    from yishun.sensitivity import FLEETS, bracket_search
+    ok = lambda n: true is not None and n >= true  # noqa: E731
+    expected = None if true is None else min(f for f in FLEETS if f >= true)
+    assert bracket_search(FLEETS, ok) == expected

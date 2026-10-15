@@ -248,6 +248,8 @@ def keeps_up(r: pd.DataFrame, hour: int) -> tuple[bool, float, float, float]:
         return True, np.nan, np.nan, 0.0
     refused = float(sub.refused.mean())
     c = sub[sub.b_total.notna()]
+    if c.empty:  # no rider in this hour has a bus option: only refusals can fail it
+        return refused == 0.0, np.nan, np.nan, refused
     sh = float(c.loc[~c.refused, "total"].mean())
     bus = float(c.b_total.mean())
     return (refused == 0.0 and sh <= bus), sh, bus, refused
@@ -298,8 +300,8 @@ def hour_window_job(job: dict) -> dict:
             "tags": job.get("tags", {})}
 
 
-HOURLY_FLEETS = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400, 450, 500, 550,
-                 600, 650, 700, 800, 900, 1000]
+HOURLY_FLEETS = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500,
+                 550, 600, 650, 700, 800, 900, 1000]
 
 
 def run_hourly(name: str, capacities=(4, 10, 20), seeds=(1, 2), workers: int = 3, cfg: dict | None = None,

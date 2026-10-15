@@ -39,15 +39,30 @@ def main() -> None:
             errors = []
             page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
             page.on("pageerror", lambda e: errors.append(str(e)))
-            page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="networkidle")
-            page.wait_for_function("document.getElementById('loading').hidden === true", timeout=120_000)
-            # freeze at 07:45 for a reproducible frame
-            page.evaluate("""() => { const b = document.getElementById('play');
-                if (b.getAttribute('aria-label') === 'Pause') b.click();
-                const t = document.getElementById('time'); t.value = '465'; t.dispatchEvent(new Event('input')); }""")
-            page.wait_for_timeout(2500)
-            page.locator("#stage").screenshot(path=str(OUT / f"stage_{name}.png"))
-            page.screenshot(path=str(OUT / f"page_{name}.png"), full_page=True)
+            page.goto(f"http://127.0.0.1:{port}/index.html#still", wait_until="networkidle")
+            page.wait_for_function("document.documentElement.dataset.ready === '1'", timeout=180_000)
+            # a reproducible frame at 07:45
+            page.evaluate("""() => { const t = document.getElementById('time'); t.value = '465';
+                t.dispatchEvent(new Event('input')); window.scrollTo(0, 0); }""")
+            page.wait_for_timeout(4000)
+            box = page.evaluate("""() => { const r = document.getElementById('stage').getBoundingClientRect();
+                return {x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height}; }""")
+            page.screenshot(path=str(OUT / f"stage_{name}.png"), clip=box, full_page=True)
+            try:
+                page.screenshot(path=str(OUT / f"page_{name}.png"), full_page=True, timeout=90_000,
+                                animations="disabled")
+            except Exception as e:  # very tall pages with a live WebGL canvas can time out
+                print(f"{name}: full-page capture skipped ({type(e).__name__})")
+                page.screenshot(path=str(OUT / f"view_{name}.png"))
+            # each chapter on its own, for checking charts and tables
+            for sid in ("cliff", "cost", "kerb", "who", "method"):
+                try:
+                    el = page.locator(f"#{sid}")
+                    el.scroll_into_view_if_needed(timeout=10_000)
+                    page.wait_for_timeout(300)
+                    el.screenshot(path=str(OUT / f"sec_{sid}_{name}.png"), timeout=30_000, animations="disabled")
+                except Exception as e:
+                    print(f"{name}: section {sid} skipped ({type(e).__name__})")
             overflow = page.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth")
             print(f"{name}: console errors={errors[:5]} horizontal_overflow={overflow}")
             page.close()

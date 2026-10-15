@@ -70,7 +70,7 @@ def parity_table(h: pd.DataFrame, rule: str = "mean") -> dict:
     """Per capacity: the parity fleet, the largest simulated fleet below it that fails, and the
     first failing hour of that fleet. A fleet passes when every (replicate, hour) passes."""
     sh, bus = ("total_mean", "bus_total_mean") if rule == "mean" else ("total_p90", "bus_total_p90")
-    x = h.assign(ok=(h[sh] <= h[bus]) & (h.refused_share <= 0.0))
+    x = h.assign(ok=((h[sh] <= h[bus]) | h[bus].isna()) & (h.refused_share <= 0.0))
     out = {}
     for cap, g in x.groupby("capacity"):
         ok = g.groupby("fleet").ok.all().sort_index()
@@ -157,6 +157,10 @@ def who_gains(M, cap: int, fleet: int, seeds=(1, 2, 3)) -> dict:
     short, longb = float(all_band.iloc[0]), float(all_band.iloc[-2:].mean())
     sp90, bp90 = float(r.total.quantile(0.9) / 60), float(r.b_total_draw.quantile(0.9) / 60)
     pk_sp90, pk_bp90 = float(peak.total.quantile(0.9) / 60), float(peak.b_total_draw.quantile(0.9) / 60)
+    pk7 = r[r.hour == 7]
+    waits = {"shuttle_mean_min": float(r.wait.mean() / 60), "bus_mean_min": float(r.b_wait.mean() / 60),
+             "shuttle_p90_7_min": float(pk7.wait.quantile(0.9) / 60), "bus_p90_7_min": float(pk7.b_wait_draw.quantile(0.9) / 60),
+             "shuttle_ride_min": float(r.ride.mean() / 60), "bus_ride_min": float(r.b_ivt.mean() / 60)}
     lose = r[~r.faster]
     wait_worse = float((lose.wait > lose.b_wait_draw).mean()) if len(lose) else 0.0
     ride_worse = float((lose.ride > lose.b_ivt).mean()) if len(lose) else 0.0
@@ -197,17 +201,18 @@ def who_gains(M, cap: int, fleet: int, seeds=(1, 2, 3)) -> dict:
                       "share65": float(row[old].sum() / max(row.Total_Total, 1)),
                       "share_faster": float(g.faster.mean()), "mean_gain_min": float((g.b_total - g.total).mean() / 60),
                       "bus_min": float(g.b_total.mean() / 60), "shuttle_min": float(g.total.mean() / 60)})
-    rho = None
+    rho = rho_p = None
     if len(by_sz) >= 6:
-        rho = float(spearmanr([d["share65"] for d in by_sz], [d["mean_gain_min"] for d in by_sz]).statistic)
+        sr = spearmanr([d["share65"] for d in by_sz], [d["mean_gain_min"] for d in by_sz])
+        rho, rho_p = float(sr.statistic), float(sr.pvalue)
     return {"bands_m": bands, "hub": [_num(v, 3) for v in hub], "estate": [_num(v, 3) for v in est],
             "n_hub": [int(v) for v in n_hub], "n_estate": [int(v) for v in n_est],
             "share_faster": share, "share_faster_exp": share_exp, "mean_gain_min": gain,
-            "p90_min": {"shuttle": sp90, "bus": bp90, "shuttle_peak": pk_sp90, "bus_peak": pk_bp90},
+            "p90_min": {"shuttle": sp90, "bus": bp90, "shuttle_peak": pk_sp90, "bus_peak": pk_bp90}, "waits": waits,
             "text": text, "headline": headline, "refused_share": refused_share, "replicates": len(seeds),
             "losers": {"share": float(1 - share), "under_500m": short_share_lose, "wait_worse": wait_worse,
                        "ride_worse": ride_worse},
-            "by_subzone": sorted(by_sz, key=lambda d: -d["rides_per_day"]), "subzone_rho_65": rho}
+            "by_subzone": sorted(by_sz, key=lambda d: -d["rides_per_day"]), "subzone_rho_65": rho, "subzone_rho_p": rho_p}
 
 
 def shuttle_km_inside_share(M, fleet: int, cap: int = 10) -> float:
@@ -262,6 +267,71 @@ def calibration_points(M) -> dict:
     pred = cal["mult"] * s.t_ff + cal["sig_s"] * s.n_sig + cal["dwell_s"] * s.gap + cal["hub_extra_s"] * s.n_hub
     pts = [[round(float(a), 1), round(float(b), 1), int(c)] for a, b, c in zip(s["median"], pred, s["count"])]
     return {"points": pts, "params": {k: cal[k] for k in ("mult", "sig_s", "dwell_s", "hub_extra_s")}}
+
+
+def _pct(x, nd=0):
+    return None if x is None else f"{100 * x:.{nd}f}%"
+
+
+def numbers(out: dict, base: dict, demand: dict, cal: dict, gps: dict | None, pm: dict | None) -> dict:
+    """Every number quoted in the page text, formatted once (used by app.js and web/build.py)."""
+    from .demand import internal_od
+    from .sim import SimConfig
+    R, ps, ref = out, out["peak_supply"], out["reference"]
+    H = out["hours"]
+    f = lambda v: None if v is None else f"{v:,.0f}"
+    i7 = H.index(7)
+    par = R["all_day_parity"].get("10")
+    det = R["parity_detail"].get("10", {})
+    fh = det.get("below_first_failing_hour")
+    sep7 = internal_od("202609").query("hour == 7").rides_per_weekday.sum()
+    term7 = demand["rides_by_hour"][demand["hours"].index(7)]
+    area_mi2 = 21.011 / 2.58999
+    w = (gps or {}).get("by_window", {})
+    mid = w.get("10-12") or (gps or {}).get("all")
+    pmw = w.get("17-19")
+    hc = cal.get("holdout_services", {})
+    n = {
+        "rides": f(demand["rides_per_weekday"]), "pairs": f(demand["od_pairs"]),
+        "median": f"{demand['straight_line_pct_m']['50'] / 1000:.2f} km", "hubshare": _pct(demand["hub_share"]),
+        "sep7": _pct(1 - sep7 / term7) if term7 else None,
+        "parity": f(par), "parity_lo": f(det.get("below")), "parity90": f(R["parity_p90"].get("10", {}).get("fleet")) or "more than the largest fleet simulated",
+        "failhour": None if fh is None else f"{fh % 24:02d}:00",
+        "cliffgap": f(R["cliff_gap"]), "nobus": _pct(base.get("no_bus_share_day"), 1), "occ": f"{ref['occupancy']:.1f}",
+        "busesin": f(ps.get("buses_inside_all")), "feeders": f(ps.get("feeders_on_road")),
+        "vehx": f"{par / ps['buses_inside_all']:.1f} times" if par and ps.get("buses_inside_all") else None,
+        "vehxf": f"{par / ps['feeders_on_road']:.1f} times" if par and ps.get("feeders_on_road") else None,
+        "busplaces": f(round(ps["bus_places"], -2)) if ps.get("bus_places") else None,
+        "shplaces": f(ps.get("shuttle_places")),
+        "vkm": f(ref["veh_km"]), "buskm": f(base["bus_km_inside_day"]), "feederkm": f(base["feeder_bus_km_inside_day"]),
+        "vkmx": f"{ref['veh_km'] / base['bus_km_inside_day']:.1f} times",
+        "buspaxkm": f"{R['bus_pax_per_km_lower']:.0f}", "empty": _pct(ref["empty_share"]),
+        "density": f(round(term7 / area_mi2, -2)),
+        "midday": f((R["frontier"].get("10") or [None] * len(H))[H.index(12)]),
+        "vhlb": f((R.get("vehicle_hours") or {}).get("10")), "vh": f(R["fixed_fleet_vehicle_hours"]),
+        "bush": f(base.get("bus_hours_inside_day")),
+        "shkmin": _pct(R.get("shuttle_km_inside_share"), 1),
+        "kerbmax": f(max([v for v in ref["kerb"].get("Yishun", []) if v is not None], default=None)),
+        "kerbkhatib": f(max([v for v in ref["kerb"].get("Khatib", []) if v is not None], default=None)),
+        "calobs": f(cal["n_obs_used"]),
+        "calhours": f"{cal['hours_sgt'][0]:02d}:00–{cal['hours_sgt'][-1] + 1:02d}:00",
+        "sig": f"{cal['sig_s']:.0f}", "dwell": f"{cal['dwell_s']:.0f}", "hubx": f"{cal['hub_extra_s']:.0f}",
+        "kappa": f"{cal['kappa']:.2f}", "d0": f"{SimConfig().d0:.0f}",
+        "gpsn": f((gps or {}).get("all", {}).get("n_pairs")),
+        "gpsratio": f"{mid['pooled_ratio']:.2f}" if mid else None,
+        "pmpct": _pct(pmw["pooled_ratio"] / mid["pooled_ratio"] - 1) if (pmw and mid) else None,
+        "ho_mape": _pct(hc.get("model", {}).get("mape")), "ho_dist_mape": _pct(hc.get("distance_only", {}).get("mape")),
+        "in_mape": _pct(cal.get("in_sample", {}).get("mape")),
+        "share_faster": _pct(R["who"]["share_faster"]), "gain": f"{R['who']['mean_gain_min']:.1f} min",
+    }
+    wt = R["who"].get("waits", {})
+    for k, key in (("shwait", "shuttle_mean_min"), ("buswait", "bus_mean_min"), ("shwait90", "shuttle_p90_7_min"),
+                   ("buswait90", "bus_p90_7_min"), ("shride", "shuttle_ride_min"), ("busride", "bus_ride_min")):
+        if key in wt:
+            n[k] = f"{wt[key]:.1f} min"
+    if pm:
+        n["pm_mult"] = f"{pm['mult']:.2f}"
+    return {k: v for k, v in n.items() if v is not None}
 
 
 def run() -> dict:
@@ -349,6 +419,18 @@ def run() -> dict:
         rows = sj["variants"] if isinstance(sj, dict) else sj
         out["sensitivity"] = [{k: r.get(k) for k in ("id", "label", "direction", "parity_fleet", "parity_below",
                                                      "bus_day_min", "shuttle_day_min_at_parity")} for r in rows]
+    cal = json.loads((PROCESSED / "calibration.json").read_text())
+    gp, pmp = PROCESSED / "gps_check.json", PROCESSED / "calibration_pm_peak.json"
+    gps = json.loads(gp.read_text()) if gp.exists() else None
+    pm = json.loads(pmp.read_text()) if pmp.exists() else None
+    if gps:
+        out["gps_check"] = {k: gps.get(k) for k in ("all", "by_window", "by_hour", "fit", "n_fixes_on_route", "n_tracks",
+                                                    "speedbands")}
+    if pm:
+        out["calibration_pm_peak"] = {k: pm.get(k) for k in ("mult", "sig_s", "dwell_s", "hub_extra_s", "kappa",
+                                                              "n_obs_used", "hours_sgt", "holdout_hours")}
+    demand = json.loads((WEB_DATA / "demand.json").read_text())
+    out["numbers"] = numbers(out, base, demand, cal, gps, pm)
     (WEB_DATA / "results.json").write_text(json.dumps(out, separators=(",", ":")))
     (WEB_DATA / "calibration_points.json").write_text(json.dumps(calibration_points(M), separators=(",", ":")))
     print(json.dumps({k: out[k] for k in ("all_day_parity", "parity_below", "frontier_peak", "cliff_gap", "anim",

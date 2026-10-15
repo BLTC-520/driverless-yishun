@@ -90,6 +90,8 @@ def variants() -> list[dict]:
         {"id": "demand_down", "label": "Demand -20% (same pattern)", "scale": 0.8, "dir": -1},
         {"id": "no_rebalance", "label": "Idle shuttles stay where they are (no repositioning)", "sim": {"rebalance": "none"}, "dir": 1},
         {"id": "loose_pooling", "label": "Looser pooling: rides up to 2x direct + 10 min", "sim": {"alpha": 2.0, "beta": 600.0}, "dir": 0},
+        {"id": "wider_search", "label": "Dispatcher searches twice as many vehicles per request (48 nearest + 16 soonest free)",
+         "sim": {"k_eta": 48, "k_end": 16}, "dir": -1},
     ]
     gps = PROCESSED / "gps_check.json"
     if gps.exists():
@@ -108,6 +110,28 @@ def variants() -> list[dict]:
                     "baseline": replace(bp, dwell_s=p["dwell_s"], hub_extra_s=p["hub_extra_s"], kappa=p["kappa"]),
                     "dir": 1})
     return out
+
+
+def bracket_search(fleets: list[int], ok, start: tuple[int, int] = (375, 550)) -> int | None:
+    """Smallest fleet in `fleets` for which ok() holds, assuming ok is monotone in the fleet.
+    Starts from a bracket around the expected answer and widens it only when needed, so most
+    cases need about five simulated fleets instead of six or seven."""
+    lo, hi = fleets.index(start[0]), fleets.index(start[1])
+    while not ok(fleets[hi]):            # widen upwards until a fleet keeps up
+        if hi == len(fleets) - 1:
+            return None
+        lo, hi = hi, min(len(fleets) - 1, hi + 2)
+    while ok(fleets[lo]):                # widen downwards until a fleet fails
+        if lo == 0:
+            return fleets[0]
+        hi, lo = lo, max(0, lo - 2)
+    while hi - lo > 1:                   # fleets[lo] fails, fleets[hi] keeps up
+        mid = (lo + hi) // 2
+        if ok(fleets[mid]):
+            hi = mid
+        else:
+            lo = mid
+    return fleets[hi]
 
 
 def run_variant(v: dict) -> dict:
@@ -140,19 +164,7 @@ def run_variant(v: dict) -> dict:
                     "bus_min": float(c.b_total.mean() / 60), "refused": float(r.refused.mean())}
         return good
 
-    lo, hi = 0, len(FLEETS) - 1
-    if not ok(FLEETS[hi]):
-        need = None
-    elif ok(FLEETS[lo]):
-        need = FLEETS[lo]
-    else:
-        while hi - lo > 1:
-            mid = (lo + hi) // 2
-            if ok(FLEETS[mid]):
-                hi = mid
-            else:
-                lo = mid
-        need = FLEETS[hi]
+    need = bracket_search(FLEETS, ok)
     at = cache.get(need) if need else None
     return {"id": v["id"], "label": v["label"], "direction": v.get("dir", 0), "parity_fleet": need,
             "parity_below": max([f for f, c in cache.items() if not c["ok"] and (need is None or f < need)], default=None),
