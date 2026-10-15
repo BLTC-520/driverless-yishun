@@ -118,9 +118,12 @@ def shuttle_legs(book: PathBook, legs) -> list[tuple]:
 
 
 def waiting_by_minute(req, study_codes, stop_index) -> dict:
-    """Riders waiting at each study stop, per minute (05:00-26:00), as base64 uint8."""
+    """Riders waiting at each study stop, per minute (05:00-26:00), as base64 uint8. Refused
+    riders are not counted: they are turned away when they request."""
     n_min = T1_MIN - T0_MIN
     out = {}
+    if "refused" in req:
+        req = req[~req.refused]
     o = req.o.to_numpy(); t = req.t.to_numpy(); tp = req.t_pick.to_numpy()
     for code in study_codes:
         m = o == code

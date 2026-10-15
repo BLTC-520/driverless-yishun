@@ -144,6 +144,7 @@ def export_buildings() -> None:
 
 # ---------------------------------------------------------------------------- demand + baseline
 def export_stops_and_demand(M) -> None:
+    from .demand import internal_od
     od = M.od.copy()
     od["h"] = np.where(od.hour < 4, od.hour + 24, od.hour)
     R = M.R
@@ -177,22 +178,49 @@ def export_stops_and_demand(M) -> None:
         sub = od[od.h == h].nlargest(160, "rides_per_weekday")
         flows.append([[r.o, r.d, round(float(r.rides_per_weekday), 1)] for r in sub.itertuples()])
     by_hour = od.groupby("h").rides_per_weekday.sum().reindex(hours, fill_value=0)
+    from .demand import weekdays_in_month
+    months = list(M.months)
+    label = " + ".join(f"{m[4:]}/{m[:4]}" for m in months)
     _write("stops.json", {"hours": hours, "stops": stops,
-                          "source": "LTA DataMall PV/ODBus Sep 2026 (average weekday, rides with both ends in Yishun)"})
+                          "source": f"LTA DataMall PV/ODBus {label} (average weekday, rides with both ends in Yishun)"})
     _write("demand.json", {"hours": hours, "rides_by_hour": [round(float(v)) for v in by_hour],
                            "rides_per_weekday": round(float(w.sum())), "od_pairs": int(len(od.groupby(["o", "d"]))),
                            "straight_line_pct_m": pct, "hist_edges_m": hist_edges,
                            "hist_rides": [round(float(v)) for v in hist], "hub_share": hub_share,
-                           "top_flows": flows, "month": "2026-09", "weekdays": 22})
+                           "top_flows": flows, "months": months, "weekdays": sum(weekdays_in_month(m) for m in months),
+                           "by_month": {m: round(float(internal_od(m).rides_per_weekday.sum())) for m in ("202607", "202608", "202609")},
+                           "by_month_7am": {m: round(float(internal_od(m).query("hour == 7").rides_per_weekday.sum()))
+                                            for m in ("202607", "202608", "202609")}})
+
+
+DECK_PLACES = {"SD": 90, "DD": 125, "BD": 120}  # approx. riders incl. standing; secondary sources, see docs/data.md
+
+
+def deck_mix(study: set[str]) -> dict | None:
+    """Share of single-deck / double-deck / bendy buses among GPS-monitored buses observed at
+    Yishun stops in the live log (each bus counted once per poll)."""
+    import glob
+    files = sorted(glob.glob(str(RAW / "lta" / "live" / "bus_arrival_*.csv")))
+    if not files:
+        return None
+    d = pd.concat([pd.read_csv(f, usecols=["poll_ts", "stop", "service", "monitored", "lat", "lon", "type"],
+                               dtype={"stop": str, "service": str}) for f in files], ignore_index=True)
+    d = d[(d.monitored == 1) & d.stop.isin(study) & d.type.isin(list(DECK_PLACES))]
+    d = d.drop_duplicates(["poll_ts", "service", "lat", "lon"])
+    share = d.type.value_counts(normalize=True)
+    return {k: round(float(share.get(k, 0.0)), 3) for k in DECK_PLACES}
 
 
 def export_baseline(M, req: pd.DataFrame) -> None:
-    from .supply import bus_supply, feeder_cycle_minutes
+    from .supply import bus_supply, feeder_cycle_minutes, inside_minutes
     study = set(M.stops.index[M.stops.in_study])
-    sup = bus_supply(study, feeder_cycle_minutes(M.baseline, None))
+    sup = bus_supply(study, feeder_cycle_minutes(M.baseline, None), inside_minutes(M.baseline, study))
     hours = list(range(5, 26))
     g = req.groupby("hour")
     cal = json.loads((PROCESSED / "calibration.json").read_text())
+    mix = deck_mix(study)
+    places = sum(DECK_PLACES[k] * v for k, v in mix.items()) / max(sum(mix.values()), 1e-9) if mix else None
+    inside = sup.groupby("hour").buses_inside.sum().reindex(hours, fill_value=0)
     _write("baseline.json", {
         "hours": hours,
         "wait_min": [round(float(g.b_wait.mean().get(h, np.nan)) / 60, 2) for h in hours],
@@ -200,6 +228,11 @@ def export_baseline(M, req: pd.DataFrame) -> None:
         "total_min": [round(float(g.b_total.mean().get(h, np.nan)) / 60, 2) for h in hours],
         "feeder_buses_on_road": [round(float(v)) for v in sup[sup.category == "FEEDER"].groupby("hour")
                                  .buses_on_road.sum().reindex(hours, fill_value=0)],
+        "buses_inside_all": [round(float(v)) for v in inside],
+        "bus_hours_inside_day": round(float(inside.sum())),
+        "deck_mix": mix, "places_per_bus": round(places, 1) if places else None,
+        "no_bus_share": [round(float(g.b_total.apply(lambda x: x.isna().mean()).get(h, np.nan)), 4) for h in hours],
+        "no_bus_share_day": round(float(req.b_total.isna().mean()), 4),
         "bus_km_inside_by_hour": [round(float(v)) for v in sup.groupby("hour").km_inside.sum().reindex(hours, fill_value=0)],
         "bus_km_inside_day": round(float(sup.km_inside.sum())),
         "feeder_bus_km_inside_day": round(float(sup[sup.category == "FEEDER"].km_inside.sum())),
@@ -207,7 +240,9 @@ def export_baseline(M, req: pd.DataFrame) -> None:
                      "total_min": round(float(req.b_total.mean()) / 60, 2)},
         "calibration": {k: cal[k] for k in ("mult", "mult_ci", "sig_s", "sig_s_ci", "dwell_s", "dwell_s_ci",
                                              "hub_extra_s", "hub_extra_s_ci", "kappa", "kappa_iqr", "segment_r",
-                                             "segment_mae_s", "n_obs_used", "n_segments_used", "hours_sgt")},
+                                             "segment_mae_s", "n_obs_used", "n_segments_used", "hours_sgt",
+                                             "n_services", "in_sample", "holdout_services", "holdout_hours",
+                                             "kappa_all_predictions") if k in cal},
     })
 
 

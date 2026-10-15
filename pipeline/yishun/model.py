@@ -25,6 +25,8 @@ class Model:
     origin_rates: np.ndarray     # (24, S) requests per second by hour and origin stop
     baseline: BusBaseline
     kmh: dict
+    key: str = ""                # cache key of the inputs (calibration, bus parameters, demand months)
+    months: tuple = ()
 
 
 def default_cal() -> dict | None:
@@ -37,19 +39,24 @@ def default_cal() -> dict | None:
 
 
 def build_model(kmh: dict | None = None, baseline_params: BaselineParams | None = None,
-                cal: dict | None = None, cache: bool = True) -> Model:
+                cal: dict | None = None, cache: bool = True, months: tuple[str, ...] | None = None) -> Model:
     """Model inputs. `cal` = network calibration (defaults to data/processed/calibration.json);
-    baseline bus dwell defaults to the calibrated bus dwell."""
+    baseline bus dwell defaults to the calibrated bus dwell; `months` = fare-card months
+    averaged for demand (default: demand.BASE_MONTHS)."""
     import hashlib
     import json as _json
+
+    from .demand import BASE_MONTHS
 
     kmh = kmh or DEFAULT_KMH
     if cal is None:
         cal = default_cal()
     if baseline_params is None:
         baseline_params = default_baseline_params()
-    sig = _json.dumps([sorted(kmh.items()), cal, baseline_params.__dict__], sort_keys=True, default=str)
-    key = INTERIM / f"model_{hashlib.sha1(sig.encode()).hexdigest()[:12]}.pkl"
+    months = tuple(months or BASE_MONTHS)
+    sig = _json.dumps([sorted(kmh.items()), cal, baseline_params.__dict__, months], sort_keys=True, default=str)
+    digest = hashlib.sha1(sig.encode()).hexdigest()[:12]
+    key = INTERIM / f"model_{digest}.pkl"
     if cache and key.exists():
         return pickle.loads(key.read_bytes())
     net = stop_network(kmh, cal)
@@ -58,14 +65,18 @@ def build_model(kmh: dict | None = None, baseline_params: BaselineParams | None 
     stop_index = {c: i for i, c in enumerate(R.codes)}
     study_idx = np.array([stop_index[c] for c in st.index[st.in_study]])
     hub_idx = np.array([stop_index[c] for c in st.index[st.is_hub]])
-    od = internal_od()
+    baseline = BusBaseline(R.codes, R.T, load_lines(set(R.codes)), baseline_params,
+                           hub_codes=set(st.index[st.is_hub]))
+    od = internal_od(months)
+    # request times are drawn only within the part of each hour when a bus serving the pair runs
+    win = [baseline.service_window(o, d, int(h)) for o, d, h in zip(od.o, od.d, od.hour)]
+    od["win_a"] = [w[0] if w else 0.0 for w in win]
+    od["win_b"] = [w[1] if w else 3600.0 for w in win]
     rates = np.zeros((24, len(R.codes)))
     g = od.groupby(["hour", "o"]).rides_per_weekday.sum()
     for (h, o), v in g.items():
         rates[h, stop_index[o]] = v / 3600.0
-    baseline = BusBaseline(R.codes, R.T, load_lines(set(R.codes)), baseline_params,
-                           hub_codes=set(st.index[st.is_hub]))
-    m = Model(R, st, stop_index, study_idx, hub_idx, od, rates, baseline, kmh)
+    m = Model(R, st, stop_index, study_idx, hub_idx, od, rates, baseline, kmh, key=digest, months=months)
     if cache:
         key.write_bytes(pickle.dumps(m))
     return m

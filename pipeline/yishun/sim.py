@@ -1,9 +1,11 @@
 """Event-driven simulation of a pooled, stop-based, on-demand shuttle fleet.
 
-Every observed ride (origin stop -> destination stop, request time) must be served; there
-are no rejections, so an undersized fleet shows up as long waits rather than refused trips
-(today's buses also carry everyone). Requests are assigned immediately on arrival by the
-cheapest feasible insertion (see insertion.py) among candidate vehicles. Vehicles can be
+Every observed ride (origin stop -> destination stop, request time) is offered to the fleet.
+Requests are assigned immediately on arrival by the cheapest feasible insertion (see
+insertion.py) among candidate vehicles. A rider is refused only when the best insertion
+picks them up more than `max_wait_reject` (45 min) after the request, or when the chosen
+vehicle's schedule is at its technical limit (`max_events`); both happen only when the fleet
+is far too small, and the reason is recorded per rider (`refuse_reason` 1 = wait, 2 = cap). Vehicles can be
 re-routed at any road-network node. Idle vehicles optionally reposition towards stops with
 high expected demand (expected = observed average-weekday hourly rates, i.e. the operator
 knows typical demand but not the realised requests).
@@ -67,7 +69,8 @@ class SimResult:
     veh_km_empty: float
     veh_km_by_hour: np.ndarray            # (26,) metres driven per hour of day
     pax_km: float
-    hub_visits: pd.DataFrame              # stop, t_arrive, t_depart (dwell intervals at hubs)
+    hub_visits: pd.DataFrame              # stop, t_arrive, t_depart: dwell at a hub kerb (t_arrive =
+                                          # start of boarding, i.e. after any wait for a free berth)
     hub_idle: pd.DataFrame                # stop, t_start, t_end (idle vehicles staging at hubs)
     legs: list = field(default_factory=list)
     hub_queue: pd.DataFrame | None = None  # stop, t_arrive, t_berth (waits for a free berth)
@@ -261,6 +264,18 @@ class Simulator:
         self.hub_queue.append((int(s), float(t), float(start)))
         return start
 
+    def _move_berth_release(self, s, old, new):
+        """A dwell at a berth-limited station was extended: move its release time."""
+        g = int(self.stop_group[s])
+        if self.cfg.berths is None or g < 0:
+            return
+        h = self.berth_heaps.get(g, [])
+        for k, x in enumerate(h):
+            if x == old:
+                h[k] = new
+                heapq.heapify(h)
+                return
+
     def _on_arrive(self, v, t):
         self._end_idle(v, t)
         self._close_leg(v, t)
@@ -339,6 +354,7 @@ class Simulator:
             raise RuntimeError("no feasible insertion; appends should always be feasible")
         if ap - t > cfg.max_wait_reject or self.n_ev[v] + 2 > cfg.max_events:
             self.r_veh[rid] = -2        # refused: the fleet cannot reach this rider in time
+            self.r_reason[rid] = 1 if ap - t > cfg.max_wait_reject else 2
             return
         self._insert(v, i, j, rid, ap, ad, t)
 
@@ -373,6 +389,7 @@ class Simulator:
             if target == self.stop[v]:
                 # join the current dwell: board when the doors would have closed
                 self._process_stop_events(v, self.t_free[v])
+                self._move_berth_release(self.stop[v], self.t_free[v], self.t_free[v] + self.cfg.d1)
                 self.t_free[v] += self.cfg.d1
                 self.version[v] += 1
                 self._push(self.t_free[v], DEPART, v, self.version[v])
@@ -434,6 +451,7 @@ class Simulator:
         self.r_d = req.d.map(stop_index).to_numpy(np.int64)
         self.r_pick = np.full(n, np.nan); self.r_drop = np.full(n, np.nan)
         self.r_veh = np.full(n, -1); self.r_promise = np.full(n, np.nan)
+        self.r_reason = np.zeros(n, np.int64)
         # initial positions: proportional to demand in the first service hour
         h0 = int(cfg.start_s // 3600) + 1
         w = self.rates[h0 % 24, self.study_idx]
@@ -464,6 +482,7 @@ class Simulator:
                 self._on_rebalance(t)
         out = req.copy()
         out["refused"] = self.r_veh == -2
+        out["refuse_reason"] = self.r_reason
         out["t_pick"] = self.r_pick
         out["t_drop"] = self.r_drop
         out["veh"] = self.r_veh

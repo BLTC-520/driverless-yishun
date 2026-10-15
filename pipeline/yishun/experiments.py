@@ -5,8 +5,9 @@ Outputs (data/processed/experiments/<name>/):
   runs.parquet     one row per run with day totals
   config.json      the grid and simulator settings used
 
-Service-day hours run 5..25 (rides tapped in at 00:xx and 01:xx belong to the end of the
-previous service day and are shifted by +24 h).
+Service-day hours run 5..25 (rides tapped in before 04:00, in practice 00:xx and 01:xx,
+belong to the end of the previous service day and are shifted by +24 h). Each output records
+its provenance (calibration values, demand months, model key, git revision).
 """
 from __future__ import annotations
 
@@ -37,8 +38,30 @@ def station_of(desc: str) -> str:
     return "Yishun"
 
 
+def bus_wait_draws(b_wait: np.ndarray, kappa: float, rng: np.random.Generator) -> np.ndarray:
+    """Realised bus waits for riders who arrive at random, matching the expected waits.
+
+    The model gives E[wait] = kappa * E[headway]. Headways are taken as gamma-distributed with
+    CV^2 = 2 kappa - 1 (the CV that produces that kappa). A random arrival lands in a
+    length-biased headway (gamma with shape + 1) and waits a uniform fraction of it. With
+    kappa <= 0.5 (regular buses, or riders timing their arrival) the wait is uniform with the
+    same mean. Missing b_wait (no bus option) stays missing."""
+    out = np.full(len(b_wait), np.nan)
+    ok = np.isfinite(b_wait)
+    u = rng.uniform(size=int(ok.sum()))
+    if kappa > 0.5 + 1e-9:
+        k = 1.0 / (2.0 * kappa - 1.0)
+        mean_h = b_wait[ok] / kappa
+        out[ok] = u * rng.gamma(k + 1.0, mean_h / k)
+    else:
+        out[ok] = u * 2.0 * b_wait[ok]
+    return out
+
+
 def service_day_requests(M: Model, seed: int, scale: float = 1.0) -> pd.DataFrame:
-    key = (seed, scale)
+    """One simulated weekday of requests (Poisson around the observed rates) with the bus
+    model's expected wait / in-vehicle / total time and one realised bus wait per ride."""
+    key = (M.key, seed, scale)
     if key in _REQ:
         return _REQ[key]
     req = sample_requests(M.od, list(range(24)), seed=seed, scale=scale)
@@ -50,6 +73,9 @@ def service_day_requests(M: Model, seed: int, scale: float = 1.0) -> pd.DataFram
     req["b_wait"] = [x["wait_s"] if x else np.nan for x in b]
     req["b_ivt"] = [x["ivt_s"] if x else np.nan for x in b]
     req["b_total"] = req.b_wait + req.b_ivt
+    rng = np.random.default_rng(10_000 + seed)
+    req["b_wait_draw"] = bus_wait_draws(req.b_wait.to_numpy(), M.baseline.p.kappa, rng)
+    req["b_total_draw"] = req.b_wait_draw + req.b_ivt
     req["is_hub_trip"] = req.o.map(M.stops.is_hub) | req.d.map(M.stops.is_hub)
     _REQ[key] = req
     return req
@@ -73,18 +99,31 @@ def _occupancy(intervals: pd.DataFrame, start_col: str, end_col: str, groups: pd
     return df
 
 
+BUS_COLS = ["b_wait", "b_ivt", "b_total", "b_total_draw", "is_hub_trip"]
+
+
 def _hourly(M: Model, res, req: pd.DataFrame, cfg: SimConfig) -> pd.DataFrame:
-    r = res.requests.join(req[["b_wait", "b_ivt", "b_total", "is_hub_trip"]])
-    served = r[~r.refused]
-    g = served.groupby("hour")
+    """Per-hour metrics. Shuttle and bus are compared on the same riders: those for whom the
+    bus model has an option (`n_cmp`); refusals are counted over all riders."""
+    r = res.requests.join(req[BUS_COLS])
+    c = r[r.b_total.notna()]
+    served = c[~c.refused]
+    g, G, A = served.groupby("hour"), c.groupby("hour"), r.groupby("hour")
+    # lower bound when riders are refused: a refused rider waited at least 45 min, then rode direct
+    lb = pd.Series(np.where(c.refused, cfg.max_wait_reject + c.direct, c.total), index=c.index)
     h = pd.DataFrame({
-        "n": r.groupby("hour").size(),
-        "refused_share": r.groupby("hour").refused.mean(),
+        "n": A.size(), "n_cmp": G.size(),
+        "refused_share": A.refused.mean(),
+        "refused_wait_share": A.refuse_reason.apply(lambda x: float((x == 1).mean())),
+        "refused_cap_share": A.refuse_reason.apply(lambda x: float((x == 2).mean())),
         "wait_mean": g.wait.mean(), "wait_p90": g.wait.quantile(0.9),
         "ride_mean": g.ride.mean(), "total_mean": g.total.mean(), "total_p90": g.total.quantile(0.9),
-        "bus_wait_mean": r.groupby("hour").b_wait.mean(), "bus_ivt_mean": r.groupby("hour").b_ivt.mean(),
-        "bus_total_mean": r.groupby("hour").b_total.mean(),
-        "share_faster": g.apply(lambda x: float((x.total < x.b_total).mean())),
+        "total_mean_lb": lb.groupby(c.hour).mean(),
+        "total_mean_all": r[~r.refused].groupby("hour").total.mean(),
+        "bus_wait_mean": G.b_wait.mean(), "bus_ivt_mean": G.b_ivt.mean(),
+        "bus_total_mean": G.b_total.mean(), "bus_total_p90": G.b_total_draw.quantile(0.9),
+        "share_faster": g.apply(lambda x: float((x.total < x.b_total_draw).mean())),
+        "share_faster_exp": g.apply(lambda x: float((x.total < x.b_total).mean())),
     })
     h["veh_km"] = [res.veh_km_by_hour[int(x)] if int(x) < 26 else np.nan for x in h.index]
     groups = pd.Series({i: station_of(M.stops.Description.iloc[i]) for i in M.hub_idx})
@@ -101,6 +140,29 @@ def _hourly(M: Model, res, req: pd.DataFrame, cfg: SimConfig) -> pd.DataFrame:
     return h.reset_index()
 
 
+def provenance(M: Model) -> dict:
+    """What a result was computed from: calibration values, demand months, model key, code."""
+    import subprocess
+
+    from .calibrate import load as load_cal
+    try:
+        cal = load_cal()
+        cal = {k: cal[k] for k in ("mult", "sig_s", "dwell_s", "hub_extra_s", "kappa", "hours_sgt", "n_obs_used")
+               if k in cal}
+    except FileNotFoundError:
+        cal = None
+    try:
+        rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
+                             cwd=str(PROCESSED.parent.parent)).stdout.strip()
+        dirty = bool(subprocess.run(["git", "status", "--porcelain", "pipeline"], capture_output=True, text=True,
+                                    cwd=str(PROCESSED.parent.parent)).stdout.strip())
+    except OSError:
+        rev, dirty = "", None
+    return {"model_key": M.key, "demand_months": list(M.months), "calibration": cal,
+            "bus_kappa": M.baseline.p.kappa, "bus_dwell_s": M.baseline.p.dwell_s,
+            "bus_hub_extra_s": M.baseline.p.hub_extra_s, "git": rev, "pipeline_modified": dirty}
+
+
 def run_one(job: dict) -> dict:
     global _M
     if _M is None:
@@ -112,13 +174,17 @@ def run_one(job: dict) -> dict:
     sim = Simulator(M.R, M.study_idx, M.origin_rates, M.hub_idx, cfg)
     res = sim.run(req[["t", "o", "d", "hour"]], M.stop_index)
     hourly = _hourly(M, res, req, cfg)
-    r = res.requests
+    r = res.requests.join(req[["b_total"]])
+    c = r[r.b_total.notna()]
     summary = {
         "label": job["label"], "seed": job["seed"], "fleet": cfg.fleet, "capacity": cfg.capacity,
         "scale": job.get("scale", 1.0), "runtime_s": time.time() - t, "n": len(r),
+        "no_bus_share": float(r.b_total.isna().mean()),
         "refused_share": float(r.refused.mean()),
-        "total_mean": float(r.loc[~r.refused, "total"].mean()),
-        "bus_total_mean": float(req.b_total.mean()),
+        "refused_cap_share": float((r.refuse_reason == 2).mean()),
+        "total_mean": float(c.loc[~c.refused, "total"].mean()),
+        "total_mean_lb": float(np.where(c.refused, cfg.max_wait_reject + c.direct, c.total).mean()),
+        "bus_total_mean": float(c.b_total.mean()),
         "veh_km": res.veh_km_loaded + res.veh_km_empty, "empty_share": res.veh_km_empty / max(
             res.veh_km_loaded + res.veh_km_empty, 1e-9), "pax_km": res.pax_km,
         "occupancy": res.pax_km / max(res.veh_km_loaded + res.veh_km_empty, 1e-9),
@@ -150,7 +216,8 @@ def run_grid(name: str, jobs: list[dict], workers: int = 4) -> tuple[pd.DataFram
     hourly = pd.concat([r["hourly"] for r in results], ignore_index=True)
     runs.to_parquet(out_dir / "runs.parquet")
     hourly.to_parquet(out_dir / "hourly.parquet")
-    (out_dir / "config.json").write_text(json.dumps({"jobs": jobs, "elapsed_s": time.time() - t}, indent=1))
+    (out_dir / "config.json").write_text(json.dumps({"jobs": jobs, "elapsed_s": time.time() - t,
+                                                     "provenance": provenance(_M)}, indent=1, default=str))
     return runs, hourly
 
 
@@ -175,13 +242,14 @@ MAIN_GRID = {
 
 def keeps_up(r: pd.DataFrame, hour: int) -> tuple[bool, float, float, float]:
     """Parity rule for one hour: no refused riders, and mean stop-to-stop time (wait + ride)
-    no worse than the bus model's expected time for the same rides."""
+    no worse than the bus model's expected time, both over the riders the bus model can serve."""
     sub = r[r.hour == hour]
     if sub.empty:
         return True, np.nan, np.nan, 0.0
     refused = float(sub.refused.mean())
-    sh = float(sub.loc[~sub.refused, "total"].mean())
-    bus = float(sub.b_total.mean())
+    c = sub[sub.b_total.notna()]
+    sh = float(c.loc[~c.refused, "total"].mean())
+    bus = float(c.b_total.mean())
     return (refused == 0.0 and sh <= bus), sh, bus, refused
 
 
@@ -190,7 +258,8 @@ def hour_window_job(job: dict) -> dict:
 
     The hour is simulated with a 45-minute warm-up of real demand before it and 15 minutes
     after it, starting from a fleet spread over stops in proportion to that hour's demand.
-    Bisection over FLEETS assumes service improves with fleet size (checked in the log)."""
+    Bisection over FLEETS assumes service improves with fleet size; every fleet evaluated is
+    stored (evaluated.json) and export_results checks the assumption."""
     global _M
     if _M is None:
         _M = build_model()
@@ -247,9 +316,11 @@ def run_hourly(name: str, capacities=(4, 10, 20), seeds=(1, 2), workers: int = 3
             rows.append(r)
             print(f"[{k + 1}/{len(jobs)}] C{r['capacity']} h{r['hour']} s{r['seed']}: needs {r['fleet_needed']}",
                   flush=True)
-    df = pd.DataFrame([{k: v for k, v in r.items() if k != "evaluated"} for r in rows])
+    (out_dir / "evaluated.json").write_text(json.dumps({"provenance": provenance(_M), "rows": rows},
+                                                       indent=1, default=float))
+    df = pd.DataFrame([{**{k: v for k, v in r.items() if k not in ("evaluated", "tags")},
+                        "tags": json.dumps(r.get("tags", {}))} for r in rows])
     df.to_parquet(out_dir / "hourly_frontier.parquet")
-    (out_dir / "evaluated.json").write_text(json.dumps(rows, indent=1, default=float))
     return df
 
 
@@ -277,10 +348,11 @@ def kerb_job(job: dict) -> dict:
     r = res.requests.join(req[["b_total"]])
     q = res.hub_queue.assign(wait=lambda x: x.t_berth - x.t_arrive) if res.hub_queue is not None else None
     hv = res.hub_visits
+    c = r[r.b_total.notna()]
     out = {"seed": job["seed"], "fleet": cfg.fleet, "capacity": cfg.capacity,
            "berths": cfg.berths if cfg.berths is not None else -1,
-           "day_total_min": float(r.loc[~r.refused, "total"].mean() / 60), "refused": float(r.refused.mean()),
-           "bus_day_min": float(r.b_total.mean() / 60)}
+           "day_total_min": float(c.loc[~c.refused, "total"].mean() / 60), "refused": float(r.refused.mean()),
+           "bus_day_min": float(c.b_total.mean() / 60)}
     for h in (7, 8, 18):
         ok, sh, bus, ref = keeps_up(r, h)
         out[f"h{h}_total_min"], out[f"h{h}_bus_min"], out[f"h{h}_ok"] = sh / 60, bus / 60, ok
@@ -311,16 +383,25 @@ def run_kerb(name: str = "kerb", fleets=(400, 450), berths=(None, 30, 20, 14, 10
                   f"07h {r['h7_total_min']:.2f} vs bus {r['h7_bus_min']:.2f}, queued {r['peak_queued_share']:.0%}", flush=True)
     df = pd.DataFrame(rows).sort_values(["fleet", "berths", "seed"])
     df.to_parquet(out_dir / "kerb.parquet")
+    (out_dir / "config.json").write_text(json.dumps({"jobs": jobs, "provenance": provenance(_M)}, indent=1,
+                                                    default=str))
     return df
 
 
-EXT_GRID = {4: [400, 1000], 10: [250, 600], 20: [200, 600]}
+EXT_GRID = {4: [400, 1000], 10: [250, 300, 650], 20: [200, 600]}
 
 FRONTIER_GRID = {
-    4: [450, 500, 550, 600, 650, 700, 800],
-    10: [300, 325, 350, 375, 400, 450, 500],
-    20: [250, 275, 300, 325, 350, 400, 450],
+    4: [500, 550, 600, 650, 700, 750, 800, 900],
+    10: [325, 350, 375, 400, 425, 450, 475, 500, 550],
+    20: [275, 300, 325, 350, 375, 400, 450, 500],
 }
+
+
+def parity_from_grids(cap: int = 10) -> int | None:
+    """All-day parity fleet from the fixed-fleet grids already run (see export_results)."""
+    from .export_results import _load_fixed, all_day_parity
+    h, _ = _load_fixed()
+    return all_day_parity(h).get(str(cap))
 
 if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "main"
@@ -334,4 +415,5 @@ if __name__ == "__main__":
     elif which == "hourly":
         run_hourly("hourly", workers=workers)
     elif which == "kerb":
-        run_kerb("kerb", workers=workers)
+        p = parity_from_grids(10) or 400
+        run_kerb("kerb", fleets=(p, p + 50), workers=workers)

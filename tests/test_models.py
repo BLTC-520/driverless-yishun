@@ -37,7 +37,9 @@ def test_common_lines_combines_frequencies():
     assert set(e["lines"]) == {"1", "2"}
 
 
-def test_calibration_recovers_known_parameters():
+def test_calibration_estimator_recovers_known_parameters():
+    """Software check of the estimator (not a validation of the model): data generated from the
+    model's own form with known parameters must be recovered, with intervals covering them."""
     rng = np.random.default_rng(0)
     n = 600
     t_ff = rng.uniform(30, 400, n); n_sig = rng.integers(0, 6, n); gap = rng.integers(1, 7, n)
@@ -45,16 +47,65 @@ def test_calibration_recovers_known_parameters():
     true = dict(mult=0.9, sig_s=14.0, dwell_s=40.0, hub_extra_s=30.0)
     y = true["mult"] * t_ff + true["sig_s"] * n_sig + true["dwell_s"] * gap + true["hub_extra_s"] * n_hub
     seg = pd.DataFrame({"t_ff": t_ff, "n_sig": n_sig, "gap": gap, "n_hub": n_hub,
-                        "median": y + rng.normal(0, 8, n), "count": rng.integers(5, 60, n), "used": True})
+                        "median": y + rng.normal(0, 8, n), "count": rng.integers(5, 60, n), "used": True,
+                        "cluster": rng.integers(0, 40, n).astype(str), "net_m": t_ff * 11.0})
     res = fit(seg, n_boot=50)
     for k, v in true.items():
         assert res[k] == pytest.approx(v, rel=0.12), k
         lo, hi = res[f"{k}_ci"]
         assert lo <= v <= hi, k
+    assert len(res["boot"]) == 50
+    # held-out services: the true model form must beat a distance-only line on these data
+    ho = res["holdout_services"]
+    assert ho["model"]["mae_s"] < ho["distance_only"]["mae_s"]
 
 
 def test_weekday_count():
     assert weekdays_in_month("202609") == 22
+    assert weekdays_in_month("202607") == 23
+    assert weekdays_in_month("202608") == 20   # 10 Aug 2026: National Day holiday (observed)
+
+
+def test_sampling_respects_service_windows():
+    od = pd.DataFrame({"o": ["A"], "d": ["B"], "hour": [5], "rides_per_weekday": [500.0],
+                       "win_a": [1800.0], "win_b": [3600.0]})
+    r = sample_requests(od, [5], seed=3)
+    assert len(r) > 400 and (r.t >= 5 * 3600 + 1800).all() and (r.t < 6 * 3600).all()
+
+
+def test_bus_wait_draws_match_expected_waits():
+    from yishun.experiments import bus_wait_draws
+    rng = np.random.default_rng(0)
+    b = np.full(200_000, 300.0)
+    for kappa in (0.5, 0.556, 0.75, 1.0):
+        w = bus_wait_draws(b, kappa, rng)
+        assert w.mean() == pytest.approx(300.0, rel=0.01), kappa
+        assert (w >= 0).all()
+    # exponential headways (kappa = 1): waits are exponential too, so P(W > mean) = e^-1
+    w = bus_wait_draws(b, 1.0, rng)
+    assert (w > 300).mean() == pytest.approx(np.exp(-1), abs=0.01)
+    assert np.isnan(bus_wait_draws(np.array([np.nan]), 0.6, rng)).all()
+
+
+def test_service_window_follows_first_bus():
+    codes = ["A", "B", "C"]
+    T = np.array([[0, 100, 300], [100, 0, 100], [300, 100, 0]], float)
+    lines = _toy_lines()
+    for ln in lines:
+        ln.first_last = {c: (5 * 60 + 30, 23 * 60) for c in ln.stops}
+    bb = BusBaseline(codes, T, lines, BaselineParams())
+    assert bb.service_window("A", "C", 5) == (1800.0, 3600.0)
+    assert bb.service_window("A", "C", 12) == (0.0, 3600.0)
+    assert bb.service_window("A", "C", 23) == (0.0, 60.0)
+    assert bb.service_window("C", "A", 12) is None
+
+
+def test_keeps_up_compares_the_same_riders():
+    from yishun.experiments import keeps_up
+    r = pd.DataFrame({"hour": [7] * 4, "refused": [False] * 4, "total": [300.0, 300.0, 300.0, 3000.0],
+                      "b_total": [400.0, 400.0, 400.0, np.nan]})
+    ok, sh, bus, ref = keeps_up(r, 7)
+    assert ok and sh == 300.0 and bus == 400.0 and ref == 0.0
 
 
 def test_poisson_sampling_matches_rates():

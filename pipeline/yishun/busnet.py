@@ -134,6 +134,27 @@ class BusBaseline:
                 pos.setdefault(c, k)  # first visit (loops revisit the interchange at the end)
             self.segments.append((ln, pos, np.array(cum)))
 
+    def _serving(self, o: str, d: str) -> list[Line]:
+        """Lines that visit o and later d on the same run (any time of day)."""
+        key = (o, d)
+        cache = self.__dict__.setdefault("_serving_cache", {})
+        if key not in cache:
+            cache[key] = [ln for ln, pos, cum in self.segments
+                          if o in pos and any(c == d and k > pos[o] for k, c in enumerate(ln.stops))]
+        return cache[key]
+
+    def service_window(self, o: str, d: str, hour: int) -> tuple[float, float] | None:
+        """[a, b): seconds after the start of clock hour `hour` during which at least one line
+        serving o -> d is running at o (LTA first/last bus at o, and a headway published for
+        the time band). None when no line serves the pair in that hour."""
+        lines = self._serving(o, d)
+        mins = [m for m in range(hour * 60, hour * 60 + 60)
+                if any(ln.headways.get(band_for_minute(m % 1440)) is not None
+                       and _in_service(*ln.first_last.get(o, (None, None)), m % 1440) for ln in lines)]
+        if not mins:
+            return None
+        return (mins[0] - hour * 60) * 60.0, (mins[-1] + 1 - hour * 60) * 60.0
+
     def options(self, o: str, d: str, minute: float) -> list[tuple[float, float, str]]:
         """(headway_min, ivt_s, service) for every line serving o -> d at this time."""
         band = band_for_minute(minute % 1440)
