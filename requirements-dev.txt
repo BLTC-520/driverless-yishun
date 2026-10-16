@@ -1,0 +1,4 @@
+# Optional: screenshots of the built page (web/screenshot.py). Uses an installed Chromium.
+-r requirements.txt
+playwright==1.64.0
+pillow==12.3.0

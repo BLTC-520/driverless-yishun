@@ -1,0 +1,105 @@
+{
+  "mult": 0.9954542602240974,
+  "sig_s": 14.893480078975811,
+  "dwell_s": 45.564224909167365,
+  "hub_extra_s": 48.61590773531368,
+  "mult_ci": [
+    0.371,
+    1.636
+  ],
+  "sig_s_ci": [
+    10.15,
+    18.716
+  ],
+  "dwell_s_ci": [
+    30.613,
+    61.237
+  ],
+  "hub_extra_s_ci": [
+    30.652,
+    67.2
+  ],
+  "n_segments_used": 1357,
+  "n_segments_dropped": 227,
+  "n_obs_used": 124962,
+  "n_services": 27,
+  "segment_mae_s": 34.73830131662644,
+  "segment_r": 0.9619044066065603,
+  "mean_obs_s": 285.9123973688001,
+  "in_sample": {
+    "mae_s": 34.73830131662644,
+    "mape": 0.15696183301499092,
+    "bias_s": 0.9158617343180842,
+    "r": 0.9619044066065603
+  },
+  "holdout_services": {
+    "folds": 5,
+    "model": {
+      "mae_s": 37.70972364919954,
+      "mape": 0.1699379241526783,
+      "bias_s": 1.7060071562934558,
+      "r": 0.9557703459214731
+    },
+    "distance_only": {
+      "mae_s": 61.43288351113232,
+      "mape": 0.28571226525405313,
+      "bias_s": 1.2304535856822492,
+      "r": 0.9025777226020267
+    }
+  },
+  "boot_cols": [
+    "mult",
+    "sig_s",
+    "dwell_s",
+    "hub_extra_s"
+  ],
+  "road_ref": {
+    "t_ff": 83.87544115743786,
+    "n_sig": 5.060811329799253
+  },
+  "kappa": 0.6184668058963885,
+  "kappa_iqr": [
+    0.5546040911553354,
+    0.6653471621288234
+  ],
+  "kappa_n_service_stops": 496,
+  "headway_cv_pooled": 0.5028145010826022,
+  "kappa_monitored_only": true,
+  "kappa_all_predictions": 0.6071077121904052,
+  "holdout_hours": {
+    "10-12": {
+      "hours_sgt": [
+        10,
+        11,
+        12
+      ],
+      "n_obs": 171838,
+      "n_segments": 1297,
+      "mae_s": 46.799774213933375,
+      "bias_s": 31.228082868721415,
+      "obs_over_pred": 0.890707189478936,
+      "r": 0.9587045265580852
+    },
+    "13-14": {
+      "hours_sgt": [
+        13,
+        14
+      ],
+      "n_obs": 137868,
+      "n_segments": 1297,
+      "mae_s": 43.673645638970655,
+      "bias_s": 29.857549014715016,
+      "obs_over_pred": 0.897277239983483,
+      "r": 0.9599933191270558
+    }
+  },
+  "source_files": [
+    "raw/lta/live/bus_arrival_20261015.csv"
+  ],
+  "hours_sgt": [
+    17,
+    18,
+    19
+  ],
+  "note": "Running times are differences of LTA BusArrival estimated arrival times for the same GPS-monitored bus at two stops of its route in one polling cycle (LTA estimates, not observed passage times)."
+}
