@@ -110,6 +110,14 @@ h1 {
   background: color-mix(in srgb, var(--night-2) 88%, transparent); backdrop-filter: blur(6px);
   border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 10px;
 }
+.flyhint {
+  position: absolute; top: 12px; right: 12px; max-width: 220px; margin: 0; padding: 8px 10px;
+  background: color-mix(in srgb, var(--night-2) 88%, transparent); backdrop-filter: blur(6px);
+  border: 1px solid var(--rule); border-radius: 6px; font-family: var(--font-data); font-size: 0.7rem;
+  line-height: 1.5; color: var(--mute); pointer-events: none;
+}
+.flyhint kbd { font-family: inherit; color: var(--chalk); border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px; }
+@media (max-width: 640px) { .flyhint { display: none; } }
 .clock { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .clock b { font-family: var(--font-data); font-size: 1.9rem; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .pill {
@@ -254,6 +262,7 @@ footer .inner { display: grid; gap: 10px; max-width: 1240px; }
 <section class="stage-wrap wrap" id="explore" aria-label="Interactive map of the simulated day">
   <div class="stage" id="stage">
     <div id="map" role="img" aria-label="3D map of Yishun with HDB blocks, bus stops and moving vehicles"></div>
+    <p class="flyhint" aria-hidden="true"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly · <kbd>Q</kbd><kbd>E</kbd> turn<br><kbd>R</kbd><kbd>F</kbd> up / down · <kbd>Shift</kbd> faster</p>
     <div class="loading" id="loading">Loading 6,300 buildings, 180 bus stops and a simulated weekday…</div>
     <div class="hud" id="hud">
       <div class="clock"><b id="clock">07:30</b><span class="pill" id="status">—</span></div>
@@ -284,7 +293,7 @@ footer .inner { display: grid; gap: 10px; max-width: 1240px; }
     </div>
     <div class="tip" id="tip" hidden></div>
   </div>
-  <p class="stage-note">Keys: space plays or pauses, arrow keys step 5 minutes. Shuttle movements are the simulator's own output for one demand replicate. Bus movements are modelled from LTA's published headways and calibrated running times (LTA does not publish timetables or vehicle traces). Building heights for HDB blocks come from HDB's storey counts; other buildings are context massing from OpenStreetMap.</p>
+  <p class="stage-note">Keys: W A S D fly the camera (Q E turn, R F up and down, Shift for speed), space plays or pauses, arrow keys step 5 minutes. Shuttle movements are the simulator's own output for one demand replicate. Bus movements are modelled from LTA's published headways and calibrated running times (LTA does not publish timetables or vehicle traces). Building heights for HDB blocks come from HDB's storey counts; other buildings are context massing from OpenStreetMap.</p>
 </section>
 
 <section class="chapter wrap" id="context">
