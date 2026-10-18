@@ -354,7 +354,7 @@
         : `Building (OpenStreetMap)<br>height ${o.s === "default" ? "not mapped, shown as context" : "≈ " + Math.round(o.h) + " m"}`;
     } else if (info.layer.id === "stops") {
       const hi = Math.max(0, Math.floor(state.t / 60) - 5);
-      html = `${o.c} · ${o.n}<br>${o.sz || ""}<br>rides starting here, ${clockOf(Math.floor(state.t / 60) * 60)}h: ${fmtInt(o.o[hi] || 0)}`;
+      html = `${o.c} · ${o.n}<br>${o.sz || ""}<br>rides starting here in the ${clockOf(Math.floor(state.t / 60) * 60)} hour: ${fmtInt(o.o[hi] || 0)}`;
     } else if (info.layer.id === "waiting") {
       html = `${o.s.c} · ${o.s.n}<br>${state.scenario.kind === "shuttle" ? fmtInt(o.w) + " riders waiting (simulated)" : "≈ " + o.w.toFixed(1) + " riders waiting (arrival rate × mean bus wait)"}`;
     } else if (info.layer.id === "age") {
@@ -428,8 +428,13 @@
         .append("title").text((p) => `${k} seats, ${p.f} vehicles: ${p.m.toFixed(1)} min${p.ref > 0 ? `, ${(100 * p.ref).toFixed(1)}% refused` + (p.lb != null ? ` (at least ${p.lb.toFixed(1)} min counting them)` : "") : ""}`);
       if (k === 10) {
         const worst = pts.filter((p) => p.ref > 0.005).slice(-1)[0];
-        if (worst) svg.append("text").attr("class", "lab").attr("x", x(worst.f) + 8).attr("y", y(Math.min(ymax, worst.m)) - 10)
-          .text(`${(100 * worst.ref).toFixed(0)}% refused`);
+        if (worst) {
+          // on phones the label takes two lines, which keeps it clear of the 4-seat curve
+          const lx = x(worst.f) + 8, pct = `${(100 * worst.ref).toFixed(0)}%`;
+          const t = svg.append("text").attr("class", "lab").attr("x", lx).attr("y", y(Math.min(ymax, worst.m)) - 10);
+          if (W < 500) { t.append("tspan").text(pct); t.append("tspan").attr("x", lx).attr("dy", "1.15em").text("refused"); }
+          else t.text(`${pct} refused`);
+        }
       }
     }
     const lg = svg.append("g").attr("transform", `translate(${W - m.r - 150},${m.t + 6})`);
@@ -447,7 +452,8 @@
   }
 
   function chartFrontier() {
-    const R = D.results, B = D.baseline; const { svg, W, H } = frame("#ch-frontier", 320); const m = { t: 16, r: 16, b: 34, l: 44 };
+    const R = D.results, B = D.baseline; const { svg, W, H } = frame("#ch-frontier", 320); const m = { t: 26, r: 16, b: 34, l: 44 };
+    const narrow = W < 500; // on phones the two value labels move into the legend below the chart
     const hrs = R.hours.filter((h) => h <= 24);
     const x = d3.scaleLinear().domain([hrs[0], hrs[hrs.length - 1]]).range([m.l, W - m.r]);
     const busAll = B.buses_inside_all || [];
@@ -463,8 +469,6 @@
     if (fixed) {
       svg.append("line").attr("x1", x(hrs[0])).attr("x2", x(hrs[hrs.length - 1])).attr("y1", y(fixed)).attr("y2", y(fixed))
         .attr("stroke", tok("--sodium")).attr("stroke-width", 1).attr("opacity", 0.8);
-      svg.append("text").attr("class", "callout").attr("x", x(hrs[hrs.length - 1])).attr("y", y(fixed) - 6).attr("text-anchor", "end")
-        .text(`fixed fleet: ${fmtInt(fixed)}`);
     }
     const dash = { 4: "5 4", 10: null, 20: "1.5 4" };
     const hue = { 4: "--sodium-deep", 10: "--sodium", 20: "--sodium-light" };
@@ -473,17 +477,21 @@
       const d = hrs.map((h) => ({ h, v: fr[R.hours.indexOf(h)] }));
       svg.append("path").datum(d).attr("fill", "none").attr("stroke", tok(hue[k] || "--sodium")).attr("stroke-width", k === 10 ? 2.4 : 1.6).attr("stroke-dasharray", dash[k]).attr("d", line);
     }
-    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 4).text("vehicles");
+    // labels go on top of the lines, so their halo keeps the hourly steps off the text
+    if (fixed && !narrow) svg.append("text").attr("class", "callout").attr("x", x(hrs[hrs.length - 1])).attr("y", y(fixed) - 6).attr("text-anchor", "end")
+      .text(`fixed fleet: ${fmtInt(fixed)}`);
+    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 12).text("vehicles");
     axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat(hourLabel));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5));
     const pk = R.frontier_peak && R.frontier_peak["10"];
     const f10 = (R.frontier || {})["10"] || [];
     describe(svg, `Step chart of vehicles needed by hour if the fleet could change size every hour. Ten-seat shuttles: ` + hrs.map((h) => `${pad(h % 24)}:00 ${f10[R.hours.indexOf(h)] ?? "n/a"}`).join(", ") + `. Fixed fleet all day: ${fixed}. Buses of all services inside Yishun peak at about ${d3.max(ab, (d) => d.v)}; feeder buses on the road at about ${d3.max(fb, (d) => d.v)}.`);
-    if (pk) svg.append("text").attr("class", "callout").attr("x", x(pk.hour + 2) + 6).attr("y", y(Math.max(pk.fleet, fixed || 0)) - 8).text(`hourly peak: ${pk.fleet} at ${pad(pk.hour)}:00`);
+    if (pk && !narrow) svg.append("text").attr("class", "callout").attr("x", x(pk.hour + 2) + 6).attr("y", y(Math.max(pk.fleet, fixed || 0)) - 8).text(`hourly peak: ${pk.fleet} at ${pad(pk.hour)}:00`);
     const leg = document.getElementById("frontier-legend");
     if (leg) {
-      const items = [...R.capacities.map((k) => [hue[k] || "--sodium", k === 10 ? "solid" : k === 4 ? "dashed" : "dotted", `${k}-seat, fleet changes hourly`]),
-        ["--sodium", "solid thin", "fixed 10-seat fleet, all day"], ["--bus", "solid", "buses inside Yishun"], ["--bus-light", "dashed", "feeder buses on the road"]];
+      const peak = narrow && pk ? ` (peak ${fmtInt(pk.fleet)} at ${pad(pk.hour)}:00)` : "";
+      const items = [...R.capacities.map((k) => [hue[k] || "--sodium", k === 10 ? "solid" : k === 4 ? "dashed" : "dotted", `${k}-seat, fleet changes hourly${k === 10 ? peak : ""}`]),
+        ["--sodium", "solid thin", `fixed 10-seat fleet, all day${narrow && fixed ? `: ${fmtInt(fixed)}` : ""}`], ["--bus", "solid", "buses inside Yishun"], ["--bus-light", "dashed", "feeder buses on the road"]];
       leg.innerHTML = items.map(([c, st, lab]) => `<span><i style="border-top:${st.includes("thin") ? 1 : 2}px ${st.split(" ")[0]} var(${c})"></i>${lab}</span>`).join("");
     }
   }
@@ -516,9 +524,11 @@
   }
 
   function chartWho() {
-    const R = D.results.who; const { svg, W, H } = frame("#ch-who", 300); const m = { t: 16, r: 16, b: 50, l: 44 };
-    const labels = R.bands_m.slice(0, -1).map((b, i) => `${b / 1000}–${R.bands_m[i + 1] / 1000}${W < 500 ? "" : " km"}`);
-    if (W < 500) svg.append("text").attr("class", "lab").attr("x", W - 16).attr("y", H - 26).attr("text-anchor", "end").text("straight-line km");
+    const R = D.results.who; const { svg, W, H } = frame("#ch-who", 300);
+    const narrow = W < 500; // on phones the unit note gets its own line between the axis and the key
+    const m = { t: 16, r: 16, b: narrow ? 64 : 50, l: 44 };
+    const labels = R.bands_m.slice(0, -1).map((b, i) => `${b / 1000}–${R.bands_m[i + 1] / 1000}${narrow ? "" : " km"}`);
+    if (narrow) svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 30).attr("text-anchor", "end").text("straight-line km");
     const x0 = d3.scaleBand().domain(labels).range([m.l, W - m.r]).padding(0.22);
     const x1 = d3.scaleBand().domain(["hub", "estate"]).range([0, x0.bandwidth()]).padding(0.08);
     const y = d3.scaleLinear().domain([0, 1]).range([H - m.b, m.t]);
@@ -633,7 +643,7 @@
     let txt = `Capping the kerb shows how much it matters. With ${fmtInt(ref)} shuttles and no limit, the 07:00 hour averages ${free.h7_total_min.toFixed(1)} min stop to stop (bus ${free.h7_bus_min.toFixed(1)}).`;
     if (pass) txt += ` Limiting each station to ${pass.berths} shuttles boarding at once still keeps up (${pass.h7_total_min.toFixed(1)} min; ${Math.round(100 * pass.peak_queued_share)}% of station stops queue, on average ${Math.round(pass.peak_queue_wait_mean_s)} s).`;
     if (fail) {
-      txt += ` With ${fail.berths}, queues at the kerb push the 07:00 hour to ${fail.h7_total_min.toFixed(1)} min and the fleet no longer matches the bus.`;
+      txt += ` With a limit of ${fail.berths}, queues at the kerb push the 07:00 hour to ${fail.h7_total_min.toFixed(1)} min and the fleet no longer matches the bus.`;
       const more = K.find((r) => r.fleet > ref && r.berths === fail.berths);
       if (more && more.h7_total_min > fail.h7_total_min) txt += ` Adding vehicles does not help: ${fmtInt(more.fleet)} shuttles with the same kerb take ${more.h7_total_min.toFixed(1)} min, because the extra vehicles queue too.`;
     }

@@ -71,7 +71,8 @@ project; what they found and what was done about it is listed at the end.
   - Chained GPS positions show ×1.02 (95 % interval 0.98–1.07; 1,191 pairs); the distance
     design gives ×1.00.
   - Speed bands on bus-route links show ×1.035.
-  - An early read on the first half hour (105 GPS pairs, ×1.07) was too small to rely on.
+  - An early read on the first half hour of evening data suggested a larger slowdown; it was
+    too small to rely on, and the full two hours did not confirm it.
   - A sensitivity case applies the evening-peak calibration all day.
 - **Cruise vs dwell (weakness found and bounded).** The LTA-estimate data cannot separate road
   time from stop dwell: across service-bootstrap draws they correlate at −0.95.
@@ -109,7 +110,8 @@ project; what they found and what was done about it is listed at the end.
   - Randomized fleets, capacities and demand, with and without repositioning and kerb limits,
     pass all of these (`tests/test_sim.py`).
 - **Bisection monotonicity.** Every fleet evaluated in the hour-window search is stored
-  (`evaluated.json`); the export counts violations of the monotonicity the bisection assumes.
+  (`evaluated.json`); the export counts violations of the monotonicity the bisection assumes:
+  126 checked, none found.
 - **Runtime.** A full weekday (about 164,000 requests) simulates in 35–55 s on one CPU core.
 
 ## Reproducibility
@@ -149,11 +151,12 @@ project; what they found and what was done about it is listed at the end.
 | Gap claim ignored Mo et al. 2021 (expert) | Added and the claim narrowed |
 | Equity view computed but not shown (science, expert) | Shown as a subzone table with the ecological caveat and a rank correlation |
 | Dispatcher not benchmarked against batch optimisation (expert) | Partly: wider candidate searches (two and four times as many vehicles per request) quantify how much the heuristic's search limit costs; a batch optimiser is the next step |
+| Traffic-flow coverage misstated in `data.md`; GPS-fit bias figures not traceable to a committed file; one sensitivity label quoting a superseded dwell interval; "the sensitivity table applies" the evening-peak calibration (one case does); assumptions favouring the shuttles listed incompletely; hourly-resized vehicle-hours stated without "at least"; chart labels colliding at phone width (launch audit: numbers audits of docs and page, a skeptical read, screenshot checks) | Coverage recounted from the raw file (13 links in the planning area, no estate roads); bias restated from `gps_pairs_sample.csv`; the case re-run (same draw, model key and result; label regenerated); wording fixed; phone layouts fixed and re-checked |
 
 ## Known weaknesses
 
-- **Morning peak not observed.** The fleet threshold is set at 07:00–08:00. The evening-peak
-  calibration is a stand-in.
+- **Morning peak not observed.** The fleet threshold is set in the 07:00–09:00 rush. The
+  evening-peak calibration is a stand-in.
 - **Calibration source.** The fit uses LTA's estimates. Observed GPS movement agrees within
   about 5 % at midday, but that is one day.
 - **Bus crowding.** Denied boarding is not modelled, which favours the bus at peaks.
