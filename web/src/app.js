@@ -326,14 +326,16 @@
   // W/S fly forward/back along the heading, A/D strafe, Q/E turn, R/F climb/descend (zoom); Shift is faster.
   // deck.gl keeps the camera internally, so the latest view is tracked from onViewStateChange and
   // pushed back through initialViewState (no transition) on every frame a key is held.
-  const FLY_KEYS = new Set(["w", "a", "s", "d", "q", "e", "r", "f"]);
+  const FLY_CODES = { KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d", KeyQ: "q", KeyE: "e", KeyR: "r", KeyF: "f", ShiftLeft: "shift", ShiftRight: "shift" };
   const held = new Set();
-  let view = null, flyLast = null;
+  let view = null, flyLast = null, flying = false;
 
   function flyStep(ts) {
+    const moving = [...held].some((k) => k !== "shift");
+    if (!moving) { flying = false; flyLast = null; return; }
     const dt = flyLast == null ? 0 : Math.min((ts - flyLast) / 1000, 0.05);
-    flyLast = held.size ? ts : null;
-    if (held.size && deckgl && view && dt > 0) {
+    flyLast = ts;
+    if (deckgl && view && dt > 0) {
       const boost = held.has("shift") ? 3 : 1;
       const mpp = 156543.03 * Math.cos(view.latitude * Math.PI / 180) / Math.pow(2, view.zoom); // metres per pixel
       const step = 260 * boost * mpp * dt;                                                        // ~260 px/s on screen
@@ -351,22 +353,24 @@
       view = next;
       deckgl.setProps({ initialViewState: next });
     }
-    if (held.size) requestAnimationFrame(flyStep);
+    requestAnimationFrame(flyStep);
   }
 
   function flyKeys() {
     const stageVisible = () => { const r = document.getElementById("stage").getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; };
+    // only real text entry blocks flying: a focused slider, checkbox, button or select must not
+    const typing = () => {
+      const a = document.activeElement; if (!a) return false;
+      return a.isContentEditable || a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && !/^(range|checkbox|radio|button|submit|reset)$/.test(a.type));
+    };
     document.addEventListener("keydown", (e) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
-      const k = e.key.toLowerCase();
-      if (!FLY_KEYS.has(k) && k !== "shift") return;
-      if (k !== "shift" && !stageVisible()) return;
-      if (k !== "shift") e.preventDefault();
-      const wasEmpty = held.size === 0;
+      const k = FLY_CODES[e.code];
+      if (!k || e.ctrlKey || e.metaKey || e.altKey || typing()) return;
+      if (k !== "shift") { if (!stageVisible()) return; e.preventDefault(); }
       held.add(k);
-      if (wasEmpty && FLY_KEYS.has(k)) requestAnimationFrame(flyStep);
+      if (!flying && k !== "shift") { flying = true; flyLast = null; requestAnimationFrame(flyStep); }
     });
-    document.addEventListener("keyup", (e) => { held.delete(e.key.toLowerCase()); });
+    document.addEventListener("keyup", (e) => { const k = FLY_CODES[e.code]; if (k) held.delete(k); });
     window.addEventListener("blur", () => held.clear());
   }
 
