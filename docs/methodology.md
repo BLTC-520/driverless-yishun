@@ -120,9 +120,10 @@ This document describes how each number on the page is produced. Code references
     gives dwell = 39.8 s (95 % interval about 35–44 s), confirming the ETA-based dwell. Short
     pairs that pass no stop show pure road time, which is what separates dwell from cruise.
     - It also gives m = 0.72 and s_sig = 8 s, i.e. faster roads. The robust loss tracks
-      typical rather than average times, though: on a sample of 931 five-minute pairs these
-      values underpredict mean bus times by about a quarter (observed/predicted 1.24, against
-      0.96 for the base calibration on the same sample).
+      typical rather than average times, though: on the 683 five-minute pairs (255–345 s) in
+      the committed sample `data/processed/gps_pairs_sample.csv`, these values underpredict mean
+      bus times by about a quarter (observed/predicted 1.23, against 0.96 for the base
+      calibration on the same pairs).
     - So the GPS fit is used to bound the dwell, not as a calibration. Its sensitivity run
       (350 vehicles) is reported but excluded from the range as too optimistic.
 - **Headway regularity.** For random rider arrivals the mean wait is `E[H²]/(2E[H])`,

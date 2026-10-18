@@ -43,8 +43,10 @@ profiles), used only for the "places" comparison.
 - **LTA Traffic Flow** (hourly link volumes, 07:00–09:00, May 2026).
   - Downloaded to test whether the shuttle fleet's added vehicle flow could be compared with
     measured traffic.
-  - Inside the Yishun bounding box it covers only 5 expressway and slip-road links (TPE, Yio
-    Chu Kang Road) and no estate roads, so that comparison is not possible with open data.
+  - Inside the Yishun planning area it covers 13 links, all on the Seletar Expressway or slip
+    roads, and no estate roads, so that comparison is not possible with open data. The wider
+    bounding box of the OSM extract adds TPE, Yio Chu Kang Road and Upper Thomson Road links
+    (58 in all). 42 of the file's 1,308 links have no coordinates.
 
 ## Licence notes
 
