@@ -182,10 +182,11 @@ a.play-cta:hover { background: var(--chalk); border-color: var(--chalk); color: 
 .ride-btn:hover { background: var(--chalk); border-color: var(--chalk); color: var(--night); }
 .ride-btn[aria-pressed="true"] { background: transparent; color: var(--sodium); }
 .ride {
-  position: absolute; top: 12px; right: 12px; width: min(250px, calc(100% - 24px));
+  position: absolute; top: 52px; right: 12px; /* below "Back to the map" */ width: min(250px, calc(100% - 24px));
   background: color-mix(in srgb, var(--night-2) 88%, transparent); backdrop-filter: blur(6px);
   border: 1px solid var(--sodium); border-radius: 6px; padding: 10px 14px; display: grid; gap: 6px;
 }
+.stage.riding .flyhint { display: none; }
 .ride .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .ride .top .eyebrow { color: var(--sodium); }
 .ride b { font-family: var(--font-display); font-weight: 700; font-stretch: 110%; font-size: 1.25rem; }

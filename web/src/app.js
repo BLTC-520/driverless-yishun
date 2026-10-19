@@ -452,6 +452,7 @@
     deckgl.setProps({ controller: false });
     if (!state.playing) setPlaying(true);
     document.getElementById("ride").hidden = false;
+    document.getElementById("stage").classList.add("riding");
     document.getElementById("ride-btn").setAttribute("aria-pressed", "true");
   }
 
@@ -463,6 +464,7 @@
     view = state.view = { ...v, zoom: Math.min(v.zoom, 17), pitch: Math.min(v.pitch, 58) };
     deckgl.setProps({ controller: CONTROLLER, viewState: null, initialViewState: { ...view, transitionDuration: reduceMotion ? 0 : 900 } });
     document.getElementById("ride").hidden = true;
+    document.getElementById("stage").classList.remove("riding");
     document.getElementById("ride-btn").setAttribute("aria-pressed", "false");
   }
 
