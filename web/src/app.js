@@ -419,36 +419,143 @@
   }
 
   // ------------------------------------------------------------------ charts
+  // Each chart is drawn once per width with every mark in place but hidden, and returns a
+  // function that moves it to a numbered state: -1 is the empty frame, and each scroll step
+  // draws more of it (a line traced, bars grown, points plotted) or picks out part of it.
+  const DUR = reduceMotion || still ? 0 : 900;
+  const ease = d3.easeCubicOut;
+  const tr = (sel, dur, delay) => sel.transition().duration(dur).delay(delay || 0).ease(ease);
+  const vis = (sel, on, dur, delay) => { if (sel) tr(sel, on ? dur : dur / 2, on ? delay : 0).attr("opacity", on ? 1 : 0); };
+
   function axis(g, ax, cls) { g.attr("class", `axis ${cls || ""}`).call(ax); }
+  function gridY(svg, y, m, W, n) {
+    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(n).tickSize(-(W - m.l - m.r)).tickFormat(""));
+  }
 
   // charts are drawn at the container's real pixel width so labels keep their size on phones
+  const widthOf = (host) => Math.max(320, Math.min(760, Math.round(host.getBoundingClientRect().width || 640)));
   function frame(id, H) {
     const svg = d3.select(id); svg.selectAll("*").remove();
-    const host = svg.node().parentNode;
-    const W = Math.max(320, Math.min(760, Math.round(host.getBoundingClientRect().width || 640)));
+    const W = widthOf(svg.node().parentNode);
     svg.attr("viewBox", `0 0 ${W} ${H}`).attr("width", W).attr("height", H);
     return { svg, W, H };
   }
   const hourLabel = (h) => (h === 24 ? "24" : pad(h % 24));
   function describe(svg, text) { svg.attr("aria-label", text); }
 
-  function chartDemand() {
-    const { svg, W, H } = frame("#ch-demand", 300); const m = { t: 16, r: 12, b: 34, l: 52 };
-    const hrs = D.demand.hours, v = D.demand.rides_by_hour;
-    const x = d3.scaleBand().domain(hrs).range([m.l, W - m.r]).padding(0.18);
-    const y = d3.scaleLinear().domain([0, d3.max(v) * 1.08]).nice().range([H - m.b, m.t]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
-    svg.append("g").selectAll("rect").data(hrs).join("rect").attr("x", (h) => x(h)).attr("width", x.bandwidth())
-      .attr("y", (h, i) => y(v[i])).attr("height", (h, i) => y(0) - y(v[i])).attr("fill", tok("--rider")).attr("opacity", 0.82);
-    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat(hourLabel));
-    axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickFormat(d3.format("~s")));
-    const pk = d3.maxIndex(v);
-    describe(svg, `Bar chart of rides per hour inside Yishun: peak ${fmtInt(v[pk])} rides at ${pad(hrs[pk])}:00, evening peak ${fmtInt(v[hrs.indexOf(18)])} at 18:00, ${fmtInt(d3.sum(v))} per weekday.`);
-    svg.append("text").attr("class", "callout").attr("x", x(hrs[pk]) + x.bandwidth() + 6).attr("y", y(v[pk]) + 10).text(`${fmtInt(v[pk])} rides, ${pad(hrs[pk])}:00–${pad(hrs[pk] + 1)}:00`);
+  // a clip rectangle that uncovers a group from one side, so lines of any dash style trace in
+  let clipN = 0;
+  function wipe(svg, g, x0, x1, fromRight) {
+    const id = `wipe-${++clipN}`, padX = 14;
+    const r = svg.append("clipPath").attr("id", id).append("rect").attr("y", -1000).attr("height", 3000)
+      .attr("x", fromRight ? x1 + padX : x0 - padX).attr("width", 0);
+    g.attr("clip-path", `url(#${id})`);
+    return (p, dur) => {
+      const w = (x1 - x0 + 2 * padX) * p;
+      tr(r, dur).attr("x", fromRight ? x1 + padX - w : x0 - padX).attr("width", w);
+    };
   }
 
-  function chartCliff(mode) {
-    const R = D.results; const { svg, W, H } = frame("#ch-cliff", 340);
+  const CH = {};
+  function chart(id, H, draw) {
+    let set = null, w = 0, cur = -1;
+    const c = {
+      get state() { return cur; },
+      set(s, dur) {
+        const W = widthOf(document.getElementById(id).parentNode);
+        if (!set || W !== w) { set = draw(frame(`#${id}`, typeof H === "function" ? H(W) : H)); w = W; }
+        cur = s; set(s, dur);
+      },
+      rebuild(dur) { set = null; const s = cur; c.set(-1, 0); c.set(s, dur); },
+    };
+    CH[id] = c;
+    return c;
+  }
+
+  function drawDemand({ svg, W, H }) {
+    const m = { t: 28, r: 12, b: 34, l: 52 };
+    const hrs = D.demand.hours, v = D.demand.rides_by_hour;
+    const x = d3.scaleBand().domain(hrs).range([m.l, W - m.r]).padding(0.18);
+    const y = d3.scaleLinear().domain([0, d3.max(v) * 1.1]).nice().range([H - m.b, m.t]);
+    gridY(svg, y, m, W, 5);
+    const bars = svg.append("g").selectAll("rect").data(hrs).join("rect").attr("x", (h) => x(h)).attr("width", x.bandwidth())
+      .attr("y", y(0)).attr("height", 0).attr("fill", tok("--rider")).attr("opacity", 0.82);
+    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat(hourLabel));
+    axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickFormat(d3.format("~s")));
+    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 14).text("rides per hour");
+    const pk = d3.maxIndex(v), pm = hrs.indexOf(18);
+    const hot = new Set([pk, pm]);
+    const lab = (i, txt, anchor) => (i < 0 ? null : svg.append("text").attr("class", "callout").attr("x", anchor === "start" ? x(hrs[i]) - 2 : x(hrs[i]) + x.bandwidth() / 2)
+      .attr("y", y(v[i]) - 8).attr("text-anchor", anchor).attr("opacity", 0).text(txt));
+    const labs = [lab(pk, `${fmtInt(v[pk])} at ${pad(hrs[pk])}:00`, "start"), lab(pm, `${fmtInt(v[pm])} at 18:00`, "middle")];
+    describe(svg, `Bar chart of rides per hour inside Yishun: peak ${fmtInt(v[pk])} rides at ${pad(hrs[pk])}:00, evening peak ${fmtInt(v[pm])} at 18:00, ${fmtInt(d3.sum(v))} per weekday.`);
+    let prev = -1;
+    return (s, dur) => {
+      const first = prev < 0 && s >= 0; prev = s;
+      tr(bars, dur).delay((h, i) => (first ? (i * dur) / 22 : 0))
+        .attr("y", (h, i) => (s >= 0 ? y(v[i]) : y(0))).attr("height", (h, i) => (s >= 0 ? y(0) - y(v[i]) : 0))
+        .attr("fill", (h, i) => (s >= 1 && hot.has(i) ? tok("--sodium") : tok("--rider")))
+        .attr("opacity", (h, i) => (s >= 1 && !hot.has(i) ? 0.28 : 0.82));
+      labs.forEach((l) => vis(l, s >= 1, dur, dur * 0.4));
+    };
+  }
+
+  function drawLength({ svg, W, H }) {
+    const m = { t: 28, r: 14, b: 44, l: 52 };
+    const E = D.demand.hist_edges_m, v = D.demand.hist_rides, med = D.demand.straight_line_pct_m["50"];
+    const x = d3.scaleLinear().domain([0, E[E.length - 1]]).range([m.l, W - m.r]);
+    const y = d3.scaleLinear().domain([0, d3.max(v) * 1.1]).nice().range([H - m.b, m.t]);
+    gridY(svg, y, m, W, 5);
+    const shade = svg.append("rect").attr("x", x(0)).attr("y", m.t).attr("height", H - m.b - m.t).attr("width", 0).attr("fill", tok("--sodium")).attr("opacity", 0.1);
+    const bars = svg.append("g").selectAll("rect").data(v.map((c, i) => i)).join("rect")
+      .attr("x", (i) => x(E[i]) + 1).attr("width", (i) => Math.max(1, x(E[i + 1]) - x(E[i]) - 2))
+      .attr("y", y(0)).attr("height", 0).attr("fill", tok("--rider")).attr("opacity", 0.82);
+    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(d3.range(0, E[E.length - 1] + 1, 500)).tickFormat((d) => d / 1000));
+    axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickFormat(d3.format("~s")));
+    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 14).text("rides per weekday");
+    svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 6).attr("text-anchor", "end").text(W < 500 ? "straight-line km (last bar 2.75+)" : "straight-line km between stops (last bar: 2.75 km or more)");
+    const ml = svg.append("g").attr("opacity", 0);
+    ml.append("line").attr("x1", x(med)).attr("x2", x(med)).attr("y1", y(0)).attr("y2", m.t).attr("stroke", tok("--sodium")).attr("stroke-width", 2);
+    ml.append("text").attr("class", "callout").attr("x", x(med) + 8).attr("y", m.t + 12).style("fill", tok("--sodium")).text(`half are under ${(D.results.numbers || {}).median || fmtInt(med) + " m"}`);
+    describe(svg, `Histogram of rides by straight-line length: median ${fmtInt(med)} m; ` + v.map((c, i) => `${E[i]}–${E[i + 1]} m: ${fmtInt(c)}`).join(", ") + ".");
+    return (s, dur) => {
+      tr(bars, dur).delay((i) => (s >= 0 ? (i * dur) / 18 : 0))
+        .attr("y", (i) => (s >= 0 ? y(v[i]) : y(0))).attr("height", (i) => (s >= 0 ? y(0) - y(v[i]) : 0));
+      tr(shade, dur, s >= 0 ? dur * 0.8 : 0).attr("width", s >= 0 ? x(med) - x(0) : 0);
+      vis(ml, s >= 0, dur, dur * 1.2);
+    };
+  }
+
+  // 100 squares, one per hundred rides, the first `share` of them lit
+  const waffleH = (W) => (W < 520 ? 5 * Math.floor((W - 4) / 20) + 118 : 300);
+  const drawWaffle = (getShare, onVar, onLines, offLines) => ({ svg, W, H }) => {
+    const on = Math.round(100 * getShare());
+    const narrow = W < 520, cols = narrow ? 20 : 10, rows = 100 / cols;
+    const cell = narrow ? Math.floor((W - 4) / cols) : Math.floor((H - 20) / rows);
+    const cells = svg.append("g").attr("transform", "translate(2,8)").selectAll("rect").data(d3.range(100)).join("rect")
+      .attr("x", (i) => (i % cols) * cell).attr("y", (i) => Math.floor(i / cols) * cell)
+      .attr("width", cell - 3).attr("height", cell - 3).attr("rx", 2)
+      .attr("fill", (i) => (i < on ? tok(onVar) : tok("--night-3"))).attr("stroke", (i) => (i < on ? "none" : tok("--rule")))
+      .attr("opacity", 0);
+    const tx = narrow ? 2 : cols * cell + 28, ty = narrow ? rows * cell + 52 : 70;
+    const t = svg.append("g").attr("transform", `translate(${tx},${ty})`).attr("opacity", 0);
+    t.append("text").attr("class", "wbig").attr("y", narrow ? -8 : 0).style("fill", tok(onVar)).style("font-size", narrow ? "34px" : null).text(`${on} in 100`);
+    const key = (y0, fill, stroke, lines) => {
+      t.append("rect").attr("x", 0).attr("y", y0 - 10).attr("width", 11).attr("height", 11).attr("rx", 2).attr("fill", fill).attr("stroke", stroke);
+      lines.forEach((l, i) => t.append("text").attr("class", "lab").attr("x", 18).attr("y", y0 + i * 16).text(l));
+    };
+    key(narrow ? 18 : 36, tok(onVar), "none", onLines(on));
+    key(narrow ? 18 + 18 * onLines(on).length : 44 + 18 * onLines(on).length, tok("--night-3"), tok("--rule"), offLines(100 - on));
+    describe(svg, `Waffle chart: ${on} of every 100 rides ${onLines(on).join(" ")}.`);
+    return (s, dur) => {
+      tr(cells, dur / 3).delay((i) => (s >= 0 ? (i * dur) / 80 : 0)).attr("opacity", s >= 0 ? 1 : 0);
+      vis(t, s >= 0, dur, dur * 0.8);
+    };
+  };
+
+  let cliffMode = 8;
+  function drawCliff({ svg, W, H }) {
+    const mode = cliffMode, R = D.results, narrow = W < 500;
     const m = { t: 16, r: 16, b: 40, l: 44 };
     const caps = R.capacities; const hi = (h) => R.hours.indexOf(h);
     const pick = (c) => (mode === "all" ? { ...c.all, ref: c.refused }
@@ -457,54 +564,151 @@
     const x = d3.scaleLinear().domain(d3.extent(allF)).nice().range([m.l, W - m.r]);
     const ymax = 45;
     const y = d3.scaleLinear().domain([0, ymax]).range([H - m.b, m.t]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(6).tickSize(-(W - m.l - m.r)).tickFormat(""));
+    const yc = (v) => y(Math.min(ymax, v));
+    gridY(svg, y, m, W, 6);
     const bus = mode === "all" ? R.bus_day_total_min : R.bus_total_min[hi(mode)];
-    svg.append("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", y(bus)).attr("y2", y(bus)).attr("stroke", tok("--bus")).attr("stroke-width", 2);
-    svg.append("text").attr("class", "callout").attr("x", W - m.r).attr("y", y(bus) - 6).attr("text-anchor", "end").attr("fill", tok("--bus")).text(`bus ${bus.toFixed(1)} min`);
+    const band = svg.append("g").attr("opacity", 0);
+    const gBus = svg.append("g");
+    gBus.append("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", y(bus)).attr("y2", y(bus)).attr("stroke", tok("--bus")).attr("stroke-width", 2);
+    gBus.append("text").attr("class", "callout").attr("x", W - m.r).attr("y", y(bus) - 6).attr("text-anchor", "end").attr("fill", tok("--bus")).text(`bus ${bus.toFixed(1)} min`);
+    const wBus = wipe(svg, gBus, m.l, W - m.r, false);
     const dash = { 4: "5 4", 10: null, 20: "1.5 4" };
     const hue = { 4: tok("--sodium-deep"), 10: tok("--sodium"), 20: tok("--sodium-light") };
+    const wipes = {}, curves = {}, tLabs = {};
     for (const k of caps) {
       const pts = R.curves[k].map((c) => ({ f: c.fleet, ...pick(c) })).filter((p) => p.m != null);
-      svg.append("path").datum(pts).attr("fill", tok("--sodium")).attr("opacity", k === 10 ? 0.16 : 0.08)
-        .attr("d", d3.area().x((p) => x(p.f)).y0((p) => y(Math.min(ymax, p.lo))).y1((p) => y(Math.min(ymax, p.hi))));
-      svg.append("path").datum(pts).attr("fill", "none").attr("stroke", hue[k]).attr("stroke-width", k === 10 ? 2.4 : 1.8)
-        .attr("stroke-dasharray", dash[k]).attr("d", d3.line().x((p) => x(p.f)).y((p) => y(Math.min(ymax, p.m))));
+      const g = svg.append("g");
+      g.append("path").datum(pts).attr("fill", tok("--sodium")).attr("opacity", k === 10 ? 0.16 : 0.08)
+        .attr("d", d3.area().x((p) => x(p.f)).y0((p) => yc(p.lo)).y1((p) => yc(p.hi)));
+      g.append("path").datum(pts).attr("fill", "none").attr("stroke", hue[k]).attr("stroke-width", k === 10 ? 2.4 : 1.8)
+        .attr("stroke-dasharray", dash[k]).attr("d", d3.line().x((p) => x(p.f)).y((p) => yc(p.m)));
       // whisker: mean if each refused rider counts as 45 min + a direct ride (a lower bound)
-      svg.append("g").selectAll("line").data(pts.filter((p) => p.ref > 0 && p.lb != null && p.lb > p.m)).join("line")
-        .attr("x1", (p) => x(p.f)).attr("x2", (p) => x(p.f)).attr("y1", (p) => y(Math.min(ymax, p.m))).attr("y2", (p) => y(Math.min(ymax, p.lb)))
+      g.append("g").selectAll("line").data(pts.filter((p) => p.ref > 0 && p.lb != null && p.lb > p.m)).join("line")
+        .attr("x1", (p) => x(p.f)).attr("x2", (p) => x(p.f)).attr("y1", (p) => yc(p.m)).attr("y2", (p) => yc(p.lb))
         .attr("stroke", hue[k]).attr("stroke-width", 1).attr("stroke-dasharray", "2 2");
       // filled = no refused riders; open = the fleet also refused riders (waits over 45 min)
-      svg.append("g").selectAll("circle").data(pts).join("circle").attr("cx", (p) => x(p.f)).attr("cy", (p) => y(Math.min(ymax, p.m)))
+      g.append("g").selectAll("circle").data(pts).join("circle").attr("cx", (p) => x(p.f)).attr("cy", (p) => yc(p.m))
         .attr("r", k === 10 ? 3.4 : 2.6).attr("fill", (p) => (p.ref > 0 ? tok("--night") : hue[k]))
         .attr("stroke", hue[k]).attr("stroke-width", 1.4)
         .append("title").text((p) => `${k} seats, ${p.f} vehicles: ${p.m.toFixed(1)} min${p.ref > 0 ? `, ${(100 * p.ref).toFixed(1)}% refused` + (p.lb != null ? ` (at least ${p.lb.toFixed(1)} min counting them)` : "") : ""}`);
-      if (k === 10) {
-        const worst = pts.filter((p) => p.ref > 0.005).slice(-1)[0];
-        if (worst) {
-          // on phones the label takes two lines, which keeps it clear of the 4-seat curve
-          const lx = x(worst.f) + 8, pct = `${(100 * worst.ref).toFixed(0)}%`;
-          const t = svg.append("text").attr("class", "lab").attr("x", lx).attr("y", y(Math.min(ymax, worst.m)) - 10);
-          if (W < 500) { t.append("tspan").text(pct); t.append("tspan").attr("x", lx).attr("dy", "1.15em").text("refused"); }
-          else t.text(`${pct} refused`);
-        }
+      wipes[k] = wipe(svg, g, m.l, W - m.r, true);
+      // smallest fleet from which every larger fleet matches the bus with nobody refused
+      let t = null;
+      for (let i = pts.length - 1; i >= 0 && pts[i].m <= bus && !(pts[i].ref > 0); i--) t = i;
+      curves[k] = { pts, t };
+      if (k !== 10 && t != null) {
+        tLabs[k] = svg.append("text").attr("class", "lab").style("fill", hue[k]).attr("x", x(pts[t].f)).attr("y", yc(pts[t].m) - 9)
+          .attr("text-anchor", "middle").attr("opacity", 0).text(fmtInt(pts[t].f));
       }
     }
+    // rings and labels for the threshold and an undersized fleet
+    // dy moves the label above (negative) or below the ring, off the curve
+    const mark = (p, color, txt, dy) => {
+      const g = svg.append("g").attr("opacity", 0);
+      const cx = x(p.f), cy = yc(p.m), right = cx > W * 0.62;
+      g.append("circle").attr("cx", cx).attr("cy", cy).attr("r", 8).attr("fill", "none").attr("stroke", color).attr("stroke-width", 1.8);
+      g.append("text").attr("class", "callout").attr("x", cx + (right ? -10 : 10)).attr("y", cy + dy).attr("text-anchor", right ? "end" : "start").style("fill", color).text(txt);
+      return g;
+    };
+    const P = curves[10].pts, ti = curves[10].t;
+    const lab = (p) => `${p.f}: ${p.m.toFixed(1)} min`;
+    const mOk = ti != null ? mark(P[ti], tok("--good"), narrow ? lab(P[ti]) : `${lab(P[ti])}, keeps up`, 22) : null;
+    const mLo = ti != null && ti > 0 ? mark(P[ti - 1], tok("--bad"), lab(P[ti - 1]), -14) : null;
+    if (ti != null && ti > 0) {
+      band.append("rect").attr("x", x(P[ti - 1].f)).attr("width", x(P[ti].f) - x(P[ti - 1].f)).attr("y", m.t).attr("height", H - m.b - m.t)
+        .attr("fill", tok("--bad")).attr("opacity", 0.1);
+    }
+    const p3 = P.find((p) => p.f === +((R.numbers || {}).f_lo3)) || P.filter((p) => p.ref > 0.005).slice(-1)[0];
+    const m3 = p3 && p3 !== P[ti - 1] ? mark(p3, tok("--bad"), `${p3.f}: ${p3.m.toFixed(1)} min${p3.ref > 0 ? `, ${(100 * p3.ref).toFixed(1)}% refused${mode === "all" ? "" : narrow ? "" : " this hour"}` : ""}`, -14) : null;
     const lg = svg.append("g").attr("transform", `translate(${W - m.r - 150},${m.t + 6})`);
+    const lgItems = {};
     caps.forEach((k, i) => {
-      lg.append("line").attr("x1", 0).attr("x2", 26).attr("y1", i * 16).attr("y2", i * 16).attr("stroke", hue[k])
+      const g = lg.append("g").attr("opacity", 0); lgItems[k] = g;
+      g.append("line").attr("x1", 0).attr("x2", 26).attr("y1", i * 16).attr("y2", i * 16).attr("stroke", hue[k])
         .attr("stroke-width", k === 10 ? 2.4 : 1.8).attr("stroke-dasharray", dash[k]);
-      lg.append("text").attr("class", "lab").attr("x", 32).attr("y", i * 16 + 4).text(`${k}-seat shuttles`);
+      g.append("text").attr("class", "lab").attr("x", 32).attr("y", i * 16 + 4).text(`${k}-seat shuttles`);
     });
-    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).ticks(W < 500 ? 5 : 7));
+    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).ticks(narrow ? 5 : 7));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(6).tickFormat((d) => `${d}`));
     svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 6).attr("text-anchor", "end").text("vehicles in the fleet");
     svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 4).text("min");
-    const p10 = R.curves["10"].map((c) => ({ f: c.fleet, ...pick(c) }));
-    describe(svg, `Line chart: mean stop-to-stop minutes against fleet size (${mode === "all" ? "whole day" : pad(mode) + ":00 hour"}). Bus: ${bus.toFixed(1)} min. Ten-seat shuttles: ` + p10.map((p) => `${p.f} vehicles ${p.m.toFixed(1)} min${p.ref > 0 ? " with " + (100 * p.ref).toFixed(0) + "% refused" : ""}`).join("; ") + ".");
+    describe(svg, `Line chart: mean stop-to-stop minutes against fleet size (${mode === "all" ? "whole day" : pad(mode) + ":00 hour"}). Bus: ${bus.toFixed(1)} min. Ten-seat shuttles: ` + P.map((p) => `${p.f} vehicles ${p.m.toFixed(1)} min${p.ref > 0 ? " with " + (100 * p.ref).toFixed(0) + "% refused" : ""}`).join("; ") + ".");
+    return (s, dur) => {
+      wBus(s >= 0 ? 1 : 0, s >= 0 ? dur : 0);
+      wipes[10](s >= 1 ? 1 : 0, s >= 1 ? dur * 1.8 : dur / 2);
+      for (const k of caps) if (k !== 10) { wipes[k](s >= 4 ? 1 : 0, s >= 4 ? dur * 1.8 : dur / 2); vis(tLabs[k], s >= 4, dur, dur * 1.6); }
+      for (const k of caps) vis(lgItems[k], k === 10 ? s >= 1 : s >= 4, dur);
+      vis(mOk, s >= 1, dur, dur * 1.5);
+      vis(mLo, s >= 2, dur); vis(band, s >= 2, dur);
+      vis(m3, s >= 3, dur);
+    };
   }
 
-  function chartFrontier() {
-    const R = D.results, B = D.baseline; const { svg, W, H } = frame("#ch-frontier", 320); const m = { t: 26, r: 16, b: 34, l: 44 };
+  const AV_FLEET = 16; // MOT, 18 Sep 2026: "only 16 passenger vehicles, all in Punggol"
+  function unitsGeom(W) {
+    const cols = W < 520 ? 30 : 45, p = (W - 4) / cols;
+    const n = D.results.all_day_parity["10"], nb = D.baseline.buses_inside_all[D.baseline.hours.indexOf(7)];
+    const y0 = 26, y1 = y0 + Math.ceil(n / cols) * p + 36;
+    return { cols, p, n, nb, y0, y1, H: Math.round(y1 + Math.ceil(nb / cols) * p + 32) };
+  }
+  function drawUnits({ svg, W, H }) {
+    const { cols, p, n, nb, y0, y1 } = unitsGeom(W);
+    const r = Math.max(1.8, p * 0.36);
+    const cx = (i) => 2 + (i % cols) * p + p / 2, row = (i) => Math.floor(i / cols) * p + p / 2;
+    const sh = svg.append("g").selectAll("circle").data(d3.range(n)).join("circle")
+      .attr("cx", cx).attr("cy", (i) => y0 + row(i)).attr("r", r).attr("fill", tok("--sodium")).attr("opacity", 0);
+    const bu = svg.append("g").selectAll("rect").data(d3.range(nb)).join("rect")
+      .attr("x", (i) => cx(i) - r).attr("y", (i) => y1 + row(i) - r).attr("width", 2 * r).attr("height", 2 * r).attr("rx", 1)
+      .attr("fill", tok("--bus")).attr("opacity", 0);
+    const lSh = svg.append("text").attr("class", "callout").attr("x", 2).attr("y", y0 - 9).style("fill", tok("--sodium")).attr("opacity", 0).text(`${fmtInt(n)} ten-seat shuttles`);
+    const lBu = svg.append("text").attr("class", "callout").attr("x", 2).attr("y", y1 - 9).style("fill", tok("--bus")).attr("opacity", 0).text(`${fmtInt(nb)} buses inside Yishun at 07:00`);
+    const lAv = svg.append("text").attr("class", "callout").attr("x", 2).attr("y", H - 6).attr("opacity", 0)
+      .text(W < 520 ? `white: all ${AV_FLEET} of Singapore's AVs (Sep 2026)` : `white: Singapore's whole autonomous passenger fleet, ${AV_FLEET} vehicles (Sep 2026)`);
+    describe(svg, `Unit chart, one mark per vehicle: ${n} ten-seat shuttles against ${nb} buses inside Yishun at 07:00; Singapore's autonomous passenger fleet is ${AV_FLEET} vehicles.`);
+    let prev = -1;
+    return (s, dur) => {
+      const first = prev < 0 && s >= 0, firstBus = prev < 1 && s >= 1; prev = s;
+      tr(sh, dur / 2).delay((i) => (first ? (i * dur * 1.4) / n : 0))
+        .attr("opacity", (i) => (s < 0 ? 0 : s >= 2 && i >= AV_FLEET ? 0.2 : 1))
+        .attr("fill", (i) => (s >= 2 && i < AV_FLEET ? tok("--chalk") : tok("--sodium")))
+        .attr("r", (i) => (s >= 2 && i < AV_FLEET ? r * 1.25 : r));
+      tr(bu, dur / 2).delay((i) => (firstBus ? (i * dur) / nb : 0)).attr("opacity", s >= 1 ? 1 : 0);
+      vis(lSh, s >= 0, dur); vis(lBu, s >= 1, dur, dur * 0.5); vis(lAv, s >= 2, dur, dur * 0.3);
+    };
+  }
+
+  function drawKm({ svg, W, H }) {
+    const R = D.results, ref = R.reference, B = D.baseline;
+    const m = { l: 2, r: W < 520 ? 74 : 96 };
+    const groups = [
+      { title: "vehicle-km inside Yishun per weekday", rows: [["10-seat shuttles", ref.veh_km, "--sodium", fmtInt(ref.veh_km)], ["buses, all services", B.bus_km_inside_day, "--bus", fmtInt(B.bus_km_inside_day)]] },
+      { title: "riders on board per vehicle-km", rows: [["10-seat shuttles", ref.occupancy, "--sodium", ref.occupancy.toFixed(1)], ["buses (a lower bound)", R.bus_pax_per_km_lower, "--bus", `≥ ${Math.round(R.bus_pax_per_km_lower)}`]] },
+    ];
+    const gh = (H - 20) / 2;
+    const G = groups.map((grp, gi) => {
+      const g = svg.append("g").attr("transform", `translate(0,${8 + gi * gh})`).attr("opacity", 0);
+      g.append("text").attr("class", "ttl").attr("x", m.l).attr("y", 12).text(grp.title);
+      const x = d3.scaleLinear().domain([0, d3.max(grp.rows, (r) => r[1])]).range([0, W - m.l - m.r]);
+      const bars = [], vals = [];
+      grp.rows.forEach(([lab, v, c, txt], i) => {
+        const yy = 30 + i * 44;
+        g.append("text").attr("class", "lab").attr("x", m.l).attr("y", yy + 10).text(lab);
+        bars.push(g.append("rect").attr("x", m.l).attr("y", yy + 16).attr("height", 18).attr("rx", 2).attr("width", 0).attr("fill", tok(c)).datum(x(v)));
+        vals.push(g.append("text").attr("class", "callout").attr("x", m.l + 6).attr("y", yy + 30).style("fill", tok(c)).datum(x(v)).text(txt));
+      });
+      return { g, bars, vals };
+    });
+    describe(svg, `Bar chart: shuttles drive ${fmtInt(ref.veh_km)} km inside Yishun per weekday against ${fmtInt(B.bus_km_inside_day)} km by buses; they carry ${ref.occupancy.toFixed(1)} riders per vehicle-km against at least ${Math.round(R.bus_pax_per_km_lower)} for buses.`);
+    return (s, dur) => G.forEach(({ g, bars, vals }, gi) => {
+      const on = s >= gi;
+      vis(g, on, dur / 2);
+      bars.forEach((b, i) => tr(b, dur * 1.2, on ? 200 + i * 250 : 0).attr("width", (w) => (on ? w : 0)));
+      vals.forEach((t, i) => tr(t, dur * 1.2, on ? 200 + i * 250 : 0).attr("x", (w) => m.l + (on ? w : 0) + 6));
+    });
+  }
+
+  function drawFrontier({ svg, W, H }) {
+    const R = D.results, B = D.baseline; const m = { t: 26, r: 16, b: 34, l: 44 };
     const narrow = W < 500; // on phones the two value labels move into the legend below the chart
     const hrs = R.hours.filter((h) => h <= 24);
     const x = d3.scaleLinear().domain([hrs[0], hrs[hrs.length - 1]]).range([m.l, W - m.r]);
@@ -512,33 +716,41 @@
     const fixed = R.all_day_parity && R.all_day_parity["10"];
     const vals = [...Object.values(R.frontier || {}).flat(), ...B.feeder_buses_on_road, ...busAll, fixed || 0].filter((v) => v != null);
     const y = d3.scaleLinear().domain([0, d3.max(vals) * 1.1]).nice().range([H - m.b, m.t]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
+    gridY(svg, y, m, W, 5);
     const line = d3.line().defined((d) => d.v != null).x((d) => x(d.h)).y((d) => y(d.v)).curve(d3.curveStepAfter);
     const series = (arr) => hrs.map((h) => ({ h, v: arr[B.hours.indexOf(h)] }));
     const fb = series(B.feeder_buses_on_road), ab = series(busAll);
-    if (busAll.length) svg.append("path").datum(ab).attr("fill", "none").attr("stroke", tok("--bus")).attr("stroke-width", 2.2).attr("d", line);
-    svg.append("path").datum(fb).attr("fill", "none").attr("stroke", tok("--bus-light")).attr("stroke-width", 1.6).attr("stroke-dasharray", "5 4").attr("d", line);
+    const gBus = svg.append("g");
+    if (busAll.length) gBus.append("path").datum(ab).attr("fill", "none").attr("stroke", tok("--bus")).attr("stroke-width", 2.2).attr("d", line);
+    gBus.append("path").datum(fb).attr("fill", "none").attr("stroke", tok("--bus-light")).attr("stroke-width", 1.6).attr("stroke-dasharray", "5 4").attr("d", line);
+    const wBus = wipe(svg, gBus, m.l, W - m.r, false);
+    const gFix = svg.append("g").attr("opacity", 0);
     if (fixed) {
-      svg.append("line").attr("x1", x(hrs[0])).attr("x2", x(hrs[hrs.length - 1])).attr("y1", y(fixed)).attr("y2", y(fixed))
+      gFix.append("line").attr("x1", x(hrs[0])).attr("x2", x(hrs[hrs.length - 1])).attr("y1", y(fixed)).attr("y2", y(fixed))
         .attr("stroke", tok("--sodium")).attr("stroke-width", 1).attr("opacity", 0.8);
     }
+    const wFix = wipe(svg, gFix, m.l, W - m.r, false);
     const dash = { 4: "5 4", 10: null, 20: "1.5 4" };
     const hue = { 4: "--sodium-deep", 10: "--sodium", 20: "--sodium-light" };
+    const gFr = svg.append("g");
     for (const k of R.capacities) {
       const fr = (R.frontier || {})[k]; if (!fr) continue;
       const d = hrs.map((h) => ({ h, v: fr[R.hours.indexOf(h)] }));
-      svg.append("path").datum(d).attr("fill", "none").attr("stroke", tok(hue[k] || "--sodium")).attr("stroke-width", k === 10 ? 2.4 : 1.6).attr("stroke-dasharray", dash[k]).attr("d", line);
+      gFr.append("path").datum(d).attr("fill", "none").attr("stroke", tok(hue[k] || "--sodium")).attr("stroke-width", k === 10 ? 2.4 : 1.6).attr("stroke-dasharray", dash[k]).attr("d", line);
     }
+    const wFr = wipe(svg, gFr, m.l, W - m.r, false);
     // labels go on top of the lines, so their halo keeps the hourly steps off the text
-    if (fixed && !narrow) svg.append("text").attr("class", "callout").attr("x", x(hrs[hrs.length - 1])).attr("y", y(fixed) - 6).attr("text-anchor", "end")
-      .text(`fixed fleet: ${fmtInt(fixed)}`);
+    const lFix = fixed && !narrow ? svg.append("text").attr("class", "callout").attr("x", x(hrs[hrs.length - 1])).attr("y", y(fixed) - 6).attr("text-anchor", "end")
+      .attr("opacity", 0).text(`fixed fleet: ${fmtInt(fixed)}`) : null;
     svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 12).text("vehicles");
     axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat(hourLabel));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5));
     const pk = R.frontier_peak && R.frontier_peak["10"];
     const f10 = (R.frontier || {})["10"] || [];
     describe(svg, `Step chart of vehicles needed by hour if the fleet could change size every hour. Ten-seat shuttles: ` + hrs.map((h) => `${pad(h % 24)}:00 ${f10[R.hours.indexOf(h)] ?? "n/a"}`).join(", ") + `. Fixed fleet all day: ${fixed}. Buses of all services inside Yishun peak at about ${d3.max(ab, (d) => d.v)}; feeder buses on the road at about ${d3.max(fb, (d) => d.v)}.`);
-    if (pk && !narrow) svg.append("text").attr("class", "callout").attr("x", x(pk.hour + 2) + 6).attr("y", y(Math.max(pk.fleet, fixed || 0)) - 8).text(`hourly peak: ${pk.fleet} at ${pad(pk.hour)}:00`);
+    const lPk = pk && !narrow ? svg.append("text").attr("class", "callout").attr("x", x(pk.hour + 2) + 6).attr("y", y(Math.max(pk.fleet, fixed || 0)) - 8).attr("opacity", 0).text(`hourly peak: ${pk.fleet} at ${pad(pk.hour)}:00`) : null;
+    const v12 = f10[R.hours.indexOf(12)];
+    const lMid = v12 != null ? svg.append("text").attr("class", "callout").attr("x", x(12.5)).attr("y", y(v12) - 8).attr("text-anchor", "middle").attr("opacity", 0).text(`${fmtInt(v12)} at noon`) : null;
     const leg = document.getElementById("frontier-legend");
     if (leg) {
       const peak = narrow && pk ? ` (peak ${fmtInt(pk.fleet)} at ${pad(pk.hour)}:00)` : "";
@@ -546,123 +758,255 @@
         ["--sodium", "solid thin", `fixed 10-seat fleet, all day${narrow && fixed ? `: ${fmtInt(fixed)}` : ""}`], ["--bus", "solid", "buses inside Yishun"], ["--bus-light", "dashed", "feeder buses on the road"]];
       leg.innerHTML = items.map(([c, st, lab]) => `<span><i style="border-top:${st.includes("thin") ? 1 : 2}px ${st.split(" ")[0]} var(${c})"></i>${lab}</span>`).join("");
     }
+    return (s, dur) => {
+      wBus(s >= 0 ? 1 : 0, s >= 0 ? dur * 1.6 : 0);
+      vis(gFix, s >= 0, dur, dur); wFix(s >= 0 ? 1 : 0, s >= 0 ? dur : 0);
+      vis(lFix, s >= 0, dur, dur * 1.6);
+      wFr(s >= 1 ? 1 : 0, s >= 1 ? dur * 1.8 : dur / 2);
+      vis(lPk, s >= 1, dur, dur * 1.2); vis(lMid, s >= 1, dur, dur * 1.6);
+    };
   }
 
-  function chartKerb() {
-    const R = D.results.reference; const { svg, W, H } = frame("#ch-kerb", 300); const m = { t: 20, r: W < 500 ? 78 : 96, b: 34, l: 40 };
+  function drawKerb({ svg, W, H }) {
+    const R = D.results.reference; const m = { t: 22, r: W < 500 ? 78 : 96, b: 34, l: 40 };
     const hrs = D.results.hours.filter((h) => h <= 24);
     const x = d3.scaleBand().domain(hrs).range([m.l, W - m.r]).padding(0.15);
     const st = Object.keys(R.kerb || {});
-    if (!st.length) return;
+    if (!st.length) return () => {};
     const y = d3.scaleLinear().domain([0, d3.max(st.flatMap((s) => R.kerb[s])) * 1.1]).nice().range([H - m.b, m.t]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
+    gridY(svg, y, m, W, 5);
     const colors = { Yishun: tok("--sodium"), Khatib: tok("--rider"), Springleaf: tok("--mute") };
-    for (const s of st) {
-      const d = hrs.map((h) => ({ h, v: R.kerb[s][D.results.hours.indexOf(h)] }));
-      svg.append("path").datum(d).attr("fill", "none").attr("stroke", colors[s] || tok("--chalk")).attr("stroke-width", s === "Yishun" ? 2.4 : 1.6)
-        .attr("d", d3.line().x((p) => x(p.h) + x.bandwidth() / 2).y((p) => y(p.v || 0)));
-    }
+    const G = {};
     // direct labels at the right, spread so they never overlap
     const ends = st.map((s) => ({ s, v: R.kerb[s][D.results.hours.indexOf(hrs[hrs.length - 1])] || 0 })).sort((a, b) => b.v - a.v);
-    let lastY = -1e9;
-    for (const e of ends) {
-      let yy = Math.max(y(e.v) + 4, lastY + 14); lastY = yy;
-      svg.append("text").attr("class", "lab").style("fill", colors[e.s] || tok("--chalk")).attr("x", W - m.r + 6).attr("y", yy).text(W < 500 ? e.s : `${e.s} MRT`);
+    const labY = {}; let lastY = -1e9;
+    for (const e of ends) { const yy = Math.max(y(e.v) + 4, lastY + 14); lastY = yy; labY[e.s] = yy; }
+    for (const s of st) {
+      const d = hrs.map((h) => ({ h, v: R.kerb[s][D.results.hours.indexOf(h)] }));
+      const g = svg.append("g");
+      g.append("path").datum(d).attr("fill", "none").attr("stroke", colors[s] || tok("--chalk")).attr("stroke-width", s === "Yishun" ? 2.4 : 1.6)
+        .attr("d", d3.line().x((p) => x(p.h) + x.bandwidth() / 2).y((p) => y(p.v || 0)));
+      g.append("text").attr("class", "lab").style("fill", colors[s] || tok("--chalk")).attr("x", W - m.r + 6).attr("y", labY[s]).text(W < 500 ? s : `${s} MRT`);
+      G[s] = wipe(svg, g, m.l, W, false);
     }
+    const ys = R.kerb.Yishun || R.kerb[st[0]], yi = d3.maxIndex(ys);
+    const peak = svg.append("g").attr("opacity", 0);
+    const px = x(hrs[yi]) + x.bandwidth() / 2, py = y(ys[yi]);
+    peak.append("circle").attr("cx", px).attr("cy", py).attr("r", 6).attr("fill", "none").attr("stroke", tok("--sodium")).attr("stroke-width", 1.8);
+    peak.append("text").attr("class", "callout").attr("x", px + (px > W * 0.5 ? -10 : 10)).attr("y", py - 10).attr("text-anchor", px > W * 0.5 ? "end" : "start")
+      .text(`${Math.round(ys[yi])} at once, ${pad(hrs[yi] % 24)}:00`);
     axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).tickValues(hrs.filter((h) => h % 3 === 0)).tickFormat(hourLabel));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5));
-    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 6).text("shuttles stopped at once");
+    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 8).text("shuttles stopped at once");
     describe(svg, "Line chart of the most shuttles stopped at once, by hour: " + st.map((s) => `${s} MRT up to ${d3.max(R.kerb[s])}`).join(", ") + ".");
+    return (s, dur) => {
+      for (const k of st) { const on = k === "Yishun" ? s >= 0 : s >= 1; G[k](on ? 1 : 0, on ? dur * 1.8 : dur / 2); }
+      vis(peak, s >= 0, dur, dur * 1.6);
+    };
   }
 
-  function chartWho() {
-    const R = D.results.who; const { svg, W, H } = frame("#ch-who", 300);
+  function drawKerbCap({ svg, W, H }) {
+    const K = D.results.kerb_experiment || [], ref = D.results.reference.fleet;
+    const key = (r) => (r.berths === -1 ? 1e9 : r.berths);
+    const rows = K.filter((r) => r.fleet === ref).sort((a, b) => key(b) - key(a));
+    if (!rows.length) return () => {};
+    const moreF = d3.min(K.filter((r) => r.fleet > ref), (r) => r.fleet);
+    const more = new Map(K.filter((r) => r.fleet === moreF).map((r) => [r.berths, r]));
+    const narrow = W < 500, m = { t: 30, r: 12, b: 44, l: 40 };
+    const lab = (b) => (b === -1 ? (narrow ? "none" : "no limit") : String(b));
+    const x = d3.scaleBand().domain(rows.map((r) => lab(r.berths))).range([m.l, W - m.r]).padding(0.28);
+    const ymax = 45, y = d3.scaleLinear().domain([0, ymax]).range([H - m.b, m.t]);
+    gridY(svg, y, m, W, 5);
+    const bw = moreF ? x.bandwidth() * 0.58 : x.bandwidth();
+    const bus = rows[0].h7_bus_min;
+    const G = rows.map((r) => {
+      const x0 = x(lab(r.berths)), c = r.h7_ok ? tok("--good") : tok("--bad");
+      const h = y(0) - y(Math.min(ymax, r.h7_total_min));
+      const bar = svg.append("rect").attr("x", x0).attr("width", bw).attr("y", y(0)).attr("height", 0).attr("fill", c).attr("opacity", 0.85).datum(h);
+      // values sit inside the bar where it is wide enough, above it on phones
+      const val = svg.append("text").attr("x", x0 + bw / 2).attr("y", narrow ? y(0) - h - 5 : y(0) - h + 15).attr("text-anchor", "middle").attr("opacity", 0)
+        .attr("class", narrow ? "callout" : null).style("font-size", narrow ? "11px" : "12px")
+        .style("fill", narrow ? null : tok("--night")).style("font-family", "var(--font-data)").style("font-weight", narrow ? null : 600)
+        .text(r.h7_total_min > ymax ? `${Math.round(r.h7_total_min)}↑` : r.h7_total_min.toFixed(1));
+      const o = more.get(r.berths);
+      let ghost = null;
+      if (o) {
+        const gh = y(0) - y(Math.min(ymax, o.h7_total_min));
+        ghost = svg.append("rect").attr("x", x0 + bw + 2).attr("width", x.bandwidth() - bw - 2).attr("y", y(0) - gh).attr("height", gh)
+          .attr("fill", "none").attr("stroke", o.h7_ok ? tok("--good") : tok("--bad")).attr("stroke-width", 1.2).attr("opacity", 0);
+      }
+      return { r, bar, val, ghost };
+    });
+    const gBus = svg.append("g").attr("opacity", 0);
+    gBus.append("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", y(bus)).attr("y2", y(bus)).attr("stroke", tok("--bus")).attr("stroke-width", 2);
+    gBus.append("text").attr("class", "callout").attr("x", m.l + 4).attr("y", y(bus) - 6).style("fill", tok("--bus")).text(`bus ${bus.toFixed(1)} min`);
+    axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x));
+    axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5));
+    svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 6).attr("text-anchor", "end").text(narrow ? "shuttles allowed at once per station" : "shuttles allowed to board or alight at once, per station");
+    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 16).text("min, 07:00 hour");
+    const kg = svg.append("g").attr("transform", `translate(${W - m.r - (narrow ? 210 : 260)},${m.t - 20})`).attr("opacity", 0);
+    if (moreF) {
+      kg.append("rect").attr("x", 0).attr("y", -9).attr("width", 10).attr("height", 10).attr("fill", tok("--mute"));
+      kg.append("text").attr("class", "lab").attr("x", 15).attr("y", 0).text(`${fmtInt(ref)} shuttles`);
+      kg.append("rect").attr("x", narrow ? 105 : 125).attr("y", -9).attr("width", 10).attr("height", 10).attr("fill", "none").attr("stroke", tok("--mute"));
+      kg.append("text").attr("class", "lab").attr("x", narrow ? 120 : 140).attr("y", 0).text(`${fmtInt(moreF)} shuttles`);
+    }
+    describe(svg, `Bar chart of mean 07:00 stop-to-stop minutes by kerb limit with ${ref} shuttles: ` + rows.map((r) => `${lab(r.berths)} ${r.h7_total_min.toFixed(1)} min`).join(", ") + `; bus ${bus.toFixed(1)} min.`);
+    return (s, dur) => {
+      vis(gBus, s >= 0, dur);
+      let k = 0;
+      for (const { r, bar, val, ghost } of G) {
+        const on = r.h7_ok ? s >= 0 : s >= 1, d = on ? 150 + 140 * k++ : 0;
+        tr(bar, dur, d).attr("y", (h) => (on ? y(0) - h : y(0))).attr("height", (h) => (on ? h : 0));
+        vis(val, on, dur, d + dur * 0.6);
+        vis(ghost, s >= 1, dur, dur * 1.2);
+      }
+      vis(kg, s >= 1, dur, dur);
+    };
+  }
+
+  function drawWho({ svg, W, H }) {
+    const R = D.results.who;
     const narrow = W < 500; // on phones the unit note gets its own line between the axis and the key
-    const m = { t: 16, r: 16, b: narrow ? 64 : 50, l: 44 };
+    const m = { t: 22, r: 16, b: narrow ? 64 : 50, l: 44 };
     const labels = R.bands_m.slice(0, -1).map((b, i) => `${b / 1000}–${R.bands_m[i + 1] / 1000}${narrow ? "" : " km"}`);
     if (narrow) svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 30).attr("text-anchor", "end").text("straight-line km");
     const x0 = d3.scaleBand().domain(labels).range([m.l, W - m.r]).padding(0.22);
     const x1 = d3.scaleBand().domain(["hub", "estate"]).range([0, x0.bandwidth()]).padding(0.08);
     const y = d3.scaleLinear().domain([0, 1]).range([H - m.b, m.t]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
+    gridY(svg, y, m, W, 5);
     const col = { hub: tok("--sodium"), estate: tok("--rider") };
+    const bars = [];
     labels.forEach((lab, i) => {
       for (const k of ["hub", "estate"]) {
         const v = R[k][i]; if (v == null) continue;
-        svg.append("rect").attr("x", x0(lab) + x1(k)).attr("width", x1.bandwidth()).attr("y", y(v)).attr("height", y(0) - y(v)).attr("fill", col[k]).attr("opacity", 0.85);
+        bars.push({ i, k, v, el: svg.append("rect").attr("x", x0(lab) + x1(k)).attr("width", x1.bandwidth()).attr("y", y(0)).attr("height", 0).attr("fill", col[k]).attr("opacity", 0.85) });
       }
     });
+    // the shortest band, all rides together, for the highlight
+    const n0 = (R.n_hub[0] || 0) + (R.n_estate[0] || 0);
+    const short = n0 ? ((R.hub[0] || 0) * R.n_hub[0] + (R.estate[0] || 0) * R.n_estate[0]) / n0 : null;
+    const hl = short != null ? svg.append("text").attr("class", "callout").attr("x", x0(labels[0]) + x0.bandwidth() / 2).attr("y", y(Math.max(R.hub[0], R.estate[0])) - 8)
+      .attr("text-anchor", "middle").attr("opacity", 0).text(`${Math.round(100 * short)}%`) : null;
     axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x0));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")));
+    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", m.t - 8).text("faster by shuttle");
     const key = svg.append("g").attr("transform", `translate(${m.l},${H - 10})`);
-    [["to or from a station", tok("--sodium")], ["within the estates", tok("--rider")]].forEach(([lab, col], i) => {
+    [["to or from a station", col.hub], ["within the estates", col.estate]].forEach(([lab, c], i) => {
       const g = key.append("g").attr("transform", `translate(${i * 170},0)`);
-      g.append("rect").attr("x", 0).attr("y", -9).attr("width", 10).attr("height", 10).attr("fill", col);
+      g.append("rect").attr("x", 0).attr("y", -9).attr("width", 10).attr("height", 10).attr("fill", c);
       g.append("text").attr("class", "lab").attr("x", 15).attr("y", 0).text(lab);
     });
     describe(svg, "Bar chart: share of rides faster by shuttle than by bus, by straight-line length. To or from a station: " + labels.map((l, i) => `${l} ${Math.round(100 * (R.hub[i] || 0))}%`).join(", ") + ". Within estates: " + labels.map((l, i) => `${l} ${Math.round(100 * (R.estate[i] || 0))}%`).join(", ") + ".");
+    let prev = -1;
+    return (s, dur) => {
+      const first = prev < 0 && s >= 0; prev = s;
+      for (const b of bars) {
+        tr(b.el, dur, first ? b.i * 140 + (b.k === "estate" ? 70 : 0) : 0)
+          .attr("y", s >= 0 ? y(b.v) : y(0)).attr("height", s >= 0 ? y(0) - y(b.v) : 0)
+          .attr("opacity", s >= 1 && b.i !== 0 ? 0.25 : 0.85);
+      }
+      vis(hl, s >= 1, dur, dur * 0.5);
+    };
   }
 
-  function chartCal() {
-    const P = D.calpts; const { svg, W, H } = frame("#ch-cal", 300); const m = { t: 16, r: 16, b: 40, l: 44 };
-    const mx = d3.max(P.points, (p) => Math.max(p[0], p[1])) / 60;
-    const x = d3.scaleLinear().domain([0, Math.ceil(mx)]).range([m.l, W - m.r]);
-    const y = d3.scaleLinear().domain([0, Math.ceil(mx)]).range([H - m.b, m.t]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
-    svg.append("line").attr("x1", x(0)).attr("y1", y(0)).attr("x2", x(Math.ceil(mx))).attr("y2", y(Math.ceil(mx))).attr("stroke", tok("--mute")).attr("stroke-dasharray", "3 4");
-    svg.append("g").selectAll("circle").data(P.points).join("circle").attr("cx", (p) => x(p[0] / 60)).attr("cy", (p) => y(p[1] / 60))
-      .attr("r", (p) => Math.min(4, 1 + Math.sqrt(p[2]) / 6)).attr("fill", tok("--bus")).attr("opacity", 0.45);
+  function drawCal({ svg, W, H }) {
+    const P = D.calpts; const m = { t: 16, r: 16, b: 40, l: 44 };
+    const mx = Math.ceil(d3.max(P.points, (p) => Math.max(p[0], p[1])) / 60);
+    const x = d3.scaleLinear().domain([0, mx]).range([m.l, W - m.r]);
+    const y = d3.scaleLinear().domain([0, mx]).range([H - m.b, m.t]);
+    gridY(svg, y, m, W, 5);
+    const gd = svg.append("g");
+    gd.append("line").attr("x1", x(0)).attr("y1", y(0)).attr("x2", x(mx)).attr("y2", y(mx)).attr("stroke", tok("--mute")).attr("stroke-dasharray", "3 4");
+    const wd = wipe(svg, gd, m.l, W - m.r, false);
+    const rnd = d3.randomLcg(7);
+    const dots = svg.append("g").selectAll("circle").data(P.points.map((p) => ({ p, d: rnd() }))).join("circle")
+      .attr("cx", (o) => x(o.p[0] / 60)).attr("cy", (o) => y(o.p[1] / 60)).attr("r", 0).attr("fill", tok("--bus")).attr("opacity", 0.45);
     axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`), d3.axisBottom(x).ticks(6));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(6));
     svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 6).attr("text-anchor", "end").text("observed median running time (min)");
     svg.append("text").attr("class", "lab").attr("x", m.l + 6).attr("y", m.t + 4).text("modelled (min)");
     describe(svg, `Scatter plot of modelled against observed bus running times for ${P.points.length} stop sequences; points lie close to the diagonal.`);
+    return (s, dur) => {
+      tr(dots, dur / 2).delay((o) => (s >= 0 ? o.d * dur * 1.6 : 0)).attr("r", (o) => (s >= 0 ? Math.min(4, 1 + Math.sqrt(o.p[2]) / 6) : 0));
+      wd(s >= 0 ? 1 : 0, s >= 0 ? dur * 2.2 : 0);
+    };
   }
 
-  function chartGps() {
-    const G = D.results.gps_check; if (!G || !G.by_hour) return;
+  function drawGps({ svg, W, H }) {
+    const G = D.results.gps_check; if (!G || !G.by_hour) return () => {};
     const rows = Object.entries(G.by_hour).map(([h, b]) => ({ h: +h, ...b })).filter((r) => r.n_pairs >= 20).sort((a, b) => a.h - b.h);
-    if (!rows.length) return;
-    const { svg, W, H } = frame("#ch-gps", 260); const m = { t: 30, r: 16, b: 34, l: 44 };
+    if (!rows.length) return () => {};
+    const m = { t: 30, r: 16, b: 34, l: 44 };
     const hrs = d3.range(10, 20);
     const x = d3.scaleBand().domain(hrs).range([m.l, W - m.r]).padding(0.3);
     const lo = Math.min(0.8, d3.min(rows, (r) => r.pooled_ratio_ci[0])), hi = Math.max(1.2, d3.max(rows, (r) => r.pooled_ratio_ci[1]));
     const y = d3.scaleLinear().domain([lo, hi]).nice().range([H - m.b, m.t]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
+    gridY(svg, y, m, W, 5);
     svg.append("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", y(1)).attr("y2", y(1)).attr("stroke", tok("--mute")).attr("stroke-dasharray", "3 4");
     svg.append("rect").attr("x", x(10) - 4).attr("width", x(12) + x.bandwidth() - x(10) + 8).attr("y", m.t).attr("height", H - m.b - m.t)
       .attr("fill", tok("--bus")).attr("opacity", 0.07);
     svg.append("text").attr("class", "lab").attr("x", x(10)).attr("y", m.t + 12).text("fitted here");
     const g = svg.append("g").selectAll("g").data(rows).join("g").attr("transform", (r) => `translate(${x(r.h) + x.bandwidth() / 2},0)`);
-    g.append("line").attr("y1", (r) => y(r.pooled_ratio_ci[0])).attr("y2", (r) => y(r.pooled_ratio_ci[1])).attr("stroke", tok("--bus")).attr("stroke-width", 1.6);
-    g.append("circle").attr("cy", (r) => y(r.pooled_ratio)).attr("r", 4).attr("fill", tok("--bus"))
-      .append("title").text((r) => `${pad(r.h)}:00: ${r.pooled_ratio.toFixed(2)} (${r.pooled_ratio_ci[0].toFixed(2)}–${r.pooled_ratio_ci[1].toFixed(2)}), ${r.n_pairs} pairs`);
+    const ci = g.append("line").attr("y1", (r) => y(r.pooled_ratio)).attr("y2", (r) => y(r.pooled_ratio)).attr("stroke", tok("--bus")).attr("stroke-width", 1.6);
+    const dot = g.append("circle").attr("cy", y(1)).attr("r", 4).attr("fill", tok("--bus")).attr("opacity", 0);
+    dot.append("title").text((r) => `${pad(r.h)}:00: ${r.pooled_ratio.toFixed(2)} (${r.pooled_ratio_ci[0].toFixed(2)}–${r.pooled_ratio_ci[1].toFixed(2)}), ${r.n_pairs} pairs`);
     axis(svg.append("g").attr("transform", `translate(0,${H - m.b})`),
       d3.axisBottom(x).tickValues(W < 500 ? hrs.filter((h) => h % 2 === 0) : hrs).tickFormat((h) => `${pad(h)}:00`));
     axis(svg.append("g").attr("transform", `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickFormat(d3.format(".2f")));
     svg.append("text").attr("class", "lab").attr("x", 4).attr("y", 12).text("observed ÷ model");
     describe(svg, "Dot plot of observed over modelled bus running time by hour: " + rows.map((r) => `${pad(r.h)}:00 ${r.pooled_ratio.toFixed(2)}`).join(", ") + ".");
+    return (s, dur) => {
+      const on = s >= 0;
+      tr(dot, dur, 0).delay((r, i) => (on ? i * 110 : 0)).attr("opacity", on ? 1 : 0).attr("cy", (r) => (on ? y(r.pooled_ratio) : y(1)));
+      tr(ci, dur, 0).delay((r, i) => (on ? i * 110 + dur * 0.6 : 0))
+        .attr("y1", (r) => y(on ? r.pooled_ratio_ci[0] : r.pooled_ratio)).attr("y2", (r) => y(on ? r.pooled_ratio_ci[1] : r.pooled_ratio));
+    };
+  }
+
+  // ------------------------------------------------------------------ tables
+  const numIn = (t) => { const m = t.match(/-?[\d,]*\.?\d+/); return m ? +m[0].replace(/,/g, "") : null; };
+  const mbar = (w, c) => `<i class="mbar" style="--w:${Math.max(1.5, w).toFixed(1)}%;background:var(${c})"></i>`;
+
+  function decorateOps() {
+    const tb = document.querySelector("#ops tbody"); if (!tb) return;
+    [...tb.rows].forEach((row, i) => {
+      row.style.setProperty("--i", i);
+      const [, a, b] = row.cells, va = numIn(a.textContent), vb = numIn(b.textContent);
+      if (va == null || vb == null) return; // bars only where both modes have a figure
+      const mx = Math.max(va, vb) || 1;
+      a.insertAdjacentHTML("beforeend", mbar((100 * va) / mx, "--sodium"));
+      b.insertAdjacentHTML("beforeend", mbar((100 * vb) / mx, "--bus"));
+    });
+    tb.closest("table").classList.add("reveal");
   }
 
   function renderSensitivity() {
     const S = D.results.sensitivity; if (!S || !S.length) return;
     const base = S.find((r) => r.id === "base");
     const fav = { 1: "bus", "-1": "shuttle", 0: "either" };
+    // each row's fleet on a shared scale; markers start at the base case and slide to their value
+    const known = S.map((r) => r.parity_fleet).filter((v) => v != null);
+    const lo = d3.min(known) - 25, hi = d3.max(known) + 25, at = (v) => (v == null ? 100 : (100 * (v - lo)) / (hi - lo));
+    const b0 = base && base.parity_fleet != null ? at(base.parity_fleet) : 50;
     const tb = document.querySelector("#sens-table tbody");
-    tb.innerHTML = S.map((r) => {
+    tb.innerHTML = S.map((r, i) => {
       const n = r.parity_fleet == null ? "more than 800" : fmtInt(r.parity_fleet);
       const diff = r.parity_fleet != null && base && base.parity_fleet != null && r.id !== "base"
         ? ` <span style="color:var(--faint)">(${r.parity_fleet - base.parity_fleet >= 0 ? "+" : ""}${r.parity_fleet - base.parity_fleet})</span>` : "";
       const d = r.id === "base" ? "" : fav[String(r.direction ?? 0)] || "either";
-      return `<tr><td>${r.label}</td><td>${d}</td><td class="n">${n}${diff}</td><td class="n">${r.bus_day_min != null ? r.bus_day_min.toFixed(1) + " min" : "—"}</td></tr>`;
+      const atBase = r.id === "base" || (base && r.parity_fleet === base.parity_fleet);
+      const strip = `<span class="strip" aria-hidden="true" style="--b:${b0.toFixed(1)}%;--to:${at(r.parity_fleet).toFixed(1)}%"><i class="base"></i><b class="${atBase ? "at-base" : ""}"></b></span>`;
+      return `<tr style="--i:${i}"><td>${r.label}</td><td>${d}</td><td class="n">${n}${diff}${strip}</td><td class="n">${r.bus_day_min != null ? r.bus_day_min.toFixed(1) + " min" : "—"}</td></tr>`;
     }).join("");
+    tb.closest("table").classList.add("reveal");
     // what moves the threshold and what does not, read from the table itself
     const note = document.getElementById("sens-note");
     if (note && base && base.parity_fleet != null) {
       const bus = S.filter((r) => r.id.startsWith("bus_")), others = S.filter((r) => r.id !== "base" && !r.id.startsWith("bus_"));
-      const still = bus.length && bus.every((r) => r.parity_fleet === base.parity_fleet);
+      const allBus = bus.length && bus.every((r) => r.parity_fleet === base.parity_fleet);
       const moved = others.filter((r) => r.parity_fleet !== base.parity_fleet).map((r) => r.parity_fleet).filter((v) => v != null);
-      let t = still ? `None of the ${bus.length} bus assumptions moves the threshold: below it, the morning queue builds whatever the bus offers. ` : "";
+      let t = allBus ? `None of the ${bus.length} bus assumptions moves the threshold: below it, the morning queue builds whatever the bus offers. ` : "";
       if (moved.length) t += `Road speeds, shuttle stop time, the dispatcher and demand do, between ${fmtInt(d3.min(moved))} and ${fmtInt(d3.max(moved))} vehicles.`;
       note.textContent = t;
       const ex = D.results.sensitivity_excluded || [], exEl = document.getElementById("sens-excl");
@@ -673,8 +1017,12 @@
   function renderSubzones() {
     const W = D.results.who; const rows = (W && W.by_subzone) || [];
     const tb = document.querySelector("#who-sz tbody"); if (!tb || !rows.length) return;
-    tb.innerHTML = rows.map((r) => `<tr><td>${r.subzone}</td><td class="n">${fmtInt(r.rides_per_day)}</td><td class="n">${(100 * r.share65).toFixed(0)}%</td>`
-      + `<td class="n">${(100 * r.share_faster).toFixed(0)}%</td><td class="n">${r.mean_gain_min.toFixed(1)} min</td></tr>`).join("");
+    const mr = d3.max(rows, (r) => r.rides_per_day) || 1, mg = d3.max(rows, (r) => r.mean_gain_min) || 1, ma = d3.max(rows, (r) => r.share65) || 1;
+    tb.innerHTML = rows.map((r, i) => `<tr style="--i:${i}"><td>${r.subzone}</td><td class="n">${fmtInt(r.rides_per_day)}${mbar((100 * r.rides_per_day) / mr, "--rider")}</td>`
+      + `<td class="n">${(100 * r.share65).toFixed(0)}%${mbar((100 * r.share65) / ma, "--mute")}</td>`
+      + `<td class="n">${(100 * r.share_faster).toFixed(0)}%${mbar(100 * r.share_faster, "--sodium")}</td>`
+      + `<td class="n">${r.mean_gain_min.toFixed(1)} min${mbar((100 * r.mean_gain_min) / mg, "--sodium")}</td></tr>`).join("");
+    tb.closest("table").classList.add("reveal");
     if (W.subzone_rho_65 != null) {
       const rho = W.subzone_rho_65, p = W.subzone_rho_p;
       const clear = p != null && p < 0.05;
@@ -683,21 +1031,28 @@
     }
   }
 
-  function renderKerbExperiment() {
-    const K = D.results.kerb_experiment; if (!K || !K.length) return;
+  // the kerb test, read from the experiment rows: the tightest limit that still keeps up and the
+  // loosest that does not, plus the larger fleet at that limit
+  function kerbFacts() {
+    const K = D.results.kerb_experiment; if (!K || !K.length) return null;
     const ref = D.results.reference.fleet;
-    const rows = K.filter((r) => r.fleet === ref).sort((a, b) => (b.berths === -1 ? 1e9 : b.berths) - (a.berths === -1 ? 1e9 : a.berths));
-    const free = rows.find((r) => r.berths === -1);
-    const tight = rows.filter((r) => r.berths !== -1);
-    if (!free || !tight.length) return;
+    const rows = K.filter((r) => r.fleet === ref);
+    const free = rows.find((r) => r.berths === -1), tight = rows.filter((r) => r.berths !== -1);
+    if (!free || !tight.length) return null;
     const fail = tight.filter((r) => !r.h7_ok).sort((a, b) => b.berths - a.berths)[0];
     const pass = tight.filter((r) => r.h7_ok).sort((a, b) => a.berths - b.berths)[0];
+    const more = fail && K.find((r) => r.fleet > ref && r.berths === fail.berths);
+    return { ref, free, pass, fail, more: more && more.h7_total_min > fail.h7_total_min ? more : null };
+  }
+
+  function renderKerbExperiment() {
+    const k = kerbFacts(); if (!k) return;
+    const { ref, free, pass, fail, more } = k;
     let txt = `Capping the kerb shows how much it matters. With ${fmtInt(ref)} shuttles and no limit, the 07:00 hour averages ${free.h7_total_min.toFixed(1)} min stop to stop (bus ${free.h7_bus_min.toFixed(1)}).`;
     if (pass) txt += ` Limiting each station to ${pass.berths} shuttles boarding at once still keeps up (${pass.h7_total_min.toFixed(1)} min; ${Math.round(100 * pass.peak_queued_share)}% of station stops queue, on average ${Math.round(pass.peak_queue_wait_mean_s)} s).`;
     if (fail) {
       txt += ` With a limit of ${fail.berths}, queues at the kerb push the 07:00 hour to ${fail.h7_total_min.toFixed(1)} min and the fleet no longer matches the bus.`;
-      const more = K.find((r) => r.fleet > ref && r.berths === fail.berths);
-      if (more && more.h7_total_min > fail.h7_total_min) txt += ` Adding vehicles does not help: ${fmtInt(more.fleet)} shuttles with the same kerb take ${more.h7_total_min.toFixed(1)} min, because the extra vehicles queue too.`;
+      if (more) txt += ` Adding vehicles does not help: ${fmtInt(more.fleet)} shuttles with the same kerb take ${more.h7_total_min.toFixed(1)} min, because the extra vehicles queue too.`;
     }
     document.getElementById("kerb-exp-text").textContent = txt;
   }
@@ -706,6 +1061,29 @@
   function fillNumbers() {
     const R = D.results, cal = D.baseline.calibration || {}, v = R.numbers || {};
     for (const el of document.querySelectorAll("[data-v]")) { const k = el.dataset.v; if (v[k] != null) el.textContent = v[k]; }
+    // figures the captions quote that the pipeline does not format: read from the same data
+    const c = {};
+    const hrs = D.demand.hours, rides = D.demand.rides_by_hour, pk = d3.maxIndex(rides);
+    c.peak_rides = fmtInt(rides[pk]); c.peak_hour = `${pad(hrs[pk])}:00`;
+    if (hrs.includes(18)) c.pm_rides = fmtInt(rides[hrs.indexOf(18)]);
+    const w = R.who;
+    if (w) {
+      const share = (idx) => {
+        let n = 0, f = 0;
+        for (const i of idx) { n += w.n_hub[i] + w.n_estate[i]; f += w.hub[i] * w.n_hub[i] + w.estate[i] * w.n_estate[i]; }
+        return n ? `${Math.round((100 * f) / n)}%` : null;
+      };
+      c.short_share = share([0]);
+      c.long_share = share(w.bands_m.slice(0, -1).map((b, i) => i).filter((i) => w.bands_m[i] >= 1500));
+    }
+    const k = kerbFacts();
+    if (k) {
+      c.kerb_bus = `${k.free.h7_bus_min.toFixed(1)} min`;
+      if (k.pass) { c.kerb_pass_b = String(k.pass.berths); c.kerb_pass_t = `${k.pass.h7_total_min.toFixed(1)} min`; }
+      if (k.fail) { c.kerb_fail_b = String(k.fail.berths); c.kerb_fail_t = `${k.fail.h7_total_min.toFixed(1)} min`; }
+      if (k.more) { c.kerb_more_f = fmtInt(k.more.fleet); c.kerb_more_t = `${k.more.h7_total_min.toFixed(1)} min`; }
+    }
+    for (const el of document.querySelectorAll("[data-c]")) { const x = c[el.dataset.c]; if (x != null) el.textContent = x; }
     if (R.who) {
       document.getElementById("who-text").textContent = R.who.text;
       if (R.who.headline) document.getElementById("who-h2").textContent = R.who.headline;
@@ -720,15 +1098,106 @@
     }
   }
 
-  let cliffMode = 7;
+  // a number counts up from zero to the value it already shows, keeping its format
+  function countUp(el, dur) {
+    const txt = el.dataset.final || el.textContent; el.dataset.final = txt;
+    const m = txt.match(/\d[\d,]*(\.\d+)?/);
+    if (!m || !dur) { el.textContent = txt; return; }
+    const raw = m[0], dec = (raw.split(".")[1] || "").length, target = +raw.replace(/,/g, "");
+    const f = d3.format(`${raw.includes(",") ? "," : ""}.${dec}f`);
+    d3.select(el).transition().duration(dur).ease(d3.easeCubicOut)
+      .tween("text", () => (t) => { el.textContent = txt.slice(0, m.index) + f(target * t) + txt.slice(m.index + raw.length); });
+  }
+
+  // ------------------------------------------------------------------ scroll story
+  // Each .scrolly holds one pinned graphic and a column of steps. The step whose caption has passed
+  // the trigger line names a figure and a state; scrolling back up runs the states in reverse.
+  const stories = [];
+  function storyIndex(st) {
+    const vh = window.innerHeight;
+    let line;
+    if (window.innerWidth <= 900) {
+      // phones: the chart is pinned at the top, so each caption gets the space below it, and
+      // takes over once its top is a third of the way up that space
+      const gh = st.sc.querySelector(".graphic").offsetHeight;
+      st.sc.style.setProperty("--step-h", `${Math.max(0.3 * vh, vh - gh)}px`);
+      line = vh - 0.4 * Math.max(0, vh - gh);
+    } else line = 0.62 * vh;
+    let idx = -1;
+    st.steps.forEach((s, i) => {
+      const r = (s.firstElementChild || s).getBoundingClientRect();
+      if ((window.innerWidth <= 900 ? r.top : r.top + r.height / 2) < line) idx = i;
+    });
+    return idx;
+  }
+  function applyStep(st, idx, dur) {
+    const step = st.steps[Math.max(0, idx)], fig = step.dataset.fig, s = idx < 0 ? -1 : +step.dataset.s;
+    st.steps.forEach((el, i) => { el.classList.toggle("is-active", i === idx); el.classList.toggle("is-past", i < idx); });
+    for (const f of st.figs) {
+      const on = f.dataset.fig === fig;
+      f.classList.toggle("on", on);
+      // a figure that has faded out goes back to its empty frame, so it draws again next time
+      if (!on && CH[f.dataset.fig] && CH[f.dataset.fig].state !== -1) {
+        clearTimeout(f._reset);
+        f._reset = setTimeout(() => { if (!f.classList.contains("on")) CH[f.dataset.fig].set(-1, 0); }, 550);
+      }
+    }
+    if (CH[fig]) { clearTimeout(st.figs.find((f) => f.dataset.fig === fig)._reset); CH[fig].set(s, dur); }
+    if (idx >= 0 && !step.dataset.counted) {
+      step.dataset.counted = "1";
+      for (const el of step.querySelectorAll(".big [data-v], .big [data-c]")) countUp(el, dur ? 1100 : 0);
+    }
+  }
+  function onScroll() {
+    const phone = window.innerWidth <= 900;
+    for (const st of stories) {
+      // phones: a caption fades as it reaches the bottom of the pinned chart, so it never covers it
+      const gb = phone ? st.sc.querySelector(".graphic").getBoundingClientRect().bottom : -1e9;
+      for (const s of st.steps) s.classList.toggle("is-under", phone && (s.firstElementChild || s).getBoundingClientRect().top < gb - 4);
+      const i = still ? st.steps.length - 1 : storyIndex(st);
+      if (i !== st.cur) { st.cur = i; applyStep(st, i, DUR); }
+    }
+  }
+  function setupStories() {
+    for (const sc of document.querySelectorAll(".scrolly")) {
+      stories.push({ sc, steps: [...sc.querySelectorAll(".step")], figs: [...sc.querySelectorAll(".stack > figure")], cur: null });
+    }
+    onScroll();
+    let ticking = false;
+    window.addEventListener("scroll", () => {
+      if (ticking) return; ticking = true;
+      requestAnimationFrame(() => { ticking = false; onScroll(); });
+    }, { passive: true });
+  }
+
+  // charts and tables outside the story draw once, when they first come into view
+  function onEnter(el, fn) {
+    if (still || !("IntersectionObserver" in window)) { fn(); return; }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); fn(); } }, { threshold: 0.25 });
+    io.observe(el);
+  }
+
+  const CHARTS = [
+    ["ch-demand", 300, drawDemand], ["ch-length", 300, drawLength],
+    ["ch-hub", waffleH, drawWaffle(() => D.demand.hub_share, "--sodium",
+      () => ["start or end at an MRT station", "or the bus interchange"], () => ["neither"])],
+    ["ch-cliff", 340, drawCliff], ["ch-units", (W) => unitsGeom(W).H, drawUnits], ["ch-km", 270, drawKm],
+    ["ch-frontier", 320, drawFrontier], ["ch-kerb", 300, drawKerb], ["ch-kerbcap", 300, drawKerbCap],
+    ["ch-faster", waffleH, drawWaffle(() => D.results.who.share_faster, "--sodium",
+      () => ["arrive sooner by shuttle"], () => ["arrive sooner by bus"])],
+    ["ch-who", 300, drawWho], ["ch-cal", 300, drawCal], ["ch-gps", 260, drawGps],
+  ];
   function drawCharts() {
-    for (const f of [chartDemand, chartFrontier, chartKerb, chartWho, chartCal, chartGps, () => chartCliff(cliffMode)]) {
-      try { f(); } catch (e) { console.error(e); }
+    for (const [id, H, draw] of CHARTS) {
+      if (!document.getElementById(id)) continue;
+      try { (CH[id] || chart(id, H, draw)).rebuild(0); } catch (e) { console.error(e); }
     }
   }
 
   // ------------------------------------------------------------------ init
   async function init() {
+    if (DUR === 0) document.documentElement.classList.add("no-motion");
+    if (still) document.documentElement.classList.add("still");
     try {
       const [town, buildings, stops, demand, baseline, results, idx, paths, calpts] = await Promise.all(
         ["town.json", "buildings.json", "stops.json", "demand.json", "baseline.json", "results.json", "anim_index.json", "paths.json", "calibration_points.json"].map(getJSON));
@@ -738,17 +1207,26 @@
       document.getElementById("loading").textContent = `Could not load the data (${e.message}). The page needs its data files next to it.`;
       return;
     }
-    try { fillNumbers(); } catch (e) { console.error(e); }
+    const safe = (f) => { try { f(); } catch (e) { console.error(e); } };
+    safe(fillNumbers);
+    for (const el of document.querySelectorAll(".figs dd > span[data-v]")) countUp(el, DUR ? 1400 : 0);
     const tabs = document.getElementById("cliff-tabs");
     const modes = [["7", "07:00–08:00"], ["8", "08:00–09:00"], ["12", "12:00–13:00"], ["18", "18:00–19:00"], ["all", "whole day"]];
     for (const [k, lab] of modes) {
       const b = document.createElement("button"); b.type = "button"; b.textContent = lab; b.dataset.mode = k;
-      b.setAttribute("aria-pressed", String(k === "7"));
-      b.onclick = () => { for (const x of tabs.children) x.setAttribute("aria-pressed", String(x === b)); cliffMode = k === "all" ? "all" : +k; chartCliff(cliffMode); };
+      b.setAttribute("aria-pressed", String(+k === cliffMode));
+      b.onclick = () => {
+        for (const x of tabs.children) x.setAttribute("aria-pressed", String(x === b));
+        cliffMode = k === "all" ? "all" : +k;
+        // redraw at the story's current step, or fully drawn once the reader has scrolled past it
+        const c = CH["ch-cliff"]; if (c) { if (c.state < 1) c.set(4, 0); c.rebuild(DUR); }
+      };
       tabs.appendChild(b);
     }
-    const safe = (f) => { try { f(); } catch (e) { console.error(e); } };
-    safe(drawCharts); safe(renderSensitivity); safe(renderKerbExperiment); safe(renderSubzones);
+    safe(drawCharts); safe(renderSensitivity); safe(renderKerbExperiment); safe(renderSubzones); safe(decorateOps);
+    safe(setupStories);
+    for (const id of ["ch-cal", "ch-gps"]) { const el = document.getElementById(id); if (el && CH[id]) onEnter(el, () => CH[id].set(0, DUR)); }
+    for (const t of document.querySelectorAll("table.reveal")) onEnter(t, () => t.classList.add("in"));
 
     const el = document.getElementById("scenarios");
     for (const sc of D.anim_index.scenarios) {
@@ -791,8 +1269,11 @@
     });
     const ref = D.anim_index.scenarios.find((s) => s.id === D.results.anim.reference) || D.anim_index.scenarios[0];
     await selectScenario(ref);
-    let rz = null;
-    window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(drawCharts, 200); });
+    let rz = null, lastW = window.innerWidth;
+    window.addEventListener("resize", () => {
+      clearTimeout(rz);
+      rz = setTimeout(() => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; drawCharts(); } onScroll(); }, 200);
+    });
     if (!reduceMotion && !still) setPlaying(true);
     requestAnimationFrame(tick);
     document.documentElement.dataset.ready = "1";

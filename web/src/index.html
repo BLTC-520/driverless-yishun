@@ -211,9 +211,79 @@ pre { background: var(--night-3); border: 1px solid var(--rule); border-radius: 
 footer { padding-block: 40px 56px; border-top: 1px solid var(--rule); margin-top: 48px; font-size: var(--step--1); color: var(--mute); }
 footer .inner { display: grid; gap: 10px; max-width: 1240px; }
 
+/* ---- story chapters: the chart is pinned and redraws as short captions scroll past ---- */
+section.story .inner { display: block; }
+.ch-head { max-width: 760px; }
+.ch-head h2 { margin-bottom: 0; }
+.scrolly { display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.45fr); gap: 0 56px; position: relative; }
+.graphic {
+  grid-column: 2; grid-row: 1; position: sticky; top: 0; height: 100vh; min-height: 520px;
+  display: flex; flex-direction: column; justify-content: center; padding-block: 24px;
+}
+.steps { grid-column: 1; grid-row: 1; padding-block: 18vh 28vh; }
+.step { min-height: 72vh; display: flex; align-items: center; }
+.step:last-child { min-height: 50vh; }
+.card { border-left: 2px solid var(--rule); padding: 6px 0 6px 18px; opacity: 0.3; transition: opacity .45s ease, border-color .45s ease; max-width: 34ch; }
+.step.is-active .card { opacity: 1; border-left-color: var(--sodium); }
+.card .big {
+  margin: 0 0 8px; font-family: var(--font-display); font-weight: 720; font-stretch: 104%;
+  font-size: clamp(2.4rem, 4.6vw, 3.5rem); line-height: 1; color: var(--sodium); font-variant-numeric: tabular-nums;
+}
+.card .big.bu { color: var(--bus); } .card .big.ch { color: var(--chalk); } .card .big.bad { color: var(--bad); }
+.card .big small { font-size: 0.42em; font-weight: 500; color: var(--mute); letter-spacing: 0; }
+.card p { margin: 0; font-size: 1.05rem; line-height: 1.45; }
+.card .show { margin-top: 12px; }
+.stack { display: grid; }
+.stack > figure {
+  grid-area: 1 / 1; margin: 0; min-width: 0; opacity: 0; visibility: hidden;
+  transition: opacity .5s ease, visibility 0s linear .5s;
+}
+.stack > figure.on { opacity: 1; visibility: visible; transition: opacity .5s ease; }
+.chart .wbig { font-family: var(--font-display); font-weight: 720; font-size: 46px; }
+.chart .ttl { fill: var(--chalk); font-family: var(--font-data); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+details.notes { margin-top: 28px; border-top: 1px solid var(--rule); padding-top: 12px; max-width: 900px; }
+details.notes summary { cursor: pointer; font-family: var(--font-data); font-size: var(--step--1); color: var(--mute); list-style: none; }
+details.notes summary::-webkit-details-marker { display: none; }
+details.notes summary::before { content: "+ "; color: var(--sodium); }
+details.notes[open] summary::before { content: "− "; }
+details.notes summary:hover { color: var(--chalk); }
+details.notes > .prose { margin-top: 14px; }
+.after { margin-top: 32px; }
+/* tables fill in row by row; small bars under the numbers grow to scale */
+.reveal tbody tr { opacity: 0; transform: translateY(8px); transition: opacity .5s ease, transform .5s ease; transition-delay: calc(var(--i, 0) * 70ms); }
+.reveal.in tbody tr { opacity: 1; transform: none; }
+.mbar { display: block; height: 3px; border-radius: 2px; margin: 6px 0 0 auto; width: 0; max-width: 100%; transition: width 1s cubic-bezier(.2, .7, .2, 1) calc(var(--i, 0) * 70ms + 250ms); }
+.reveal.in .mbar { width: var(--w); }
+.strip { position: relative; display: block; height: 10px; margin-top: 7px; min-width: 9em; }
+.strip::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 1px; background: var(--rule); }
+.strip .base { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--mute); left: var(--b); }
+.strip b { position: absolute; top: 1px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--sodium); left: var(--b); transition: left 1.1s cubic-bezier(.2, .7, .2, 1) calc(var(--i, 0) * 60ms + 250ms); }
+.strip b.at-base { background: var(--chalk); }
+.reveal.in .strip b { left: var(--to); }
+.no-motion *, .no-motion *::before { transition: none !important; }
+html.still .graphic { position: static; height: auto; min-height: 0; }
+html.still .step { min-height: 0; padding-block: 12px; }
+html.still .steps { padding-block: 0; }
+
 @media (max-width: 900px) {
   .open .inner, .chapter .inner { grid-template-columns: minmax(0, 1fr); }
   .cols { grid-template-columns: minmax(0, 1fr); }
+  /* phones and narrow windows: the chart pins to the top and the captions slide up over the space below it */
+  .scrolly { display: block; }
+  .graphic { position: sticky; top: 0; z-index: 1; height: auto; min-height: 0; padding-block: 10px 8px; background: var(--night); }
+  .graphic figcaption { font-size: 0.74rem; margin-top: 4px; }
+  .steps { position: relative; z-index: 2; padding-block: 4vh 30vh; pointer-events: none; }
+  .step { min-height: var(--step-h, 45vh); align-items: flex-start; }
+  .step:last-child { min-height: 40vh; }
+  .step.is-past .card, .step.is-under .card { opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility 0s linear .3s; }
+  .card {
+    pointer-events: auto; opacity: 1; max-width: none; padding: 12px 14px;
+    background: color-mix(in srgb, var(--night-2) 94%, transparent); border: 1px solid var(--rule); border-left: 2px solid var(--rule); border-radius: 6px;
+  }
+  .card .big { font-size: 2.2rem; }
+  .card p { font-size: 0.98rem; }
+  .graphic .chart-tabs { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 6px; }
+  .graphic .chart-tabs button { flex: none; }
 }
 @media (max-width: 640px) {
   .stage { height: auto; display: flex; flex-direction: column; border-radius: 4px; }
@@ -246,9 +316,11 @@ footer .inner { display: grid; gap: 10px; max-width: 1240px; }
     <div>
       <div class="eyebrow">Yishun, Singapore · an average school-term weekday, July–August 2026 · simulation study</div>
       <h1 id="title">Could autonomous shuttles carry every bus ride inside Yishun?</h1>
-      <p class="dek">Singapore is starting driverless shuttles inside new towns. This study asks what it would take in a <em>mature</em> one. It sends a simulated weekday of Yishun's internal bus rides, drawn from LTA fare-card counts between every pair of stops, through an on-demand shuttle fleet and compares every ride with today's buses. Road times are calibrated to LTA's live bus data and checked against bus GPS movement.</p>
       <p class="answer" id="answer">Short answer: in the model, yes, with a fleet sized for the morning rush and at a cost. About <span class="sh-t" data-v="parity">—</span> ten-seat shuttles running all day beat today's buses in every hour; <span data-v="parity_lo">—</span> do not. That is <span data-v="vehx">—</span> as many vehicles as the <span class="bu-t" data-v="busesin">—</span> buses of all services inside Yishun at 07:00, driving <span data-v="vkmx">—</span> the kilometres, with up to <span data-v="kerbmax">—</span> shuttles stopped at once at Yishun MRT.</p>
-      <p class="small">Four-seat vehicles would need <span data-v="par4">—</span>, twenty-seat ones <span data-v="par20">—</span>. The dispatcher matters as much as the vehicles: one that considers four times as many shuttles per request needs only <span data-v="disp4">—</span>. Across <span data-v="sens_n">—</span> alternative assumptions the ten-seat fleet ranges <span data-v="sens_lo">—</span>–<span data-v="sens_hi">—</span>. Several assumptions favour the shuttles: unlimited kerb space, no traffic added by the fleet itself, no charging, travel times known exactly, and road speeds measured outside the morning rush. Two favour the bus: crowding is ignored, and the dispatcher is a simple one.</p>
+      <details class="notes"><summary>About this study and what it assumes</summary><div class="prose">
+        <p class="small">Singapore is starting driverless shuttles inside new towns. This study asks what it would take in a <em>mature</em> one. It sends a simulated weekday of Yishun's internal bus rides, drawn from LTA fare-card counts between every pair of stops, through an on-demand shuttle fleet and compares every ride with today's buses. Road times are calibrated to LTA's live bus data and checked against bus GPS movement.</p>
+        <p class="small">Four-seat vehicles would need <span data-v="par4">—</span>, twenty-seat ones <span data-v="par20">—</span>. The dispatcher matters as much as the vehicles: one that considers four times as many shuttles per request needs only <span data-v="disp4">—</span>. Across <span data-v="sens_n">—</span> alternative assumptions the ten-seat fleet ranges <span data-v="sens_lo">—</span>–<span data-v="sens_hi">—</span>. Several assumptions favour the shuttles: unlimited kerb space, no traffic added by the fleet itself, no charging, travel times known exactly, and road speeds measured outside the morning rush. Two favour the bus: crowding is ignored, and the dispatcher is a simple one.</p>
+      </div></details>
     </div>
     <dl class="figs" id="figs">
       <div class="fig"><dt>Bus rides inside Yishun</dt><dd><span data-v="rides">—</span><small>per weekday; both ends in the town</small></dd></div>
@@ -297,66 +369,101 @@ footer .inner { display: grid; gap: 10px; max-width: 1240px; }
 </section>
 
 <section class="chapter wrap" id="context">
-  <div class="inner">
-    <div class="prose">
+  <div class="inner" style="grid-template-columns: minmax(0,1fr);">
+    <div class="prose ch-head">
       <div class="kicker">Why this question</div>
       <h2>Singapore is testing driverless fleets inside towns, not private cars</h2>
+      <details class="notes"><summary>The background, and what this study is not</summary><div class="prose">
       <p>Car ownership in Singapore is capped by the vehicle quota, so the autonomous future being tested here is fleets serving towns. Punggol's autonomous shuttles opened to the public on 1 April 2026 to "enhance connectivity to key amenities and transport nodes for residents within Punggol" (<a href="https://www.lta.gov.sg/content/ltagov/en/newsroom/2026/3/news-releases/autonomous-shuttle-services-in-punggol-open-for-public-rides-fro.html" target="_blank" rel="noopener">LTA, 4 March 2026</a>). In September the Transport Minister said Singapore had "only 16 passenger vehicles, all in Punggol" and about 20,000 riders so far. Next comes a trial of point-to-point service "within the whole estate, without the need for fixed routes", then one to two more HDB towns, Tampines North and Tengah (<a href="https://www.mot.gov.sg/news-resources/newsroom/opening-remarks-by-minister-for-transport-jeffrey-siow-at-waymo-s-launch-event/" target="_blank" rel="noopener">MOT, 18 September 2026</a>). In October LTA stopped a planned pilot of autonomous buses on two public bus services, to look at narrower uses first (<a href="https://mothership.sg/2026/10/lta-halts-pilot-programme-for-self-driving-public-buses-to-explore-narrower-use-cases-for-now/" target="_blank" rel="noopener">Mothership, 13 October 2026, confirmed by LTA</a>).</p>
       <p>Yishun was not among the towns named. Three in five of its HDB blocks were completed in the 1980s (HDB property data), it has about 221,600 residents (Census 2020), and about <span class="num" data-v="rides">—</span> bus rides a day start and end inside the town. In Punggol, Grab is piloting on-demand rides "between existing pick-up and drop-off points", taking the most direct path (<a href="https://www.lta.gov.sg/content/ltagov/en/newsroom/2026/7/news-releases/service-enhancements-autonomous-shuttle-Punggol.html" target="_blank" rel="noopener">LTA, 29 July 2026</a>). This study asks what that model would take at Yishun's scale. Pickups and drop-offs stay at today's bus stops, so walking is the same in both modes.</p>
-    </div>
-    <div class="prose">
       <h3>What this study is not</h3>
       <p class="small">It does not forecast AV adoption, fares, costs or safety, and it is not an LTA plan. Demand is held at today's observed bus rides. It compares two ways of serving the same rides on the same roads, and measures what the comparison would cost in vehicles, kilometres and kerb space. The closest Singapore study, <a href="https://doi.org/10.1016/j.trc.2021.103058" target="_blank" rel="noopener">Mo et al. (2021)</a>, simulated shared autonomous vehicles competing with buses for first-mile trips in Tampines, with operators choosing fleets and fares. This one holds demand fixed and asks what replacing every internal bus ride would take.</p>
       <h3>Why not simulate self-driving private cars?</h3>
       <p class="small">An earlier plan for this project was to simulate 20–80% self-driving private cars in Yishun's traffic, with roadside radio units and new traffic-signal plans. That does not fit Singapore. Car numbers are capped, traffic signals already adapt to traffic, and simulated self-driving cars mostly reproduce the following distances they are given. Open junction counts are sparse one-day surveys, while fare-card data counts the bus rides inside the town.</p>
+      </div></details>
     </div>
   </div>
 </section>
 
-<section class="chapter wrap" id="trips">
+<section class="chapter story wrap" id="trips">
   <div class="inner">
-    <div class="prose">
+    <header class="ch-head">
       <div class="kicker">The trips</div>
       <h2>Yishun's internal bus rides are short and point at the MRT</h2>
+    </header>
+    <div class="scrolly">
+      <div class="graphic chart"><div class="stack">
+        <figure data-fig="ch-demand"><svg id="ch-demand" viewBox="0 0 640 300" role="img" aria-label="Rides per hour"></svg><figcaption>Rides per hour inside Yishun on an average school-term weekday (LTA fare-card OD, July–August 2026). Hours after midnight belong to the end of the service day.</figcaption></figure>
+        <figure data-fig="ch-length"><svg id="ch-length" viewBox="0 0 640 300" role="img" aria-label="Rides by straight-line length"></svg><figcaption>Rides per weekday by straight-line distance between the boarding and alighting stop, in 250 m bands.</figcaption></figure>
+        <figure data-fig="ch-hub"><svg id="ch-hub" viewBox="0 0 640 300" role="img" aria-label="Share of rides that start or end at a station"></svg><figcaption>Every 100 internal rides, by whether they start or end at an MRT station or the bus interchange.</figcaption></figure>
+      </div></div>
+      <div class="steps">
+        <div class="step" data-fig="ch-demand" data-s="0"><div class="card"><p class="big"><span data-v="rides">—</span></p><p>bus rides on an average school-term weekday start and end inside Yishun.</p></div></div>
+        <div class="step" data-fig="ch-demand" data-s="1"><div class="card"><p class="big"><span data-c="peak_rides">—</span></p><p>in the <span data-c="peak_hour">—</span> hour alone, the morning rush. The evening peak at 18:00 is <span data-c="pm_rides">—</span>.</p></div></div>
+        <div class="step" data-fig="ch-length" data-s="0"><div class="card"><p class="big"><span data-v="median">—</span></p><p>Half of all rides are shorter than this, as the crow flies: a few stops.</p></div></div>
+        <div class="step" data-fig="ch-hub" data-s="0"><div class="card"><p class="big"><span data-v="hubshare">—</span></p><p>start or end at an MRT station or the bus interchange. These are feeder trips, where waiting is a large share of the journey.</p><button class="show" type="button" data-show="flows">Show the 07:30 flows on the map</button></div></div>
+      </div>
+    </div>
+    <details class="notes"><summary>How the rides are counted</summary><div class="prose">
       <p>LTA publishes, for each month, how many fare-card rides went from every bus stop to every other, hour by hour. Keeping only rides that start and end inside the Yishun planning area leaves <span class="num" data-v="rides">—</span> rides on an average school-term weekday (July and August 2026), across <span class="num" data-v="pairs">—</span> stop pairs. September, with a week of school holidays, has <span class="num" data-v="sep7">—</span> fewer rides at 07:00.</p>
       <p>Half of them cover less than <span class="num" data-v="median">—</span> as the crow flies, and <span class="num" data-v="hubshare">—</span> start or end at an MRT station (Yishun, Khatib or Springleaf) or the bus interchange. These are feeder trips: a few stops between an HDB block and the train. For trips this short, waiting is a large share of the journey. That is where an on-demand vehicle could help, and also where it has the least room for error.</p>
       <p class="small">LTA counts fare-card rides by boarding and alighting stop. Riders tap in and out, and LTA does not document how the few rides without a tap-out are handled. A trip that changes buses inside Yishun counts as two rides. Riders may live anywhere; what is counted is where they board and alight.</p>
-      <button class="show" type="button" data-show="flows">Show the 07:30 flows on the map</button>
-    </div>
-    <div class="chart"><figure><svg id="ch-demand" viewBox="0 0 640 300" role="img" aria-label="Rides per hour"></svg><figcaption>Rides per hour inside Yishun on an average school-term weekday (LTA fare-card OD, July–August 2026). Hours after midnight belong to the end of the service day.</figcaption></figure></div>
+    </div></details>
   </div>
 </section>
 
-<section class="chapter wrap" id="cliff">
+<section class="chapter story wrap" id="cliff">
   <div class="inner">
-    <div class="prose">
+    <header class="ch-head">
       <div class="kicker">Finding 1 · the fleet</div>
       <h2>Shuttles beat the bus, until the fleet falls short of the morning rush</h2>
+    </header>
+    <div class="scrolly">
+      <div class="graphic chart">
+        <div class="chart-tabs" role="group" aria-label="Hour shown" id="cliff-tabs"></div>
+        <div class="stack">
+          <figure data-fig="ch-cliff"><svg id="ch-cliff" viewBox="0 0 640 340" role="img" aria-label="Stop-to-stop time against fleet size"></svg><figcaption id="cliff-cap">Mean stop-to-stop time (waiting plus riding) against fleet size, for 4-, 10- and 20-seat vehicles; each point is the mean of three simulated weekdays. The teal line is today's bus in the same hour. Open markers: the fleet also refused riders.</figcaption></figure>
+        </div>
+      </div>
+      <div class="steps">
+        <div class="step" data-fig="ch-cliff" data-s="0"><div class="card"><p class="big bu"><span data-v="bus8">—</span></p><p>by today's bus, stop to stop (waiting plus riding), in the 08:00 hour.</p></div></div>
+        <div class="step" data-fig="ch-cliff" data-s="1"><div class="card"><p class="big"><span data-v="f_p">—</span></p><p>ten-seat shuttles keep up with the bus in every hour of all three simulated weekdays: <span data-v="h8_p">—</span> at 08:00. Read the curve right to left as the fleet shrinks.</p></div></div>
+        <div class="step" data-fig="ch-cliff" data-s="2"><div class="card"><p class="big bad"><span data-v="h8_lo">—</span></p><p>with <span data-v="f_lo">—</span> shuttles, worse than the bus. The 07:00 rush leaves a queue that peaks around 08:00. The edge is sharp.</p></div></div>
+        <div class="step" data-fig="ch-cliff" data-s="3"><div class="card"><p class="big bad"><span data-v="h8_lo3">—</span></p><p>with <span data-v="f_lo3">—</span> shuttles, and <span data-v="ref_lo3">—</span> of the day's riders are refused (no pickup within 45 minutes).</p><button class="show" type="button" data-show="cliff">Watch an undersized fleet fall behind</button></div></div>
+        <div class="step" data-fig="ch-cliff" data-s="4"><div class="card"><p class="big"><span data-v="par4">—</span> <small>or</small> <span data-v="par20">—</span></p><p>four-seat or twenty-seat vehicles instead. At the threshold a shuttle carries only <span data-v="occ">—</span> riders on average, so bigger vehicles help less than their seats suggest.</p></div></div>
+      </div>
+    </div>
+    <details class="notes"><summary>How the fleet is tested</summary><div class="prose">
       <p>Each simulated day sends every observed ride through a fleet of pooled, on-demand shuttles that stop only where riders board or alight. Today's buses are modelled from LTA's routes and published headways. Running times, signal delay and dwell are calibrated on <span class="num" data-v="calobs">—</span> matched pairs of LTA's live arrival estimates and checked against buses' reported GPS positions. Waiting times use headway regularity estimated from live predictions for GPS-monitored buses.</p>
       <p>Above a threshold the shuttles are faster than the bus: riders wait less on average and ride direct. The margin is wide off-peak and narrower in the rush. Below it, the 07:00 rush leaves a queue that peaks around 08:00. The edge is sharp. With ten-seat shuttles, <span class="num" data-v="f_p">—</span> vehicles keep up in every hour of all three simulated weekdays: <span class="num" data-v="h8_p">—</span> at 08:00 against the bus's <span class="num" data-v="bus8">—</span>. With <span class="num" data-v="f_lo">—</span>, the 08:00 hour averages <span class="num" data-v="h8_lo">—</span>, worse than the bus, before recovering by 09:00. With <span class="num" data-v="f_lo3">—</span>, it averages <span class="num" data-v="h8_lo3">—</span> and <span class="num" data-v="ref_lo3">—</span> of the day's riders are refused.</p>
       <p class="small">Each point is the mean over three simulated weekdays (demand replicates); the band spans them. Both modes are measured on the same riders: the <span data-v="nobus">—</span> of rides with no direct bus in LTA's route data are left out. Open markers show fleets that also refused riders (no pickup within 45 minutes), with a whisker to the mean if each refused rider counts as 45 minutes plus a direct ride. At the threshold a shuttle carries <span data-v="occ">—</span> riders on average, so bigger vehicles help less than their seats suggest: twenty seats instead of ten cut the fleet only to <span data-v="par20">—</span>. A stricter rule, matching the bus's 90th-percentile time in every hour, needs <span data-v="parity90">—</span> ten-seat shuttles.</p>
-      <button class="show" type="button" data-show="cliff">Watch an undersized fleet fall behind</button>
-    </div>
-    <div class="chart">
-      <div class="chart-tabs" role="group" aria-label="Hour shown" id="cliff-tabs"></div>
-      <figure><svg id="ch-cliff" viewBox="0 0 640 340" role="img" aria-label="Stop-to-stop time against fleet size"></svg><figcaption id="cliff-cap">Mean stop-to-stop time (waiting plus riding) against fleet size, for 4-, 10- and 20-seat vehicles. The teal line is today's bus in the same hour.</figcaption></figure>
-    </div>
+    </div></details>
   </div>
 </section>
 
-<section class="chapter wrap" id="cost">
+<section class="chapter story wrap" id="cost">
   <div class="inner">
-    <div class="prose">
+    <header class="ch-head">
       <div class="kicker">Finding 2 · vehicles and kilometres</div>
       <h2>Matching the bus takes more vehicles and far more driving</h2>
-      <p><span class="num sh-t" data-v="parity">—</span> shuttles is <span class="num" data-v="vehx">—</span> the <span class="num bu-t" data-v="busesin">—</span> buses of all services that are inside Yishun at 07:00, and <span class="num" data-v="vehxf">—</span> the <span class="num" data-v="feeders">—</span> feeder buses on the road then. Each bus carries about ten times as many people, so today's buses offer more places (about <span class="num" data-v="busplaces">—</span> seated and standing, against <span class="num" data-v="shplaces">—</span> shuttle seats), and they also carry riders to and from other towns. In September 2026 Singapore's entire autonomous passenger fleet was 16 vehicles.</p>
-      <p>The shuttle fleet drives <span class="num sh-t" data-v="vkm">—</span> km inside Yishun per weekday, <span class="num" data-v="vkmx">—</span> the <span class="num bu-t" data-v="buskm">—</span> km that all buses drive on Yishun's roads (<span class="num" data-v="feederkm">—</span> km by feeders). Counting only the rides inside Yishun, buses carry at least <span class="num" data-v="buspaxkm">—</span> riders per kilometre they drive there. The shuttles carry <span class="num" data-v="occ">—</span>, and <span class="num" data-v="empty">—</span> of their kilometres are driven empty, repositioning or heading to the next pickup.</p>
-      <p>Feeder-service theory points the same way. In <a href="https://doi.org/10.1016/j.trc.2009.05.015" target="_blank" rel="noopener">Li and Quadrifoglio's analysis (2010)</a> of a single feeder zone, demand-responsive service beats fixed routes only below about 10–50 riders per square mile per hour. Averaged over the town, Yishun's internal demand at 07:00 is about <span class="num" data-v="density">—</span>.</p>
-      <p>If the fleet in service could shrink after the rush, with vehicles parked or charging, far fewer would be needed off-peak: about <span class="num sh-t" data-v="midday">—</span> around midday, a few dozen after midnight. That would be at least <span class="num" data-v="vhlb">—</span> vehicle-hours in service a day instead of <span class="num" data-v="vh">—</span>. The fixed fleet spends about <span class="num sh-t" data-v="shdrive">—</span> of its hours driving, against about <span class="num bu-t" data-v="busdrive">—</span> hours of bus driving inside Yishun.</p>
-      <p class="small">Fleets by hour come from separate one-hour simulations with a 45-minute warm-up and no backlog carried over from earlier hours, so they are lower bounds. Each is the smallest fleet whose mean stop-to-stop time in that hour is no worse than the bus, with no refused riders (larger of two demand replicates, 25-vehicle grid). Bus counts and bus-km come from published headways and modelled running times. <span data-v="shkmin">—</span> of shuttle-km fall inside the planning-area boundary, as bus-km do.</p>
+    </header>
+    <div class="scrolly">
+      <div class="graphic chart"><div class="stack">
+        <figure data-fig="ch-units"><svg id="ch-units" viewBox="0 0 640 340" role="img" aria-label="Shuttles against buses, one mark per vehicle"></svg><figcaption>One mark per vehicle: the fixed fleet of 10-seat shuttles that keeps up all day, and the buses of all services inside Yishun at 07:00.</figcaption></figure>
+        <figure data-fig="ch-km"><svg id="ch-km" viewBox="0 0 640 270" role="img" aria-label="Vehicle-km and riders per vehicle-km"></svg><figcaption>Kilometres driven inside Yishun per weekday and riders carried per kilometre (rider-km per vehicle-km). For buses, counting only rides inside Yishun gives a lower bound.</figcaption></figure>
+        <figure data-fig="ch-frontier"><svg id="ch-frontier" viewBox="0 0 640 320" role="img" aria-label="Fleet needed by hour"></svg><div class="legend-row" id="frontier-legend"></div><figcaption>Vehicles needed to match the bus if the fleet could change size every hour (a lower bound), the fixed fleet of 10-seat shuttles that keeps up all day, and the buses inside Yishun today, from published headways and modelled running times.</figcaption></figure>
+      </div></div>
+      <div class="steps">
+        <div class="step" data-fig="ch-units" data-s="0"><div class="card"><p class="big"><span data-v="parity">—</span></p><p>ten-seat shuttles, running all day. One dot is one vehicle.</p></div></div>
+        <div class="step" data-fig="ch-units" data-s="1"><div class="card"><p class="big bu"><span data-v="busesin">—</span></p><p>buses of all services are inside Yishun at 07:00. The shuttle fleet is <span data-v="vehx">—</span> as many vehicles, though each bus carries about ten times as many people.</p></div></div>
+        <div class="step" data-fig="ch-units" data-s="2"><div class="card"><p class="big ch">16</p><p>autonomous passenger vehicles in all of Singapore in September 2026 (MOT).</p></div></div>
+        <div class="step" data-fig="ch-km" data-s="0"><div class="card"><p class="big"><span data-v="vkmx">—</span></p><p>the driving: <span data-v="vkm">—</span> shuttle-km inside Yishun per weekday, against <span data-v="buskm">—</span> km by all buses.</p></div></div>
+        <div class="step" data-fig="ch-km" data-s="1"><div class="card"><p class="big"><span data-v="occ">—</span></p><p>riders on board per shuttle-km, against at least <span data-v="buspaxkm">—</span> per bus-km. <span data-v="empty">—</span> of shuttle-km are driven empty.</p></div></div>
+        <div class="step" data-fig="ch-frontier" data-s="0"><div class="card"><p class="big"><span data-v="vh">—</span></p><p>vehicle-hours a day for a fixed fleet sized for the morning rush (thin amber line), while buses inside Yishun follow the timetable (teal).</p></div></div>
+        <div class="step" data-fig="ch-frontier" data-s="1"><div class="card"><p class="big"><span data-v="midday">—</span></p><p>shuttles would do around midday if the fleet could shrink after the rush: at least <span data-v="vhlb">—</span> vehicle-hours a day.</p></div></div>
+      </div>
     </div>
-    <div class="chart"><figure><svg id="ch-frontier" viewBox="0 0 640 320" role="img" aria-label="Fleet needed by hour"></svg><div class="legend-row" id="frontier-legend"></div><figcaption>Vehicles needed to match the bus if the fleet could change size every hour (a lower bound), the fixed fleet of 10-seat shuttles that keeps up all day, and the buses inside Yishun today, from published headways and modelled running times.</figcaption></figure>
-      <div class="table-wrap ops"><table id="ops">
+    <div class="table-wrap ops after"><table id="ops">
       <caption>Operator view of one school-term weekday: the fixed shuttle fleet that keeps up all day against today's buses inside Yishun (a dash means there is no like-for-like bus figure)</caption>
       <thead><tr><th></th><th style="text-align:right">10-seat shuttles (simulated)</th><th style="text-align:right">Buses today (modelled)</th></tr></thead>
       <tbody>
@@ -373,39 +480,69 @@ footer .inner { display: grid; gap: 10px; max-width: 1240px; }
         <tr><td>90th-percentile wait, 07:00–08:00</td><td class="n" data-v="shwait90">—</td><td class="n" data-v="buswait90">—</td></tr>
       </tbody>
     </table></div>
-    </div>
+    <details class="notes"><summary>How vehicles, hours and kilometres are counted</summary><div class="prose">
+      <p><span class="num sh-t" data-v="parity">—</span> shuttles is <span class="num" data-v="vehx">—</span> the <span class="num bu-t" data-v="busesin">—</span> buses of all services that are inside Yishun at 07:00, and <span class="num" data-v="vehxf">—</span> the <span class="num" data-v="feeders">—</span> feeder buses on the road then. Each bus carries about ten times as many people, so today's buses offer more places (about <span class="num" data-v="busplaces">—</span> seated and standing, against <span class="num" data-v="shplaces">—</span> shuttle seats), and they also carry riders to and from other towns. In September 2026 Singapore's entire autonomous passenger fleet was 16 vehicles.</p>
+      <p>The shuttle fleet drives <span class="num sh-t" data-v="vkm">—</span> km inside Yishun per weekday, <span class="num" data-v="vkmx">—</span> the <span class="num bu-t" data-v="buskm">—</span> km that all buses drive on Yishun's roads (<span class="num" data-v="feederkm">—</span> km by feeders). Counting only the rides inside Yishun, buses carry at least <span class="num" data-v="buspaxkm">—</span> riders per kilometre they drive there. The shuttles carry <span class="num" data-v="occ">—</span>, and <span class="num" data-v="empty">—</span> of their kilometres are driven empty, repositioning or heading to the next pickup.</p>
+      <p>Feeder-service theory points the same way. In <a href="https://doi.org/10.1016/j.trc.2009.05.015" target="_blank" rel="noopener">Li and Quadrifoglio's analysis (2010)</a> of a single feeder zone, demand-responsive service beats fixed routes only below about 10–50 riders per square mile per hour. Averaged over the town, Yishun's internal demand at 07:00 is about <span class="num" data-v="density">—</span>.</p>
+      <p>If the fleet in service could shrink after the rush, with vehicles parked or charging, far fewer would be needed off-peak: about <span class="num sh-t" data-v="midday">—</span> around midday, a few dozen after midnight. That would be at least <span class="num" data-v="vhlb">—</span> vehicle-hours in service a day instead of <span class="num" data-v="vh">—</span>. The fixed fleet spends about <span class="num sh-t" data-v="shdrive">—</span> of its hours driving, against about <span class="num bu-t" data-v="busdrive">—</span> hours of bus driving inside Yishun.</p>
+      <p class="small">Fleets by hour come from separate one-hour simulations with a 45-minute warm-up and no backlog carried over from earlier hours, so they are lower bounds. Each is the smallest fleet whose mean stop-to-stop time in that hour is no worse than the bus, with no refused riders (larger of two demand replicates, 25-vehicle grid). Bus counts and bus-km come from published headways and modelled running times. <span data-v="shkmin">—</span> of shuttle-km fall inside the planning-area boundary, as bus-km do.</p>
+    </div></details>
   </div>
 </section>
 
-<section class="chapter wrap" id="kerb">
+<section class="chapter story wrap" id="kerb">
   <div class="inner">
-    <div class="prose">
+    <header class="ch-head">
       <div class="kicker">Finding 3 · the kerb</div>
       <h2>The MRT kerb becomes a bottleneck</h2>
+    </header>
+    <div class="scrolly">
+      <div class="graphic chart"><div class="stack">
+        <figure data-fig="ch-kerb"><svg id="ch-kerb" viewBox="0 0 640 300" role="img" aria-label="Shuttles stopped at MRT kerbs through the day"></svg><figcaption id="kerb-cap">Most shuttles stopped at once at each station's bus stops, by hour (boarding and alighting only), for the fleet that matches the bus all day.</figcaption></figure>
+        <figure data-fig="ch-kerbcap"><svg id="ch-kerbcap" viewBox="0 0 640 300" role="img" aria-label="07:00 stop-to-stop time when kerb space is limited"></svg><figcaption>Mean stop-to-stop time in the 07:00 hour when each station allows only so many shuttles to board or alight at once (kerb test). Green bars keep up with the bus; red bars do not.</figcaption></figure>
+      </div></div>
+      <div class="steps">
+        <div class="step" data-fig="ch-kerb" data-s="0"><div class="card"><p class="big"><span data-v="kerbmax">—</span></p><p>shuttles boarding or alighting at once at the Yishun MRT and interchange stops at the busiest moment. Kerb space is unlimited in the base case; the model counts what the fleet uses.</p></div></div>
+        <div class="step" data-fig="ch-kerb" data-s="1"><div class="card"><p class="big"><span data-v="kerbkhatib">—</span></p><p>at Khatib. Two-thirds of rides touch a station, so a pooled fleet converges on the same few kerbs.</p><button class="show" type="button" data-show="kerb">Fly to Yishun MRT at 07:45</button></div></div>
+        <div class="step" data-fig="ch-kerbcap" data-s="0"><div class="card"><p class="big"><span data-c="kerb_pass_t">—</span></p><p>at 07:00 with at most <span data-c="kerb_pass_b">—</span> shuttles per station at once: still faster than the bus (<span data-c="kerb_bus">—</span>).</p></div></div>
+        <div class="step" data-fig="ch-kerbcap" data-s="1"><div class="card"><p class="big bad"><span data-c="kerb_fail_t">—</span></p><p>with a limit of <span data-c="kerb_fail_b">—</span>. Adding vehicles does not help: <span data-c="kerb_more_f">—</span> shuttles take <span data-c="kerb_more_t">—</span>, because the extra vehicles queue too.</p></div></div>
+      </div>
+    </div>
+    <details class="notes"><summary>How the kerb is tested</summary><div class="prose">
       <p>Two-thirds of rides touch a station, so a pooled fleet converges on the stops around each MRT station. In the base case kerb space is unlimited, and the model counts what the fleet uses. With the fleet that matches the bus all day, up to <span class="num sh-t" data-v="kerbmax">—</span> shuttles board or alight at once at the Yishun MRT and interchange stops, and <span class="num" data-v="kerbkhatib">—</span> at Khatib, before counting idle shuttles waiting for work.</p>
       <p>The model does not know how many vehicles each stop can hold. The kerb test asks how much it would need. The design question moves from "how many vehicles" to where they stop, and how riders walk to them.</p>
       <p id="kerb-exp-text"></p>
       <p class="small">In the kerb test, a shuttle that finds every berth at its station taken queues until one frees. The dispatcher does not anticipate these queues, so pickups there can slip beyond the usual five-minute limit.</p>
-      <button class="show" type="button" data-show="kerb">Fly to Yishun MRT at 07:45</button>
-    </div>
-    <div class="chart"><figure><svg id="ch-kerb" viewBox="0 0 640 300" role="img" aria-label="Shuttles stopped at MRT kerbs through the day"></svg><figcaption id="kerb-cap">Most shuttles stopped at once at each station's bus stops, by hour (boarding and alighting only), for the fleet that matches the bus all day.</figcaption></figure></div>
+    </div></details>
   </div>
 </section>
 
-<section class="chapter wrap" id="who">
+<section class="chapter story wrap" id="who">
   <div class="inner">
-    <div class="prose">
+    <header class="ch-head">
       <div class="kicker">Finding 4 · who gains</div>
       <h2 id="who-h2">Who gains, and who does not</h2>
-      <p>Comparing each simulated ride with the bus it replaces shows where the gains fall. <span id="who-text">—</span></p>
-      <p class="small">Same fleet as above. "Faster" compares each simulated shuttle ride with one simulated bus wait (random arrival, measured headway regularity) plus the bus's in-vehicle time for the same stops and minute.</p>
+    </header>
+    <div class="scrolly">
+      <div class="graphic chart"><div class="stack">
+        <figure data-fig="ch-faster"><svg id="ch-faster" viewBox="0 0 640 300" role="img" aria-label="Share of rides faster by shuttle"></svg><figcaption>Every 100 rides, by whether the shuttle beats one simulated bus wait plus the bus's in-vehicle time for the same stops and minute.</figcaption></figure>
+        <figure data-fig="ch-who"><svg id="ch-who" viewBox="0 0 640 300" role="img" aria-label="Share of rides faster by shuttle, by trip length"></svg><figcaption>Share of rides that are faster by shuttle than by bus, by straight-line trip length, for rides to or from a station and for rides within the estates.</figcaption></figure>
+      </div></div>
+      <div class="steps">
+        <div class="step" data-fig="ch-faster" data-s="0"><div class="card"><p class="big"><span data-v="share_faster">—</span></p><p>of rides reach their stop sooner by shuttle, with <span data-v="parity">—</span> ten-seat shuttles. The average saving is <span data-v="gain">—</span>.</p></div></div>
+        <div class="step" data-fig="ch-who" data-s="0"><div class="card"><p class="big"><span data-c="long_share">—</span></p><p>of rides over 1.5 km are faster: bus routes loop and stop more often than a direct shuttle.</p></div></div>
+        <div class="step" data-fig="ch-who" data-s="1"><div class="card"><p class="big"><span data-c="short_share">—</span></p><p>of rides under 0.5 km are faster, the lowest share. Where the shuttle loses, it is mostly on the wait.</p></div></div>
+      </div>
     </div>
-    <div class="chart"><figure><svg id="ch-who" viewBox="0 0 640 300" role="img" aria-label="Share of rides faster by shuttle"></svg><figcaption>Share of rides that are faster by shuttle than by bus, by straight-line trip length, for rides to or from a station and for rides within the estates.</figcaption></figure></div>
-    <div class="prose">
+    <div class="prose after">
       <h3>By subzone</h3>
       <p class="small" id="who-sz-note">Gains by the subzone where rides start. The census share of residents aged 65+ is context only: the fare-card data has no rider ages.</p>
     </div>
     <div class="table-wrap"><table id="who-sz"><thead><tr><th>Subzone</th><th style="text-align:right">Rides a day (with a bus option)</th><th style="text-align:right">Residents 65+</th><th style="text-align:right">Faster by shuttle</th><th style="text-align:right">Mean gain</th></tr></thead><tbody><tr><td colspan="5">—</td></tr></tbody></table></div>
+    <details class="notes"><summary>The full comparison</summary><div class="prose">
+      <p>Comparing each simulated ride with the bus it replaces shows where the gains fall. <span id="who-text">—</span></p>
+      <p class="small">Same fleet as above. "Faster" compares each simulated shuttle ride with one simulated bus wait (random arrival, measured headway regularity) plus the bus's in-vehicle time for the same stops and minute.</p>
+    </div></details>
   </div>
 </section>
 
