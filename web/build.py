@@ -2,6 +2,7 @@
 
 * dist/page.html  the page fragment with headline numbers pre-filled from the data (what the
                   artifact host publishes; it supplies the document skeleton itself)
+* dist/play.html the game (Night Shift) with play.js, a standalone page
 * dist/models/    vehicle models (glTF) built in Blender by tools/blender/build_models.py
 * dist/index.html the same page wrapped in a full HTML document, for standalone hosting
                   (GitHub Pages, `python -m http.server`)
@@ -52,6 +53,8 @@ def main() -> None:
     cut = page.index("<header")
     (DIST / "index.html").write_text(HEAD + page[:cut] + "</head>\n<body>\n" + page[cut:] + "\n</body>\n</html>\n")
     shutil.copy(SRC / "app.js", DIST / "app.js")
+    for game in ("play.html", "play.js"):  # the game: a standalone page, copied as is
+        shutil.copy(SRC / game, DIST / game)
     if (DIST / "data").exists():
         shutil.rmtree(DIST / "data")
     shutil.copytree(DATA, DIST / "data")

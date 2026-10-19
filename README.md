@@ -112,6 +112,16 @@ make models BLENDER="python"                                           # or with
 |---|---|---|---|
 | ![](docs/img/models/robotaxi.png) | ![](docs/img/models/robovan.png) | ![](docs/img/models/bus.png) | ![](docs/img/models/skytruck.png) |
 
+### Night Shift (the game)
+
+[`play.html`](web/src/play.html) is a driving game on the same data, built with three.js. Every building footprint and
+height, road area, park, stretch of water, the MRT line and the 180 bus stops come from the study's inputs, drawn
+at street level with lit windows, HDB void decks, street lamps and trees. You drive a robotaxi or robovan for a
+five-minute shift. Riders appear at each stop at that hour's observed rate (LTA fare-card OD) and head for stops
+riders really travel to. You pick them up, pool them and try to get them there before the bus would. The other
+shuttles on the road are the simulator's 450-vehicle fleet at the same minute. The walkers, trains and flying
+trucks are decoration, and "beat the bus" uses a rough bus estimate made for the game.
+
 <!-- LIMITATIONS -->
 ## Limitations
 
