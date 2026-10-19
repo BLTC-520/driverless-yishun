@@ -77,7 +77,7 @@ Python 3.12. An [LTA DataMall](https://datamall.lta.gov.sg/content/datamall/en/r
 make setup                    # uv venv + pinned requirements
 make data                     # LTA DataMall, data.gov.sg, OpenStreetMap
 make reproduce-core-results   # experiments -> sensitivity -> page data -> tests
-make web && make serve        # http://localhost:8000
+make web && make serve        # http://localhost:8000 (the game; the study is /study.html)
 # optional, at the hours you want to calibrate on:
 make live calibrate gps-check calibrate-peak
 ```
@@ -90,9 +90,38 @@ tests/             insertion kernel vs brute force, simulator exact times and ra
                    kerb queues, common lines, estimator check, demand sampling, bus wait draws,
                    real-network consistency
 web/               static explorer (deck.gl + d3), build and screenshot scripts
+tools/blender/     vehicle models for the explorer, generated in Blender
 docs/              decision record, methodology, validation, data registry
 data/processed/    calibration and experiment outputs (raw data is never committed)
 ```
+
+### Vehicle models
+
+The explorer draws each simulated vehicle as a 3D model heading along its route: a robovan for the 10-seat
+shuttles, a robotaxi coupe for the 4-seat fleet, and a feeder bus for today's buses. Click a vehicle (or press
+**R**) to ride along behind it. The flying trucks circling above the town are decoration and play no part in
+the simulation. The models are built from code by [`tools/blender/build_models.py`](tools/blender/build_models.py)
+and committed as `web/public/models/*.glb`. To rebuild or restyle them:
+
+```bash
+make models BLENDER=/Applications/Blender.app/Contents/MacOS/Blender   # macOS, Blender 4.2+
+make models BLENDER="python"                                           # or with `pip install bpy`
+```
+
+| Robotaxi (4-seat) | Robovan (10-seat shuttle) | Feeder bus | Flying truck (decorative) |
+|---|---|---|---|
+| ![](docs/img/models/robotaxi.png) | ![](docs/img/models/robovan.png) | ![](docs/img/models/bus.png) | ![](docs/img/models/skytruck.png) |
+
+### Night Shift (the game)
+
+The site opens on [Night Shift](web/src/play.html), a driving game on the same data built with three.js; the study
+itself is at `study.html`, linked from the game's menu and corner. Every building footprint and
+height, road area, park, stretch of water, the MRT line and the 180 bus stops come from the study's inputs, drawn
+at street level with lit windows, HDB void decks, street lamps and trees. You drive a robotaxi or robovan for a
+five-minute shift. Riders appear at each stop at that hour's observed rate (LTA fare-card OD) and head for stops
+riders really travel to. You pick them up, pool them and try to get them there before the bus would. The other
+shuttles on the road are the simulator's 450-vehicle fleet at the same minute. The walkers, trains and flying
+trucks are decoration, and "beat the bus" uses a rough bus estimate made for the game.
 
 <!-- LIMITATIONS -->
 ## Limitations

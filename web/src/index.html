@@ -26,6 +26,7 @@
   --rider: #f6eedd;      /* waiting riders */
   --good: #7cc58f;       /* status: keeping up */
   --bad: #e2725b;        /* status: falling behind */
+  --ion: #7cc8ff;        /* flying trucks' thrusters: decorative only */
   --font-display: "Archivo", "Arial Narrow", "Helvetica Neue", system-ui, sans-serif;
   --font-body: "Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
@@ -167,6 +168,28 @@ input[type="range"] { width: 100%; accent-color: var(--sodium); }
   background: var(--night-2); border: 1px solid var(--rule); border-radius: 4px; padding: 8px 10px;
   font-family: var(--font-data); font-size: 0.72rem; line-height: 1.45; color: var(--chalk);
 }
+.ride-btn {
+  width: 100%; padding: 8px 10px; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--night); background: var(--sodium); border-color: var(--sodium); font-weight: 600;
+}
+.ride-cta { margin-top: 18px; border-color: var(--sodium); color: var(--sodium); font-size: 0.82rem; padding: 8px 14px; }
+.ride-cta:hover { background: var(--sodium); color: var(--night); }
+.cta-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.cta-row .ride-cta { margin-top: 0; }
+a.play-cta { display: inline-block; font-family: var(--font-data); text-decoration: none; border: 1px solid var(--sodium); border-radius: 4px; background: var(--sodium); color: var(--night); font-weight: 600; }
+a.play-cta:hover { background: var(--chalk); border-color: var(--chalk); color: var(--night); }
+.mast nav a.play-link { color: var(--sodium); }
+.ride-btn:hover { background: var(--chalk); border-color: var(--chalk); color: var(--night); }
+.ride-btn[aria-pressed="true"] { background: transparent; color: var(--sodium); }
+.ride {
+  position: absolute; top: 12px; right: 12px; width: min(250px, calc(100% - 24px));
+  background: color-mix(in srgb, var(--night-2) 88%, transparent); backdrop-filter: blur(6px);
+  border: 1px solid var(--sodium); border-radius: 6px; padding: 10px 14px; display: grid; gap: 6px;
+}
+.ride .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ride .top .eyebrow { color: var(--sodium); }
+.ride b { font-family: var(--font-display); font-weight: 700; font-stretch: 110%; font-size: 1.25rem; }
+.ride button { padding: 3px 8px; font-size: 0.7rem; }
 .stage-note { max-width: 1240px; margin: 8px auto 0; font-family: var(--font-data); font-size: 0.74rem; color: var(--mute); }
 
 /* ---- findings ---- */
@@ -296,7 +319,7 @@ html.still .steps { padding-block: 0; }
 @media (max-width: 640px) {
   .stage { height: auto; display: flex; flex-direction: column; border-radius: 4px; }
   #map { position: relative; height: 58vh; min-height: 340px; }
-  .hud, .controls { position: static; width: auto; border: 0; border-top: 1px solid var(--rule); border-radius: 0; backdrop-filter: none; background: var(--night-2); }
+  .hud, .controls, .ride { position: static; width: auto; border: 0; border-top: 1px solid var(--rule); border-radius: 0; backdrop-filter: none; background: var(--night-2); }
   .controls { grid-template-columns: auto minmax(0, 1fr); }
   .controls #speed { grid-column: 1 / -1; justify-self: start; }
   .figs { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -314,7 +337,7 @@ html.still .steps { padding-block: 0; }
   <div class="inner">
     <div class="wordmark">Driverless <span>Yishun</span></div>
     <nav aria-label="Sections">
-      <a href="#explore">Explore</a><a href="#trips">Trips</a><a href="#cliff">Fleet</a><a href="#cost">Vehicles</a><a href="#kerb">Kerb</a><a href="#who">Who gains</a><a href="#method">Method</a><a href="#data">Data</a>
+      <a href="./" class="play-link">Play ▸</a><a href="#explore">Explore</a><a href="#trips">Trips</a><a href="#cliff">Fleet</a><a href="#cost">Vehicles</a><a href="#kerb">Kerb</a><a href="#who">Who gains</a><a href="#method">Method</a><a href="#data">Data</a>
     </nav>
   </div>
 </header>
@@ -329,6 +352,7 @@ html.still .steps { padding-block: 0; }
         <p class="small">Singapore is starting driverless shuttles inside new towns. This study asks what it would take in a <em>mature</em> one. It sends a simulated weekday of Yishun's internal bus rides, drawn from LTA fare-card counts between every pair of stops, through an on-demand shuttle fleet and compares every ride with today's buses. Road times are calibrated to LTA's live bus data and checked against bus GPS movement.</p>
         <p class="small">Four-seat vehicles would need <span data-v="par4">—</span>, twenty-seat ones <span data-v="par20">—</span>. The dispatcher matters as much as the vehicles: one that considers four times as many shuttles per request needs only <span data-v="disp4">—</span>. Across <span data-v="sens_n">—</span> alternative assumptions the ten-seat fleet ranges <span data-v="sens_lo">—</span>–<span data-v="sens_hi">—</span>. Several assumptions favour the shuttles: unlimited kerb space, no traffic added by the fleet itself, no charging, travel times known exactly, and road speeds measured outside the morning rush. Two favour the bus: crowding is ignored, and the dispatcher is a simple one.</p>
       </div></details>
+      <div class="cta-row"><button class="show ride-cta" type="button" data-show="ride">Ride along with a shuttle ▸</button><a class="ride-cta play-cta" href="./">Play Night Shift: drive Yishun yourself ▸</a></div>
     </div>
     <dl class="figs" id="figs">
       <div class="fig"><dt>Bus rides inside Yishun</dt><dd><span data-v="rides">—</span><small>per weekday; both ends in the town</small></dd></div>
@@ -353,6 +377,7 @@ html.still .steps { padding-block: 0; }
         <dt>Rides this hour (observed average)</dt><dd id="r-rides">—</dd>
         <dt>Stop-to-stop, this hour</dt><dd id="r-d2d">—</dd>
       </dl>
+      <button class="ride-btn" id="ride-btn" type="button" aria-pressed="false" title="Chase camera behind one simulated vehicle (G)">Ride along</button>
       <div class="legend" id="legend"></div>
     </div>
     <div class="controls">
@@ -362,19 +387,25 @@ html.still .steps { padding-block: 0; }
         <input id="time" type="range" min="300" max="1559" step="1" value="450" aria-label="Time of day">
         <div class="timeticks" aria-hidden="true"><span style="left:0%">05:00</span><span style="left:19.05%">09:00</span><span style="left:38.1%">13:00</span><span style="left:57.14%">17:00</span><span style="left:76.19%">21:00</span><span style="left:95.24%">01:00</span></div>
       </div>
-      <select id="speed" aria-label="Playback speed"><option value="30">30×</option><option value="120" selected>120×</option><option value="480">480×</option></select>
+      <select id="speed" aria-label="Playback speed"><option value="5">5×</option><option value="30">30×</option><option value="120" selected>120×</option><option value="480">480×</option></select>
       <div class="row2">
         <div class="seg" id="scenarios" role="group" aria-label="Scenario"></div>
         <div class="toggles">
           <label><input type="checkbox" id="t-wait" checked> riders waiting</label>
           <label><input type="checkbox" id="t-flows"> observed flows</label>
           <label><input type="checkbox" id="t-age"> 65+ share</label>
+          <label><input type="checkbox" id="t-sky" checked> flying trucks (decorative)</label>
         </div>
       </div>
     </div>
+    <div class="ride" id="ride" hidden aria-live="polite">
+      <div class="top"><span class="eyebrow">Riding along</span><button id="ride-exit" type="button">Exit · Esc</button></div>
+      <b id="ride-veh">—</b>
+      <dl class="readout"><dt>On board</dt><dd id="ride-occ">—</dd><dt>Speed</dt><dd id="ride-kmh">—</dd></dl>
+    </div>
     <div class="tip" id="tip" hidden></div>
   </div>
-  <p class="stage-note">Keys: W A S D fly the camera (Q E turn, R F up and down, Shift for speed, H returns to Yishun), space plays or pauses, arrow keys step 5 minutes. Shuttle movements are the simulator's own output for one demand replicate. Bus movements are modelled from LTA's published headways and calibrated running times (LTA does not publish timetables or vehicle traces). Building heights for HDB blocks come from HDB's storey counts; other buildings are context massing from OpenStreetMap.</p>
+  <p class="stage-note">Keys: W A S D fly the camera (Q E turn, R F up and down, Shift for speed, H returns to Yishun), space plays or pauses, arrow keys step 5 minutes, G rides along behind one vehicle (Esc to leave); clicking a vehicle rides along with it. The flying trucks are decoration and play no part in the study. Shuttle movements are the simulator's own output for one demand replicate. Bus movements are modelled from LTA's published headways and calibrated running times (LTA does not publish timetables or vehicle traces). Building heights for HDB blocks come from HDB's storey counts; other buildings are context massing from OpenStreetMap.</p>
 </section>
 
 <section class="chapter wrap" id="context">

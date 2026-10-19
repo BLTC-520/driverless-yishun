@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Night Shift · Driverless Yishun</title>
+<meta name="description" content="Drive a robotaxi through a 3D Yishun built from the study's data: every HDB block, road and bus stop, with riders appearing at the rates LTA's fare-card data shows.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230c111b'/%3E%3Ccircle cx='8' cy='8' r='4' fill='%23f2a53a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400..600&display=swap">
+<style>
+/* The game shares the study's palette: sodium amber for the player's fleet, teal for
+   guidance to drop-offs, chalk text on night panels. */
+:root {
+  --night: #0c111b; --night-2: #131a27; --rule: #263044;
+  --chalk: #e9e6de; --mute: #8f99ab; --sodium: #f2a53a; --bus: #52b6c7; --ion: #7cc8ff;
+  --good: #7cc58f; --bad: #e2725b;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Source Serif 4", Georgia, serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night); color: var(--chalk); font-family: var(--font-body); }
+canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+[hidden] { display: none !important; }
+a { color: var(--sodium); }
+button { font-family: var(--font-data); color: var(--chalk); background: #1a2333; border: 1px solid var(--rule); border-radius: 4px; padding: 8px 12px; cursor: pointer; font-size: 0.8rem; }
+button:hover { border-color: var(--mute); }
+button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium); }
+.panel { background: color-mix(in srgb, var(--night-2) 82%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--rule); border-radius: 6px; }
+.eyebrow { font-family: var(--font-data); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }
+
+/* ---- HUD ---- */
+#hud { position: fixed; inset: 0; pointer-events: none; font-family: var(--font-data); }
+#hud .stats { position: absolute; top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); padding: 10px 14px; display: grid; gap: 4px; min-width: 190px; }
+#hud .stats .row { display: flex; justify-content: space-between; gap: 16px; font-size: 0.78rem; color: var(--mute); }
+#hud .stats b { color: var(--chalk); font-weight: 500; font-variant-numeric: tabular-nums; }
+#hud .clock { font-size: 1.6rem; color: var(--chalk); display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+#hud .clock span { font-size: 0.72rem; color: var(--sodium); letter-spacing: 0.06em; text-transform: uppercase; }
+#score { color: var(--sodium) !important; font-size: 1.05rem; }
+#pax { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: min(300px, 46vw); padding: 10px 12px; display: grid; gap: 6px; }
+#pax .seats { display: flex; gap: 4px; }
+#pax .seats i { width: 14px; height: 8px; border-radius: 2px; background: var(--rule); }
+#pax .seats i.on { background: var(--sodium); }
+#pax ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 40vh; overflow: hidden; }
+#pax li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 0.74rem; padding: 5px 7px; border-left: 2px solid var(--ion); background: #0f1622; }
+#pax li .to { color: var(--chalk); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pax li .d { color: var(--mute); text-align: right; }
+#pax li .bus { grid-column: 1 / -1; color: var(--good); }
+#pax li .bus.late { color: var(--bad); }
+#pax .empty { font-size: 0.74rem; color: var(--mute); }
+.speedo { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); padding: 6px 16px; text-align: center; }
+.speedo b { font-size: 1.7rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.speedo span { font-size: 0.7rem; color: var(--mute); margin-left: 4px; }
+#minimap { position: absolute; right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); width: 190px; height: 190px; border-radius: 50%; border: 2px solid var(--rule); background: var(--night); }
+#hint { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 64px); font-size: 0.8rem; padding: 6px 12px; color: var(--chalk); white-space: nowrap; }
+#toast { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-family: var(--font-display); font-weight: 700; font-stretch: 112%; font-size: clamp(1.2rem, 3vw, 1.9rem); text-align: center; text-shadow: 0 2px 12px #000; opacity: 0; transition: opacity 0.3s; }
+#toast small { display: block; font-family: var(--font-data); font-weight: 400; font-size: 0.8rem; color: var(--chalk); margin-top: 4px; }
+#toast.show { opacity: 1; }
+.floater { position: absolute; font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; color: var(--sodium); text-shadow: 0 1px 6px #000; transform: translate(-50%, -100%); pointer-events: none; white-space: nowrap; }
+.floater.teal { color: var(--ion); }
+.stop-label { position: absolute; font-family: var(--font-data); font-size: 0.7rem; color: var(--chalk); background: #0c111bcc; border: 1px solid var(--sodium); border-radius: 3px; padding: 1px 5px; transform: translate(-50%, -100%); white-space: nowrap; }
+.stop-label.dest { border-color: var(--ion); color: var(--ion); }
+#corner { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: 6px; pointer-events: auto; }
+#corner a, #corner button { font-family: var(--font-data); font-size: 0.72rem; padding: 6px 10px; text-decoration: none; }
+#corner a { background: #1a2333; border: 1px solid var(--rule); border-radius: 4px; color: var(--mute); }
+
+/* ---- touch controls ---- */
+#touch { position: fixed; inset: auto 0 0 0; height: 0; pointer-events: none; }
+#touch button { position: fixed; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 70px); width: 64px; height: 64px; border-radius: 50%; font-size: 1.4rem; pointer-events: auto; background: #131a27cc; touch-action: none; user-select: none; -webkit-user-select: none; }
+#t-left { left: 16px; } #t-right { left: 92px; }
+#t-brake { right: 92px; } #t-go { right: 16px; border-color: var(--sodium) !important; color: var(--sodium); }
+
+/* ---- overlays ---- */
+.overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: radial-gradient(120% 90% at 50% 40%, #0c111b99, #0c111bee); overflow-y: auto; }
+.card { width: min(620px, 100%); padding: 26px 28px; display: grid; gap: 14px; }
+.card h1 { font-family: var(--font-display); font-weight: 780; font-stretch: 118%; font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1; margin: 0; letter-spacing: -0.01em; }
+.card h1 span { color: var(--sodium); }
+.card h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; margin: 0; }
+.card p { margin: 0; line-height: 1.5; max-width: 60ch; }
+.card p.small { font-size: 0.82rem; color: var(--mute); }
+.choice { display: grid; gap: 6px; }
+.choice .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.choice .opts button { flex: 1 1 120px; text-align: left; padding: 9px 12px; }
+.choice .opts button small { display: block; color: var(--mute); font-size: 0.7rem; margin-top: 2px; }
+.go { background: var(--sodium); color: var(--night); border-color: var(--sodium); font-weight: 600; font-size: 0.92rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 12px; }
+.go:hover { background: var(--chalk); border-color: var(--chalk); }
+.keys { font-family: var(--font-data); font-size: 0.74rem; color: var(--mute); display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; }
+.keys kbd { color: var(--chalk); font-family: inherit; }
+.results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; margin: 0; }
+.results div { border-top: 1px solid var(--rule); padding-top: 8px; }
+.results dt { font-family: var(--font-data); font-size: 0.7rem; color: var(--mute); text-transform: uppercase; letter-spacing: 0.04em; }
+.results dd { margin: 2px 0 0; font-family: var(--font-display); font-weight: 650; font-size: 1.6rem; }
+.results dd.sh { color: var(--sodium); }
+.row-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.row-btns > * { flex: 1 1 auto; text-align: center; }
+.row-btns a { font-family: var(--font-data); font-size: 0.8rem; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 4px; text-decoration: none; color: var(--mute); }
+#loading .bar { height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+#loading .bar i { display: block; height: 100%; width: 0; background: var(--sodium); transition: width 0.3s; }
+@media (max-width: 640px) {
+  #minimap { width: 118px; height: 118px; bottom: auto; right: auto; left: max(12px, env(safe-area-inset-left)); top: calc(max(12px, env(safe-area-inset-top)) + 136px); }
+  #pax ul { max-height: 30vh; }
+  #hud .stats { min-width: 0; padding: 8px 10px; }
+  #hud .clock { font-size: 1.2rem; }
+  #pax { width: 44vw; }
+  .speedo { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 150px); }
+  #hint { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 210px); white-space: normal; text-align: center; width: 80vw; }
+  .card { padding: 20px; }
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script>
+  // When the game cannot start at all (an old browser, a blocked CDN, no WebGL), say so and offer
+  // the study, instead of a loading bar that never moves. play.js sets __nsAlive once it runs.
+  window.nsFail = function (msg) {
+    var t = document.getElementById("load-text"), l = document.getElementById("loading");
+    if (!t || !l) return;
+    ["menu", "hud", "touch", "paused", "end"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; });
+    l.hidden = false;
+    t.textContent = msg + " ";
+    var a = document.createElement("a"); a.href = "study.html"; a.textContent = "Read the study instead";
+    var r = document.createElement("a"); r.href = "#"; r.textContent = "try again";
+    r.onclick = function () { location.reload(); return false; };
+    t.appendChild(a); t.appendChild(document.createTextNode(", or ")); t.appendChild(r); t.appendChild(document.createTextNode("."));
+    var bar = document.getElementById("load-bar"); if (bar) bar.parentNode.hidden = true;
+  };
+  setTimeout(function () {
+    if (!window.__nsAlive) window.nsFail("The game could not start: its 3D engine did not load. Check your connection, or try a recent browser.");
+  }, 30000);
+</script>
+</head>
+<body>
+<canvas id="c" aria-label="3D Yishun at street level"></canvas>
+
+<div id="hud" hidden>
+  <div class="stats panel">
+    <div class="clock"><b id="clock">19:30</b><span id="shift-label">shift 5:00</span></div>
+    <div class="row">Score <b id="score">0</b></div>
+    <div class="row">Delivered <b id="delivered">0</b></div>
+    <div class="row">Beat the bus <b id="beat">0</b></div>
+  </div>
+  <div id="pax" class="panel">
+    <div class="eyebrow" id="pax-title">On board 0/4</div>
+    <div class="seats" id="seats"></div>
+    <ul id="pax-list"></ul>
+    <div class="empty" id="pax-empty">Nobody on board. Head for an amber beam: riders are waiting there.</div>
+  </div>
+  <div class="speedo panel"><b id="kmh">0</b><span>km/h</span></div>
+  <canvas id="minimap" width="380" height="380" aria-label="Minimap"></canvas>
+  <div id="hint" class="panel" hidden></div>
+  <div id="toast"></div>
+  <div id="labels"></div>
+  <div id="corner"><button id="mute" type="button" aria-pressed="false" title="Sound (M)">Sound on</button><button id="pause" type="button" title="Pause (P)">Pause</button><a href="study.html">Study ↗</a></div>
+</div>
+
+<div id="touch" hidden>
+  <button id="t-left" type="button" aria-label="Steer left">◀</button>
+  <button id="t-right" type="button" aria-label="Steer right">▶</button>
+  <button id="t-brake" type="button" aria-label="Brake or reverse">▼</button>
+  <button id="t-go" type="button" aria-label="Accelerate">▲</button>
+</div>
+
+<div id="loading" class="overlay">
+  <div class="card panel">
+    <div class="eyebrow">Driverless Yishun</div>
+    <h1>Night <span>Shift</span></h1>
+    <p id="load-text">Loading Yishun…</p>
+    <div class="bar"><i id="load-bar"></i></div>
+  </div>
+</div>
+
+<div id="menu" class="overlay" hidden>
+  <div class="card panel">
+    <div class="eyebrow">Driverless Yishun · a game on the study's data</div>
+    <h1>Night <span>Shift</span></h1>
+    <p>Drive a driverless shuttle through Yishun. Riders appear at its 180 bus stops at the rate LTA's fare-card data shows for that hour, bound for the stops they really travel to. Pick them up, pool them, and get them there before the bus would have.</p>
+    <div class="choice"><div class="eyebrow">Vehicle</div><div class="opts" id="opt-veh">
+      <button type="button" data-veh="robotaxi" aria-pressed="true">Robotaxi<small>4 seats · nimble, 60 km/h</small></button>
+      <button type="button" data-veh="robovan" aria-pressed="false">Robovan<small>10 seats · pools more, 50 km/h</small></button>
+    </div></div>
+    <div class="choice"><div class="eyebrow">Hour</div><div class="opts" id="opt-hour">
+      <button type="button" data-hour="7.5" aria-pressed="false">07:30<small>morning rush</small></button>
+      <button type="button" data-hour="13" aria-pressed="false">13:00<small>midday</small></button>
+      <button type="button" data-hour="19.5" aria-pressed="true">19:30<small>evening</small></button>
+      <button type="button" data-hour="23" aria-pressed="false">23:00<small>late night</small></button>
+    </div></div>
+    <button class="go" id="start" type="button">Start shift</button>
+    <div class="keys"><kbd>W A S D / arrows</kbd><span>drive · stop inside a beam to board or drop riders</span><kbd>C</kbd><span>camera · <kbd>M</kbd> sound · <kbd>P</kbd> pause</span></div>
+    <p class="small">The other shuttles on the road are the study's simulated fleet (450 ten-seat vehicles) at the same minute. Buildings, roads, stops and ride rates are real data; the walkers, the trains and the flying trucks are decoration. <a href="study.html">Read the study</a>.</p>
+  </div>
+</div>
+
+<div id="paused" class="overlay" hidden>
+  <div class="card panel"><h2>Paused</h2><div class="row-btns"><button class="go" id="resume" type="button">Resume</button><button id="quit" type="button">End shift</button></div></div>
+</div>
+
+<div id="end" class="overlay" hidden>
+  <div class="card panel">
+    <div class="eyebrow" id="end-eyebrow">Shift over</div>
+    <h2 id="end-title">Shift over</h2>
+    <dl class="results">
+      <div><dt>Score</dt><dd class="sh" id="r-score">0</dd></div>
+      <div><dt>Riders delivered</dt><dd id="r-del">0</dd></div>
+      <div><dt>Beat the bus</dt><dd id="r-beat">—</dd></div>
+      <div><dt>Best score</dt><dd id="r-best">—</dd></div>
+    </dl>
+    <p class="small" id="r-note"></p>
+    <div class="row-btns"><button class="go" id="again" type="button">Drive again</button><button id="change" type="button">Change vehicle or hour</button><a href="study.html">Read the study</a></div>
+  </div>
+</div>
+
+<script type="module" src="play.js" onerror="nsFail('The game could not load.')"></script>
+<script nomodule>nsFail("This browser is too old to run the game.");</script>
+</body>
+</html>

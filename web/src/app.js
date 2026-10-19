@@ -9,6 +9,7 @@
   const C = {
     sodium: hexRgb(tok("--sodium")), sodiumDim: hexRgb(tok("--sodium-dim")), bus: hexRgb(tok("--bus")),
     nsl: hexRgb(tok("--nsl")), rider: hexRgb(tok("--rider")), chalk: hexRgb(tok("--chalk")), mute: hexRgb(tok("--mute")),
+    ion: hexRgb(tok("--ion")),
   };
   const fmtInt = d3.format(",.0f");
   const pad = (n) => String(n).padStart(2, "0");
@@ -18,8 +19,14 @@
 
   const state = {
     t: 7.5 * 60, playing: false, speed: 120, scenario: null,
-    showWait: true, showFlows: false, showAge: false, hover: null,
+    showWait: true, showFlows: false, showAge: false, showSky: true, hover: null,
+    view: null,          // last view state, for zoom-dependent model scale
+    orbit: false,        // slow attract-mode orbit until the visitor touches the map
+    follow: null,        // ride-along camera: { veh, bearing, lost }
   };
+  // Vehicle models built in Blender by tools/blender/build_models.py (metres, facing +x).
+  const MODELS = { robovan: "models/robovan.glb", robotaxi: "models/robotaxi.glb", bus: "models/bus.glb", skytruck: "models/skytruck.glb" };
+  const modelFor = (sc) => (sc.kind === "bus" ? "bus" : sc.capacity <= 4 ? "robotaxi" : "robovan");
   const D = {};          // loaded datasets
   const anim = {};       // decoded animation per scenario id
   let deckgl = null;
@@ -82,6 +89,32 @@
     return [pts[lo][0] + u * (pts[hi][0] - pts[lo][0]), pts[lo][1] + u * (pts[hi][1] - pts[lo][1])];
   }
 
+  const M_LAT = 111320, M_LNG = 111320 * Math.cos((1.42 * Math.PI) / 180); // metres per degree here
+
+  // position plus heading (degrees counter-clockwise from east) at fraction f along a path
+  function poseAt(path, f) {
+    const { pts, fr } = path;
+    let lo = 0, hi = fr.length - 1;
+    const g = Math.max(0, Math.min(1, f));
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (fr[mid] <= g) lo = mid; else hi = mid; }
+    const span = fr[hi] - fr[lo] || 1, u = Math.max(0, Math.min(1, (g - fr[lo]) / span));
+    const a = pts[lo], b = pts[hi];
+    const h = (Math.atan2((b[1] - a[1]) * M_LAT, (b[0] - a[0]) * M_LNG) * 180) / Math.PI;
+    return { p: [a[0] + u * (b[0] - a[0]), a[1] + u * (b[1] - a[1])], h };
+  }
+
+  function pathLength(path) {
+    if (path.len == null) {
+      let d = 0;
+      for (let k = 1; k < path.pts.length; k++) {
+        const a = path.pts[k - 1], b = path.pts[k];
+        d += Math.hypot((b[0] - a[0]) * M_LNG, (b[1] - a[1]) * M_LAT);
+      }
+      path.len = d;
+    }
+    return path.len;
+  }
+
   // first leg index with t0 >= time (legs sorted by t0)
   function lowerBound(arr, x) {
     let lo = 0, hi = arr.length;
@@ -124,11 +157,63 @@
       const end = legEnd(L, i);
       if (end <= tSec) continue;
       const f = (tSec - L.t0[i]) / (L.dur[i] || 1);
-      heads.push({ p: posAt(P[L.pid[i]], f), occ: L.occ[i] });
+      const pose = poseAt(P[L.pid[i]], f);
+      heads.push({ p: pose.p, h: pose.h, occ: L.occ[i], veh: L.veh[i] });
       seen.add(L.veh[i]);
     }
     return { heads, vehicles: seen.size };
   }
+
+  // where one vehicle is at tSec: on its current leg, or parked where its last leg ended
+  function vehiclePose(id, veh, tSec) {
+    const L = anim[id].legs, P = D.paths;
+    let best = -1;
+    const i1 = lowerBound(L.t0, tSec + 1e-6);
+    for (let i = i1 - 1, floor = Math.max(0, i1 - 60000); i >= floor; i--) {
+      if (L.veh[i] === veh) { best = i; break; }
+    }
+    if (best < 0) return null;
+    const end = legEnd(L, best), dur = L.dur[best] || 1, path = P[L.pid[best]];
+    const moving = end > tSec;
+    const f = moving ? (tSec - L.t0[best]) / dur : (L.cut[best] > 0 ? L.cut[best] / dur : 1);
+    const pose = poseAt(path, f);
+    return { ...pose, occ: L.occ[best], moving, idle: moving ? 0 : tSec - end, kmh: moving ? (pathLength(path) / dur) * 3.6 : 0 };
+  }
+
+  // ------------------------------------------------------------------ sky traffic (decorative)
+  // Flying trucks on looping routes above the town. Not part of the simulation: they run on
+  // the wall clock, so they keep flying while the simulated day is paused.
+  const SKY = { flights: [], lap: 90 };
+  function buildSky() {
+    const [lng0, lat0] = D.anim_index.origin;
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let k = 0; k < 14; k++) {
+      const cx = lng0 + (rnd() - 0.5) * 0.026, cy = lat0 + (rnd() - 0.5) * 0.02;
+      const a = 500 + rnd() * 1100, b = 300 + rnd() * 700, rot = rnd() * Math.PI, alt = 120 + rnd() * 160;
+      const eight = k % 3 === 0, dir = rnd() < 0.5 ? 1 : -1, phase = rnd();
+      const pts = [];
+      for (let i = 0; i <= 360; i++) {      // three laps: the trail behind the head never runs off the start
+        const u = (dir * 2 * Math.PI * i) / 120;
+        const x0 = a * Math.sin(u), y0 = eight ? b * Math.sin(2 * u) / 1.6 : b * Math.cos(u);
+        const x = x0 * Math.cos(rot) - y0 * Math.sin(rot), y = x0 * Math.sin(rot) + y0 * Math.cos(rot);
+        pts.push([cx + x / M_LNG, cy + y / M_LAT, alt + 25 * Math.sin(3 * u)]);
+      }
+      const off = phase * SKY.lap, ts = pts.map((_, i) => (i / 120) * SKY.lap - off);
+      SKY.flights.push({ path: pts, timestamps: ts, phase: off });
+    }
+  }
+
+  function skyPose(fl, t) {
+    // same clock as the trails layer: local time (t mod lap) + lap + phase lies in the 2nd-3rd lap
+    const x = (((t % SKY.lap) + SKY.lap + fl.phase) / SKY.lap) * 120, i = Math.min(359, Math.floor(x)), u = x - i;
+    const a = fl.path[i], b = fl.path[i + 1];
+    const h = (Math.atan2((b[1] - a[1]) * M_LAT, (b[0] - a[0]) * M_LNG) * 180) / Math.PI;
+    return { p: [a[0] + u * (b[0] - a[0]), a[1] + u * (b[1] - a[1]), a[2] + u * (b[2] - a[2])], h };
+  }
+
+  const skyMoves = !reduceMotion && !still;  // frozen for reduced motion and screenshots
+  const skyClock = () => (skyMoves ? performance.now() / 1000 : 20);
 
   // ------------------------------------------------------------------ map layers
   function vehColor(occ, alpha) {
@@ -172,7 +257,10 @@
     L.push(new deck.PathLayer({ id: "rail", data: D.town.rail, getPath: (d) => d, getColor: [...C.nsl, 200], widthMinPixels: 2, pickable: false }));
     L.push(new deck.SolidPolygonLayer({
       id: "buildings", data: D.buildings.buildings, getPolygon: (d) => d.p, extruded: true, getElevation: (d) => d.h,
-      getFillColor: hdbColor, opacity: 0.9, pickable: true, material: { ambient: 0.35, diffuse: 0.6, shininess: 12, specularColor: [40, 40, 40] },
+      // see-through while riding, so blocks between the chase camera and the vehicle don't hide it
+      // (and not writing depth, or they would still hide the vehicles drawn after them)
+      getFillColor: hdbColor, opacity: state.follow ? 0.42 : 0.9, pickable: !state.follow,
+      parameters: state.follow ? { depthWriteEnabled: false } : {}, material: { ambient: 0.35, diffuse: 0.6, shininess: 12, specularColor: [40, 40, 40] },
     }));
     const sc = state.scenario && anim[state.scenario.id];
     const stopIdx = stopsPos();
@@ -189,14 +277,14 @@
       // flat discs whose AREA is proportional to riders waiting (radius = 12 m x sqrt(riders))
       L.push(new deck.ScatterplotLayer({
         id: "waiting", data, getPosition: (d) => [d.s.x, d.s.y], getRadius: (d) => 12 * Math.sqrt(d.w), radiusUnits: "meters",
-        radiusMinPixels: 1, stroked: true, getLineColor: [...C.rider, 230], lineWidthMinPixels: 1,
-        getFillColor: [...C.rider, 110], pickable: true,
-        updateTriggers: { getRadius: [state.t, state.scenario && state.scenario.id] },
+        radiusMinPixels: 1, stroked: true, lineWidthMinPixels: 1,
+        getFillColor: [...C.rider, state.follow ? 40 : 110], getLineColor: [...C.rider, state.follow ? 120 : 230], pickable: true,
+        updateTriggers: { getRadius: [state.t, state.scenario && state.scenario.id], getFillColor: !!state.follow, getLineColor: !!state.follow },
       }));
     }
     L.push(new deck.ScatterplotLayer({
       id: "stops", data: D.stops.stops, getPosition: (d) => [d.x, d.y], getRadius: (d) => (d.hub ? 22 : 10), radiusMinPixels: 1.5,
-      getFillColor: (d) => (d.hub ? [...C.nsl, 230] : [200, 205, 215, 150]), pickable: true,
+      radiusMaxPixels: 16, getFillColor: (d) => (d.hub ? [...C.nsl, 230] : [200, 205, 215, 150]), pickable: true,
     }));
     if (state.showFlows) {
       const flows = D.demand.top_flows[hourIdx] || [];
@@ -215,9 +303,51 @@
       }));
       const act = activeVehicles(state.scenario.id, tSec);
       state._active = act.vehicles;
+      const v = state.view || HOME, zoom = v.zoom;
+      // models only once they are big enough to read (dots at town scale), and only those near
+      // the camera: instanced models are not culled, so this keeps phones smooth
+      const models = zoom >= (window.innerWidth < 640 ? 15.5 : 15);
+      let near = act.heads;
+      if (models) {
+        const r = 1.6 * Math.max(window.innerWidth, 400) * (156543 * Math.cos((1.42 * Math.PI) / 180)) / 2 ** zoom;
+        near = act.heads.filter((d) => Math.hypot((d.p[0] - v.longitude) * M_LNG, (d.p[1] - v.latitude) * M_LAT) < r);
+      }
+      const fp = state.follow && state.follow.pose;  // a parked vehicle has no moving leg: draw it anyway
+      if (fp && !fp.moving) near = near.concat([{ p: fp.p, h: fp.h, occ: fp.occ, veh: state.follow.veh }]);
       L.push(new deck.ScatterplotLayer({
         id: "heads", data: act.heads, getPosition: (d) => d.p, getRadius: 9, radiusMinPixels: 1.6, radiusMaxPixels: 4,
-        getFillColor: (d) => vehColor(d.occ, 255),
+        getFillColor: (d) => vehColor(d.occ, 255), pickable: true, visible: !models,
+      }));
+      // the vehicles themselves: Blender models heading along their routes, drawn larger than
+      // life when zoomed out so they stay legible (sizeScale), true-ish size when riding along
+      L.push(new deck.ScenegraphLayer({
+        // one layer per model: deck.gl does not swap a loaded scenegraph when its URL changes
+        id: `models-${modelFor(state.scenario)}`, data: near, scenegraph: MODELS[modelFor(state.scenario)], visible: models,
+        getPosition: (d) => [d.p[0], d.p[1], 0], getOrientation: (d) => [0, d.h, 90],
+        getColor: (d) => (d.occ === 0 ? [120, 120, 130, 255] : [255, 255, 255, 255]),
+        sizeScale: state.follow ? 1 : Math.max(1.4, Math.min(4, 2 ** (18.5 - zoom))),
+        _lighting: "pbr", pickable: true,
+      }));
+      if (state.follow && state.follow.pose) {  // the "player" marker under the vehicle being ridden
+        const pulse = 0.75 + 0.25 * Math.sin(performance.now() / 260);
+        L.push(new deck.ScatterplotLayer({
+          id: "ride-ring", data: [state.follow.pose], getPosition: (d) => [d.p[0], d.p[1], 0.05], getRadius: 7 * pulse,
+          radiusUnits: "meters", stroked: true, filled: true, getFillColor: [...C.sodium, 40], getLineColor: [...C.sodium, 230],
+          getLineWidth: 0.5, lineWidthUnits: "meters", updateTriggers: { getRadius: pulse },
+        }));
+      }
+    }
+    if (state.showSky && SKY.flights.length) {
+      const now = skyClock();
+      L.push(new deck.TripsLayer({
+        id: "sky-trails", data: SKY.flights, getPath: (d) => d.path, getTimestamps: (d) => d.timestamps,
+        getColor: [...C.ion, 210], widthMinPixels: 2.5, trailLength: 10, fadeTrail: true, capRounded: true,
+        currentTime: (now % SKY.lap) + SKY.lap,
+      }));
+      L.push(new deck.ScenegraphLayer({
+        id: "sky", data: SKY.flights.map((fl) => skyPose(fl, now)), scenegraph: MODELS.skytruck,
+        getPosition: (d) => d.p, getOrientation: (d) => [0, d.h, 90], sizeScale: 4, sizeMinPixels: 4,
+        _animations: { "*": { speed: reduceMotion ? 0 : 1 } }, _lighting: "pbr", pickable: true,
       }));
     }
     return L;
@@ -276,6 +406,7 @@
     const items = sc.kind === "bus"
       ? [["--bus", "bus (modelled)"], ["--rider", "riders waiting, expected (disc area)"], ["--nsl", "MRT / interchange stop"]]
       : [["--sodium", "shuttle with riders"], ["--sodium-dim", "empty shuttle"], ["--rider", "riders waiting (disc area)"], ["--nsl", "MRT / interchange stop"]];
+    if (state.showSky) items.push(["--ion", "flying trucks: decorative, not simulated"]);
     el.innerHTML = items.map(([v, l]) => `<span><i style="background:var(${v})"></i>${l}</span>`).join("");
   }
 
@@ -297,17 +428,90 @@
     redraw();
   }
 
+  // ------------------------------------------------------------------ ride along (chase camera)
+  const CONTROLLER = { dragRotate: true, touchRotate: true };
+  const PHONE = window.innerWidth < 640;
+  const RIDE_ZOOM = PHONE ? 19.6 : 20, RIDE_PITCH = PHONE ? 52 : 62;  // phones: shorter map, camera sits lower
+  const vehName = (sc) => (sc.kind === "bus" ? "Bus" : sc.capacity <= 4 ? "Robotaxi" : "Shuttle");
+
+  function pickRideVehicle() {
+    const act = activeVehicles(state.scenario.id, state.t * 60);
+    const busy = act.heads.filter((h) => h.occ > 0 || h.occ === -2);
+    const pool = busy.length ? busy : act.heads;
+    return pool.length ? pool[Math.floor(Math.random() * pool.length)].veh : null;
+  }
+
+  function startRide(veh) {
+    if (!state.scenario || !deckgl || !anim[state.scenario.id]) return;
+    if (veh == null) veh = pickRideVehicle();
+    if (veh == null) return;
+    const prev = state.follow ? state.follow.prevSpeed : state.speed;
+    state.follow = { veh, bearing: state.view ? state.view.bearing : 0, prevSpeed: prev, last: null };
+    state.orbit = false;
+    state.speed = 5; document.getElementById("speed").value = "5";
+    deckgl.setProps({ controller: false });
+    if (!state.playing) setPlaying(true);
+    document.getElementById("ride").hidden = false;
+    document.getElementById("ride-btn").setAttribute("aria-pressed", "true");
+  }
+
+  function stopRide() {
+    const f = state.follow; if (!f) return;
+    state.follow = null;
+    state.speed = f.prevSpeed; document.getElementById("speed").value = String(f.prevSpeed);
+    const v = state.view || HOME;
+    view = state.view = { ...v, zoom: Math.min(v.zoom, 17), pitch: Math.min(v.pitch, 58) };
+    deckgl.setProps({ controller: CONTROLLER, viewState: null, initialViewState: { ...view, transitionDuration: reduceMotion ? 0 : 900 } });
+    document.getElementById("ride").hidden = true;
+    document.getElementById("ride-btn").setAttribute("aria-pressed", "false");
+  }
+
+  function updateRide() {
+    const f = state.follow, sc = state.scenario;
+    if (!sc || !anim[sc.id]) return;      // a scenario is still loading
+    let pose = vehiclePose(sc.id, f.veh, state.t * 60);
+    if (!pose || pose.idle > 240) {        // that vehicle's work is done: hop onto a busy one
+      const next = pickRideVehicle();
+      if (next != null && next !== f.veh) { f.veh = next; pose = vehiclePose(sc.id, next, state.t * 60) || pose; }
+      if (!pose) return;
+    }
+    const now = performance.now(), dt = f.last ? Math.min(0.1, (now - f.last) / 1000) : 0.016;
+    f.last = now;
+    if (pose.moving) {                      // ease the camera round corners
+      const target = (90 - pose.h + 360) % 360, d = ((target - f.bearing + 540) % 360) - 180;
+      f.bearing = (f.bearing + d * Math.min(1, dt * 2.2) + 360) % 360;
+    }
+    f.pose = pose;
+    const rad = ((90 - f.bearing) * Math.PI) / 180, ahead = 22;  // look ahead, so the vehicle sits low in frame
+    const cam = {
+      longitude: pose.p[0] + (Math.cos(rad) * ahead) / M_LNG, latitude: pose.p[1] + (Math.sin(rad) * ahead) / M_LAT,
+      zoom: RIDE_ZOOM, pitch: RIDE_PITCH, bearing: f.bearing,
+    };
+    view = state.view = cam;
+    deckgl.setProps({ viewState: cam });
+    document.getElementById("ride-veh").textContent = `${vehName(sc)} #${f.veh}`;
+    document.getElementById("ride-occ").textContent = pose.occ === -2 ? "not modelled per bus"
+      : pose.occ > 0 ? `${pose.occ} rider${pose.occ > 1 ? "s" : ""}` : pose.moving ? "empty, repositioning" : "empty, waiting for work";
+    document.getElementById("ride-kmh").textContent = pose.moving ? `${Math.round(pose.kmh)} km/h` : "stopped";
+  }
+
   // ------------------------------------------------------------------ playback
-  let last = null;
+  let last = null, stageVisible = true;
   function tick(ts) {
+    const dt = last != null ? Math.min(0.1, (ts - last) / 1000) : 0;
+    last = ts;
     if (state.playing) {
-      if (last != null) {
-        state.t += ((ts - last) / 1000) * state.speed / 60;
-        if (state.t >= 1559) state.t = 300;
-      }
-      last = ts;
-      redraw();
-    } else last = null;
+      state.t += dt * state.speed / 60;
+      if (state.t >= 1559) state.t = 300;
+    }
+    if (state.orbit && stageVisible && deckgl) {   // attract mode: drift round the town
+      const v = state.view || HOME;
+      view = state.view = { ...v, bearing: (v.bearing + dt * 2.2) % 360 };
+      deckgl.setProps({ initialViewState: state.view });
+    }
+    if (state.follow) updateRide();
+    // the sky keeps flying while paused, so keep drawing whenever the stage is on screen
+    if (state.playing || state.follow || (stageVisible && ((state.showSky && skyMoves) || state.orbit))) redraw();
     requestAnimationFrame(tick);
   }
 
@@ -327,6 +531,8 @@
   let flyCount = 0;
   function flyTo(view) {
     if (!deckgl) return;
+    if (state.follow) stopRide();
+    state.orbit = false;
     // the nonce makes every call differ: deck.gl ignores an initialViewState that deep-equals the previous one,
     // which would turn a second flight to the same place (after panning by mouse) into a no-op
     deckgl.setProps({ initialViewState: { ...view, nonce: ++flyCount, transitionDuration: reduceMotion ? 0 : 1800, transitionInterpolator: new deck.FlyToInterpolator() } });
@@ -343,6 +549,8 @@
   function flyStep(ts) {
     const moving = [...held].some((k) => k !== "shift");
     if (!moving) { flying = false; flyLast = null; return; }
+    state.orbit = false;
+    if (state.follow) stopRide();                 // the ride's camera would override the flight
     const dt = flyLast == null ? 0 : Math.min((ts - flyLast) / 1000, 0.05);
     flyLast = ts;
     if (deckgl && view && dt > 0) {
@@ -390,10 +598,14 @@
     : { longitude: 103.8318, latitude: 1.4228, zoom: 13.75, pitch: 54, bearing: -24 };
 
   function show(what) {
+    stopRide(); state.orbit = false;
     const R = D.results;
     const byId = (id) => D.anim_index.scenarios.find((s) => s.id === id);
     document.getElementById("explore").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
-    if (what === "flows") {
+    if (what === "ride") {
+      if (state.scenario && state.scenario.kind === "bus") selectScenario(byId(R.anim.reference) || D.anim_index.scenarios[1]).then(() => startRide());
+      else startRide();
+    } else if (what === "flows") {
       state.t = 7.5 * 60; state.showFlows = true; document.getElementById("t-flows").checked = true;
       selectScenario(byId("bus") || D.anim_index.scenarios[0]); flyTo(HOME);
     } else if (what === "cliff") {
@@ -411,7 +623,12 @@
     const o = info && info.object;
     if (!o) { tip.hidden = true; return; }
     let html = null;
-    if (info.layer.id === "buildings") {
+    if (/^(models|heads)/.test(info.layer.id)) {
+      const sc = state.scenario;
+      html = `${vehName(sc)} #${o.veh}${sc.kind === "bus" ? " (modelled)" : o.occ > 0 ? ` · ${o.occ} on board` : " · empty"}<br>click to ride along`;
+    } else if (info.layer.id === "sky") {
+      html = "Flying truck<br>decorative: not part of the simulation";
+    } else if (info.layer.id === "buildings") {
       html = o.k === "hdb"
         ? `HDB Blk ${o.b}<br>${o.f} storeys · completed ${o.y}<br>${o.u ? fmtInt(o.u) + " flats" : "non-residential"}`
         : `Building (OpenStreetMap)<br>height ${o.s === "default" ? "not mapped, shown as context" : "≈ " + Math.round(o.h) + " m"}`;
@@ -1245,10 +1462,16 @@
       b.textContent = sc.kind === "bus" ? "Today's buses" : `${sc.fleet} × ${sc.capacity}-seat`;
       b.title = sc.label; b.onclick = () => selectScenario(sc); el.appendChild(b);
     }
+    buildSky();
+    state.view = HOME;
     deckgl = new deck.Deck({
-      parent: document.getElementById("map"), initialViewState: HOME, controller: { dragRotate: true, touchRotate: true },
+      parent: document.getElementById("map"), initialViewState: HOME, controller: CONTROLLER,
       views: new deck.MapView({ repeat: false }), layers: [], onHover,
-      onViewStateChange: ({ viewState }) => { view = viewState; updateAway(viewState); },
+      onClick: (info) => { if (info.object && /^(models|heads)/.test(info.layer.id)) startRide(info.object.veh); },
+      onViewStateChange: ({ viewState }) => {
+        view = state.view = viewState; updateAway(viewState);
+        if (!state.playing && !state.showSky) redraw();
+      },
       effects: [new deck.LightingEffect({
         ambient: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.0 }),
         moon: new deck.DirectionalLight({ color: [255, 236, 214], intensity: 1.4, direction: [-1.2, -2, -3] }),
@@ -1263,6 +1486,12 @@
     document.getElementById("t-wait").onchange = (e) => { state.showWait = e.target.checked; redraw(); };
     document.getElementById("t-flows").onchange = (e) => { state.showFlows = e.target.checked; redraw(); };
     document.getElementById("t-age").onchange = (e) => { state.showAge = e.target.checked; redraw(); };
+    document.getElementById("t-sky").onchange = (e) => { state.showSky = e.target.checked; setLegend(); redraw(); };
+    document.getElementById("ride-btn").onclick = () => (state.follow ? stopRide() : startRide());
+    document.getElementById("ride-exit").onclick = stopRide;
+    const mapEl = document.getElementById("map");
+    for (const ev of ["pointerdown", "wheel", "touchstart"]) mapEl.addEventListener(ev, () => { state.orbit = false; }, { passive: true });
+    new IntersectionObserver((es) => { stageVisible = es[0].isIntersecting; }).observe(document.getElementById("stage"));
     for (const b of document.querySelectorAll("[data-show]")) b.onclick = () => show(b.dataset.show);
     const ids = new Set(D.anim_index.scenarios.map((x) => x.id));
     const cliffBtn = document.querySelector('[data-show="cliff"]');
@@ -1271,10 +1500,13 @@
     if (kerbBtn && !ids.has(D.results.anim.reference)) kerbBtn.hidden = true;
     // keyboard: space plays/pauses, arrows step five minutes (when focus is not in a form control)
     document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && state.follow) { stopRide(); return; }
       if (/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(document.activeElement.tagName)) return;
       const r = document.getElementById("stage").getBoundingClientRect();
       if (r.bottom < 0 || r.top > window.innerHeight) return;
+      state.orbit = false;
       if (e.key === " ") { e.preventDefault(); setPlaying(!state.playing); }
+      else if (e.key === "g" || e.key === "G") { if (state.follow) stopRide(); else startRide(); }
       else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
         e.preventDefault(); state.t = Math.max(300, Math.min(1559, state.t + (e.key === "ArrowRight" ? 5 : -5))); redraw();
       }
@@ -1286,7 +1518,7 @@
       clearTimeout(rz);
       rz = setTimeout(() => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; drawCharts(); } onScroll(); }, 200);
     });
-    if (!reduceMotion && !still) setPlaying(true);
+    if (!reduceMotion && !still) { setPlaying(true); state.orbit = true; }
     requestAnimationFrame(tick);
     document.documentElement.dataset.ready = "1";
   }

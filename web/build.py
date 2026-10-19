@@ -1,9 +1,12 @@
 """Build the static site: web/src (page fragment + app.js) + web/public/data -> web/dist.
 
-* dist/page.html  the page fragment with headline numbers pre-filled from the data (what the
-                  artifact host publishes; it supplies the document skeleton itself)
-* dist/index.html the same page wrapped in a full HTML document, for standalone hosting
+* dist/index.html the landing page: the game (Night Shift, play.html + play.js), a standalone page;
+                  dist/play.html is the same file, so older links keep working
+* dist/study.html the study, wrapped in a full HTML document, for standalone hosting
                   (GitHub Pages, `python -m http.server`)
+* dist/page.html  the study as a page fragment with headline numbers pre-filled from the data (what
+                  the artifact host publishes; it supplies the document skeleton itself)
+* dist/models/    vehicle models (glTF) built in Blender by tools/blender/build_models.py
 The numbers are filled again at runtime by app.js from the same JSON files.
 Usage: python web/build.py
 """
@@ -16,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SRC, DATA, DIST = ROOT / "src", ROOT / "public" / "data", ROOT / "dist"
+MODELS = ROOT / "public" / "models"  # vehicle .glb files from tools/blender/build_models.py
 
 HEAD = """<!doctype html>
 <html lang="en">
@@ -48,11 +52,17 @@ def main() -> None:
     DIST.mkdir(exist_ok=True)
     (DIST / "page.html").write_text(page)
     cut = page.index("<header")
-    (DIST / "index.html").write_text(HEAD + page[:cut] + "</head>\n<body>\n" + page[cut:] + "\n</body>\n</html>\n")
+    (DIST / "study.html").write_text(HEAD + page[:cut] + "</head>\n<body>\n" + page[cut:] + "\n</body>\n</html>\n")
     shutil.copy(SRC / "app.js", DIST / "app.js")
+    shutil.copy(SRC / "play.js", DIST / "play.js")
+    for name in ("index.html", "play.html"):  # the game is the landing page, copied as is
+        shutil.copy(SRC / "play.html", DIST / name)
     if (DIST / "data").exists():
         shutil.rmtree(DIST / "data")
     shutil.copytree(DATA, DIST / "data")
+    if (DIST / "models").exists():
+        shutil.rmtree(DIST / "models")
+    shutil.copytree(MODELS, DIST / "models")
     size = sum(p.stat().st_size for p in DIST.rglob("*") if p.is_file())
     print(f"built {DIST} ({size / 1e6:.1f} MB)")
 
