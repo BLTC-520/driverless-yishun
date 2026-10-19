@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Night Shift · Driverless Yishun</title>
-<meta name="description" content="Drive a robotaxi through a 3D Yishun built from the study's data: every HDB block, road and bus stop, with riders appearing at the rates LTA's fare-card data shows.">
+<meta name="description" content="Drive a robotaxi through a 3D Yishun built from the study's data and drawn with WebGPU: every HDB block, road and bus stop, riders appearing at the rates LTA's fare-card data shows, and real crashes.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230c111b'/%3E%3Ccircle cx='8' cy='8' r='4' fill='%23f2a53a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400..600&display=swap">
 <style>
 /* The game shares the study's palette: sodium amber for the player's fleet, teal for
-   guidance to drop-offs, chalk text on night panels. */
+   guidance to drop-offs, chalk text on night panels, brick red for incidents. */
 :root {
   --night: #0c111b; --night-2: #131a27; --rule: #263044;
   --chalk: #e9e6de; --mute: #8f99ab; --sodium: #f2a53a; --bus: #52b6c7; --ion: #7cc8ff;
@@ -40,6 +40,12 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
 #hud .clock { font-size: 1.6rem; color: var(--chalk); display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 #hud .clock span { font-size: 0.72rem; color: var(--sodium); letter-spacing: 0.06em; text-transform: uppercase; }
 #score { color: var(--sodium) !important; font-size: 1.05rem; }
+#hud .clock span.late { color: var(--bad); }
+#safety { color: var(--sodium) !important; letter-spacing: 0.08em; }
+#hud .meter { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--mute); }
+#hud .meter i { display: block; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+#hud .meter i b { display: block; height: 100%; width: 100%; background: var(--good); transition: width 0.25s, background 0.25s; }
+#hud .meter em { font-style: normal; color: var(--chalk); font-variant-numeric: tabular-nums; min-width: 3.4em; text-align: right; }
 #pax { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: min(300px, 46vw); padding: 10px 12px; display: grid; gap: 6px; }
 #pax .seats { display: flex; gap: 4px; }
 #pax .seats i { width: 14px; height: 8px; border-radius: 2px; background: var(--rule); }
@@ -61,17 +67,20 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
 #toast.show { opacity: 1; }
 .floater { position: absolute; font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; color: var(--sodium); text-shadow: 0 1px 6px #000; transform: translate(-50%, -100%); pointer-events: none; white-space: nowrap; }
 .floater.teal { color: var(--ion); }
+.floater.bad { color: var(--bad); }
 .stop-label { position: absolute; font-family: var(--font-data); font-size: 0.7rem; color: var(--chalk); background: #0c111bcc; border: 1px solid var(--sodium); border-radius: 3px; padding: 1px 5px; transform: translate(-50%, -100%); white-space: nowrap; }
 .stop-label.dest { border-color: var(--ion); color: var(--ion); }
 #corner { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: 6px; pointer-events: auto; }
 #corner a, #corner button { font-family: var(--font-data); font-size: 0.72rem; padding: 6px 10px; text-decoration: none; }
-#corner a { background: #1a2333; border: 1px solid var(--rule); border-radius: 4px; color: var(--mute); }
+#corner a, #corner .badge { background: #1a2333; border: 1px solid var(--rule); border-radius: 4px; color: var(--mute); }
+#corner .badge { font-family: var(--font-data); font-size: 0.72rem; padding: 6px 10px; }
 
 /* ---- touch controls ---- */
 #touch { position: fixed; inset: auto 0 0 0; height: 0; pointer-events: none; }
 #touch button { position: fixed; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 70px); width: 64px; height: 64px; border-radius: 50%; font-size: 1.4rem; pointer-events: auto; background: #131a27cc; touch-action: none; user-select: none; -webkit-user-select: none; }
 #t-left { left: 16px; } #t-right { left: 92px; }
 #t-brake { right: 92px; } #t-go { right: 16px; border-color: var(--sodium) !important; color: var(--sodium); }
+#t-horn { right: 54px; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 146px) !important; width: 52px !important; height: 52px !important; font-size: 0.7rem !important; }
 
 /* ---- overlays ---- */
 .overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: radial-gradient(120% 90% at 50% 40%, #0c111b99, #0c111bee); overflow-y: auto; }
@@ -100,7 +109,8 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
 #loading .bar { height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; }
 #loading .bar i { display: block; height: 100%; width: 0; background: var(--sodium); transition: width 0.3s; }
 @media (max-width: 640px) {
-  #minimap { width: 118px; height: 118px; bottom: auto; right: auto; left: max(12px, env(safe-area-inset-left)); top: calc(max(12px, env(safe-area-inset-top)) + 136px); }
+  #minimap { width: 118px; height: 118px; bottom: auto; right: auto; left: max(12px, env(safe-area-inset-left)); top: calc(max(12px, env(safe-area-inset-top)) + 176px); }
+  #hud .stats .row.wide { display: none; }
   #pax ul { max-height: 30vh; }
   #hud .stats { min-width: 0; padding: 8px 10px; }
   #hud .clock { font-size: 1.2rem; }
@@ -110,10 +120,14 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
   .card { padding: 20px; }
 }
 </style>
+<!-- three.js's WebGPU build: WebGPURenderer falls back to WebGL 2 by itself where WebGPU is missing.
+     Addons import "three", so it maps to the same build. -->
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
 } }
 </script>
 <script>
@@ -144,7 +158,10 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
     <div class="clock"><b id="clock">19:30</b><span id="shift-label">shift 5:00</span></div>
     <div class="row">Score <b id="score">0</b></div>
     <div class="row">Delivered <b id="delivered">0</b></div>
-    <div class="row">Beat the bus <b id="beat">0</b></div>
+    <div class="row wide">Beat the bus <b id="beat">0</b></div>
+    <div class="row wide">Clean streak <b id="streak">×1</b></div>
+    <div class="row">Safety <b id="safety">★★★★★</b></div>
+    <div class="meter">Condition <i><b id="cond-bar"></b></i><em id="cond">100%</em></div>
   </div>
   <div id="pax" class="panel">
     <div class="eyebrow" id="pax-title">On board 0/4</div>
@@ -157,7 +174,7 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
   <div id="hint" class="panel" hidden></div>
   <div id="toast"></div>
   <div id="labels"></div>
-  <div id="corner"><button id="mute" type="button" aria-pressed="false" title="Sound (M)">Sound on</button><button id="pause" type="button" title="Pause (P)">Pause</button><a href="study.html">Study ↗</a></div>
+  <div id="corner"><button id="mute" type="button" aria-pressed="false" title="Sound (M)">Sound on</button><button id="pause" type="button" title="Pause (P)">Pause</button><a href="study.html">Study ↗</a><span class="badge" id="renderer" title="Graphics API in use"></span></div>
 </div>
 
 <div id="touch" hidden>
@@ -165,6 +182,7 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
   <button id="t-right" type="button" aria-label="Steer right">▶</button>
   <button id="t-brake" type="button" aria-label="Brake or reverse">▼</button>
   <button id="t-go" type="button" aria-label="Accelerate">▲</button>
+  <button id="t-horn" type="button" aria-label="Horn">HORN</button>
 </div>
 
 <div id="loading" class="overlay">
@@ -192,8 +210,9 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
       <button type="button" data-hour="23" aria-pressed="false">23:00<small>late night</small></button>
     </div></div>
     <button class="go" id="start" type="button">Start shift</button>
-    <div class="keys"><kbd>W A S D / arrows</kbd><span>drive · stop inside a beam to board or drop riders</span><kbd>C</kbd><span>camera · <kbd>M</kbd> sound · <kbd>P</kbd> pause</span></div>
-    <p class="small">The other shuttles on the road are the study's simulated fleet (450 ten-seat vehicles) at the same minute. Buildings, roads, stops and ride rates are real data; the walkers, the trains and the flying trucks are decoration. <a href="study.html">Read the study</a>.</p>
+    <p>Drive it like a driverless shuttle should. Crashes dent and slow your vehicle until it has to be towed; anyone you knock down gets back up, but costs a safety star, and with none left the operator takes you off the road. Clean driving multiplies your score.</p>
+    <div class="keys"><kbd>W A S D / arrows</kbd><span>drive · stop inside a beam to board or drop riders</span><kbd>Space</kbd><span>handbrake · <kbd>H</kbd> horn · <kbd>R</kbd> recover</span><kbd>C</kbd><span>camera · <kbd>M</kbd> sound · <kbd>P</kbd> pause</span></div>
+    <p class="small">The shuttles on the road are the study's simulated fleet (450 ten-seat vehicles) and the buses its model of today's network, at the same minute. Buildings, roads, stops and ride rates are real data; the walkers, private cars, trains and flying trucks are decoration. <a href="study.html">Read the study</a>.</p>
   </div>
 </div>
 
@@ -210,6 +229,8 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
       <div><dt>Riders delivered</dt><dd id="r-del">0</dd></div>
       <div><dt>Beat the bus</dt><dd id="r-beat">—</dd></div>
       <div><dt>Best score</dt><dd id="r-best">—</dd></div>
+      <div><dt>Incidents</dt><dd id="r-inc">—</dd></div>
+      <div><dt>Safety</dt><dd class="sh" id="r-safety">—</dd></div>
     </dl>
     <p class="small" id="r-note"></p>
     <div class="row-btns"><button class="go" id="again" type="button">Drive again</button><button id="change" type="button">Change vehicle or hour</button><a href="study.html">Read the study</a></div>

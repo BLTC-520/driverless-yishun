@@ -1,6 +1,7 @@
 """Build the static site: web/src (page fragment + app.js) + web/public/data -> web/dist.
 
-* dist/index.html the landing page: the game (Night Shift, play.html + play.js), a standalone page;
+* dist/index.html the landing page: the game (Night Shift, play.html + play.js with physics.js and
+                  shaders.js), a standalone page;
                   dist/play.html is the same file, so older links keep working
 * dist/study.html the study, wrapped in a full HTML document, for standalone hosting
                   (GitHub Pages, `python -m http.server`)
@@ -54,7 +55,8 @@ def main() -> None:
     cut = page.index("<header")
     (DIST / "study.html").write_text(HEAD + page[:cut] + "</head>\n<body>\n" + page[cut:] + "\n</body>\n</html>\n")
     shutil.copy(SRC / "app.js", DIST / "app.js")
-    shutil.copy(SRC / "play.js", DIST / "play.js")
+    for name in ("play.js", "physics.js", "shaders.js"):  # the game and its modules
+        shutil.copy(SRC / name, DIST / name)
     for name in ("index.html", "play.html"):  # the game is the landing page, copied as is
         shutil.copy(SRC / "play.html", DIST / name)
     if (DIST / "data").exists():

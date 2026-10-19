@@ -37,3 +37,8 @@ jobs:
           python-version: "3.12"
       # web/build.py only needs the standard library and the committed web/public/data.
       - run: python web/build.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # the game's physics (rigid vehicles, ragdolls) has no dependencies, so Node runs it as is
+      - run: node --test web/test/*.test.mjs
