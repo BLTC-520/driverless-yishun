@@ -257,7 +257,8 @@
     L.push(new deck.PathLayer({ id: "rail", data: D.town.rail, getPath: (d) => d, getColor: [...C.nsl, 200], widthMinPixels: 2, pickable: false }));
     L.push(new deck.SolidPolygonLayer({
       id: "buildings", data: D.buildings.buildings, getPolygon: (d) => d.p, extruded: true, getElevation: (d) => d.h,
-      getFillColor: hdbColor, opacity: 0.9, pickable: true, material: { ambient: 0.35, diffuse: 0.6, shininess: 12, specularColor: [40, 40, 40] },
+      // see-through while riding, so blocks between the chase camera and the vehicle don't hide it
+      getFillColor: hdbColor, opacity: state.follow ? 0.42 : 0.9, pickable: !state.follow, material: { ambient: 0.35, diffuse: 0.6, shininess: 12, specularColor: [40, 40, 40] },
     }));
     const sc = state.scenario && anim[state.scenario.id];
     const stopIdx = stopsPos();
@@ -319,7 +320,7 @@
         id: "models", data: near, scenegraph: MODELS[modelFor(sc)], visible: models,
         getPosition: (d) => [d.p[0], d.p[1], 0], getOrientation: (d) => [0, d.h, 90],
         getColor: (d) => (d.occ === 0 ? [120, 120, 130, 255] : [255, 255, 255, 255]),
-        sizeScale: Math.max(1.4, Math.min(4, 2 ** (18.5 - zoom))),
+        sizeScale: state.follow ? 1 : Math.max(1.4, Math.min(4, 2 ** (18.5 - zoom))),
         _lighting: "pbr", pickable: true,
       }));
       if (state.follow && state.follow.pose) {  // the "player" marker under the vehicle being ridden
@@ -480,7 +481,7 @@
     const rad = ((90 - f.bearing) * Math.PI) / 180, ahead = 22;  // look ahead, so the vehicle sits low in frame
     const view = {
       longitude: pose.p[0] + (Math.cos(rad) * ahead) / M_LNG, latitude: pose.p[1] + (Math.sin(rad) * ahead) / M_LAT,
-      zoom: RIDE_ZOOM, pitch: 70, maxPitch: 75, bearing: f.bearing,
+      zoom: RIDE_ZOOM, pitch: 62, bearing: f.bearing,
     };
     state.view = view;
     deckgl.setProps({ viewState: view });

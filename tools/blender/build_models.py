@@ -81,23 +81,25 @@ def mat(name: str, color: str, metal: float = 0.0, rough: float = 0.5, emit: flo
 
 
 def palette() -> dict[str, bpy.types.Material]:
+    """Low metallic values on purpose: the browser draws these without an environment map,
+    where metallic paint has nothing to reflect and reads as near black."""
     _mats.clear()
     return {
-        "paint": mat("paint", CHAMPAGNE, metal=0.45, rough=0.3),
-        "cream": mat("cream", "#e4d6bb", metal=0.2, rough=0.3),
+        "paint": mat("paint", CHAMPAGNE, metal=0.12, rough=0.28),
+        "cream": mat("cream", "#e4d6bb", metal=0.05, rough=0.3),
         "white": mat("white", CHALK, metal=0.15, rough=0.32),
         "dark": mat("trim", "#1b2130", metal=0.3, rough=0.55),
-        "glass": mat("glass", "#16243a", metal=0.6, rough=0.08),
+        "glass": mat("glass", "#16243a", metal=0.2, rough=0.08),
         "tyre": mat("tyre", "#111318", rough=0.85),
-        "rim": mat("rim", "#9aa3b2", metal=0.9, rough=0.3),
+        "rim": mat("rim", "#9aa3b2", metal=0.4, rough=0.3),
         "sodium": mat("sodium_led", SODIUM, emit=6.0),
         "teal": mat("teal_paint", BUS, metal=0.1, rough=0.4),
         "teal_led": mat("teal_led", BUS, emit=5.0),
         "head": mat("headlight", "#fff4dc", emit=8.0),
         "tail": mat("taillight", NSL, emit=5.0),
         "sensor": mat("sensor", "#0d1017", metal=0.5, rough=0.2),
-        "cover": mat("cover", CHAMPAGNE, metal=0.45, rough=0.35),
-        "steel": mat("steel", STEEL, metal=0.6, rough=0.4),
+        "cover": mat("cover", CHAMPAGNE, metal=0.12, rough=0.35),
+        "steel": mat("steel", STEEL, metal=0.3, rough=0.38),
         "ion": mat("ion", ION, emit=10.0),
         "plume": mat("plume", ION, emit=6.0, alpha=0.42),
         "core": mat("plume_core", "#eef8ff", emit=12.0, alpha=0.8),
