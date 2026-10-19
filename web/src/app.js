@@ -258,7 +258,9 @@
     L.push(new deck.SolidPolygonLayer({
       id: "buildings", data: D.buildings.buildings, getPolygon: (d) => d.p, extruded: true, getElevation: (d) => d.h,
       // see-through while riding, so blocks between the chase camera and the vehicle don't hide it
-      getFillColor: hdbColor, opacity: state.follow ? 0.42 : 0.9, pickable: !state.follow, material: { ambient: 0.35, diffuse: 0.6, shininess: 12, specularColor: [40, 40, 40] },
+      // (and not writing depth, or they would still hide the vehicles drawn after them)
+      getFillColor: hdbColor, opacity: state.follow ? 0.42 : 0.9, pickable: !state.follow,
+      parameters: state.follow ? { depthWriteEnabled: false } : {}, material: { ambient: 0.35, diffuse: 0.6, shininess: 12, specularColor: [40, 40, 40] },
     }));
     const sc = state.scenario && anim[state.scenario.id];
     const stopIdx = stopsPos();
@@ -317,7 +319,8 @@
       // the vehicles themselves: Blender models heading along their routes, drawn larger than
       // life when zoomed out so they stay legible (sizeScale), true-ish size when riding along
       L.push(new deck.ScenegraphLayer({
-        id: "models", data: near, scenegraph: MODELS[modelFor(sc)], visible: models,
+        // one layer per model: deck.gl does not swap a loaded scenegraph when its URL changes
+        id: `models-${modelFor(sc)}`, data: near, scenegraph: MODELS[modelFor(sc)], visible: models,
         getPosition: (d) => [d.p[0], d.p[1], 0], getOrientation: (d) => [0, d.h, 90],
         getColor: (d) => (d.occ === 0 ? [120, 120, 130, 255] : [255, 255, 255, 255]),
         sizeScale: state.follow ? 1 : Math.max(1.4, Math.min(4, 2 ** (18.5 - zoom))),
@@ -425,7 +428,8 @@
 
   // ------------------------------------------------------------------ ride along (chase camera)
   const CONTROLLER = { dragRotate: true, touchRotate: true };
-  const RIDE_ZOOM = window.innerWidth < 640 ? 19.6 : 20;
+  const PHONE = window.innerWidth < 640;
+  const RIDE_ZOOM = PHONE ? 19.6 : 20, RIDE_PITCH = PHONE ? 52 : 62;  // phones: shorter map, camera sits lower
   const vehName = (sc) => (sc.kind === "bus" ? "Bus" : sc.capacity <= 4 ? "Robotaxi" : "Shuttle");
 
   function pickRideVehicle() {
@@ -481,7 +485,7 @@
     const rad = ((90 - f.bearing) * Math.PI) / 180, ahead = 22;  // look ahead, so the vehicle sits low in frame
     const view = {
       longitude: pose.p[0] + (Math.cos(rad) * ahead) / M_LNG, latitude: pose.p[1] + (Math.sin(rad) * ahead) / M_LAT,
-      zoom: RIDE_ZOOM, pitch: 62, bearing: f.bearing,
+      zoom: RIDE_ZOOM, pitch: RIDE_PITCH, bearing: f.bearing,
     };
     state.view = view;
     deckgl.setProps({ viewState: view });
@@ -552,7 +556,7 @@
     const o = info && info.object;
     if (!o) { tip.hidden = true; return; }
     let html = null;
-    if (info.layer.id === "models" || info.layer.id === "heads") {
+    if (/^(models|heads)/.test(info.layer.id)) {
       const sc = state.scenario;
       html = `${vehName(sc)} #${o.veh}${sc.kind === "bus" ? " (modelled)" : o.occ > 0 ? ` · ${o.occ} on board` : " · empty"}<br>click to ride along`;
     } else if (info.layer.id === "sky") {
@@ -918,7 +922,7 @@
     deckgl = new deck.Deck({
       parent: document.getElementById("map"), initialViewState: HOME, controller: CONTROLLER,
       views: new deck.MapView({ repeat: false }), layers: [], onHover,
-      onClick: (info) => { if (info.object && (info.layer.id === "models" || info.layer.id === "heads")) startRide(info.object.veh); },
+      onClick: (info) => { if (info.object && /^(models|heads)/.test(info.layer.id)) startRide(info.object.veh); },
       onViewStateChange: ({ viewState }) => { state.view = viewState; if (!state.playing && !state.showSky) redraw(); },
       effects: [new deck.LightingEffect({
         ambient: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.0 }),
