@@ -322,6 +322,58 @@
     deckgl.setProps({ initialViewState: { ...view, transitionDuration: reduceMotion ? 0 : 1800, transitionInterpolator: new deck.FlyToInterpolator() } });
   }
 
+  // ------------------------------------------------------------------ WASD flight
+  // W/S fly forward/back along the heading, A/D strafe, Q/E turn, R/F climb/descend (zoom); Shift is faster.
+  // deck.gl keeps the camera internally, so the latest view is tracked from onViewStateChange and
+  // pushed back through initialViewState (no transition) on every frame a key is held.
+  const FLY_CODES = { KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d", KeyQ: "q", KeyE: "e", KeyR: "r", KeyF: "f", ShiftLeft: "shift", ShiftRight: "shift" };
+  const held = new Set();
+  let view = null, flyLast = null, flying = false;
+
+  function flyStep(ts) {
+    const moving = [...held].some((k) => k !== "shift");
+    if (!moving) { flying = false; flyLast = null; return; }
+    const dt = flyLast == null ? 0 : Math.min((ts - flyLast) / 1000, 0.05);
+    flyLast = ts;
+    if (deckgl && view && dt > 0) {
+      const boost = held.has("shift") ? 3 : 1;
+      const mpp = 156543.03 * Math.cos(view.latitude * Math.PI / 180) / Math.pow(2, view.zoom); // metres per pixel
+      const step = 260 * boost * mpp * dt;                                                        // ~260 px/s on screen
+      const b = (view.bearing || 0) * Math.PI / 180;
+      const fwd = (held.has("w") ? 1 : 0) - (held.has("s") ? 1 : 0);
+      const right = (held.has("d") ? 1 : 0) - (held.has("a") ? 1 : 0);
+      const east = (Math.sin(b) * fwd + Math.cos(b) * right) * step;
+      const north = (Math.cos(b) * fwd - Math.sin(b) * right) * step;
+      const next = { ...view };
+      next.longitude += east / (111320 * Math.cos(view.latitude * Math.PI / 180));
+      next.latitude = Math.max(-85, Math.min(85, view.latitude + north / 110540));
+      next.bearing = (view.bearing || 0) + ((held.has("e") ? 1 : 0) - (held.has("q") ? 1 : 0)) * 60 * boost * dt;
+      next.zoom = Math.max(11, Math.min(19, view.zoom + ((held.has("r") ? 1 : 0) - (held.has("f") ? 1 : 0)) * 1.2 * boost * dt));
+      next.transitionDuration = 0; next.transitionInterpolator = undefined;
+      view = next;
+      deckgl.setProps({ initialViewState: next });
+    }
+    requestAnimationFrame(flyStep);
+  }
+
+  function flyKeys() {
+    const stageVisible = () => { const r = document.getElementById("stage").getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; };
+    // only real text entry blocks flying: a focused slider, checkbox, button or select must not
+    const typing = () => {
+      const a = document.activeElement; if (!a) return false;
+      return a.isContentEditable || a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && !/^(range|checkbox|radio|button|submit|reset)$/.test(a.type));
+    };
+    document.addEventListener("keydown", (e) => {
+      const k = FLY_CODES[e.code];
+      if (!k || e.ctrlKey || e.metaKey || e.altKey || typing()) return;
+      if (k !== "shift") { if (!stageVisible()) return; e.preventDefault(); }
+      held.add(k);
+      if (!flying && k !== "shift") { flying = true; flyLast = null; requestAnimationFrame(flyStep); }
+    });
+    document.addEventListener("keyup", (e) => { const k = FLY_CODES[e.code]; if (k) held.delete(k); });
+    window.addEventListener("blur", () => held.clear());
+  }
+
   const HOME = window.innerWidth < 640
     ? { longitude: 103.8352, latitude: 1.4262, zoom: 12.85, pitch: 45, bearing: -20 }
     : { longitude: 103.8318, latitude: 1.4228, zoom: 13.75, pitch: 54, bearing: -24 };
@@ -1185,12 +1237,14 @@
     deckgl = new deck.Deck({
       parent: document.getElementById("map"), initialViewState: HOME, controller: { dragRotate: true, touchRotate: true },
       views: new deck.MapView({ repeat: false }), layers: [], onHover,
+      onViewStateChange: ({ viewState }) => { view = viewState; },
       effects: [new deck.LightingEffect({
         ambient: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.0 }),
         moon: new deck.DirectionalLight({ color: [255, 236, 214], intensity: 1.4, direction: [-1.2, -2, -3] }),
       })],
       parameters: { clearColor: [0, 0, 0, 0] },
     });
+    view = HOME; flyKeys();
     document.getElementById("play").onclick = () => setPlaying(!state.playing);
     document.getElementById("time").oninput = (e) => { state.t = +e.target.value; redraw(); };
     document.getElementById("speed").onchange = (e) => { state.speed = +e.target.value; };
