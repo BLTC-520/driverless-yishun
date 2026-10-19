@@ -2,6 +2,7 @@
 
 * dist/page.html  the page fragment with headline numbers pre-filled from the data (what the
                   artifact host publishes; it supplies the document skeleton itself)
+* dist/models/    vehicle models (glTF) built in Blender by tools/blender/build_models.py
 * dist/index.html the same page wrapped in a full HTML document, for standalone hosting
                   (GitHub Pages, `python -m http.server`)
 The numbers are filled again at runtime by app.js from the same JSON files.
@@ -16,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SRC, DATA, DIST = ROOT / "src", ROOT / "public" / "data", ROOT / "dist"
+MODELS = ROOT / "public" / "models"  # vehicle .glb files from tools/blender/build_models.py
 
 HEAD = """<!doctype html>
 <html lang="en">
@@ -53,6 +55,9 @@ def main() -> None:
     if (DIST / "data").exists():
         shutil.rmtree(DIST / "data")
     shutil.copytree(DATA, DIST / "data")
+    if (DIST / "models").exists():
+        shutil.rmtree(DIST / "models")
+    shutil.copytree(MODELS, DIST / "models")
     size = sum(p.stat().st_size for p in DIST.rglob("*") if p.is_file())
     print(f"built {DIST} ({size / 1e6:.1f} MB)")
 

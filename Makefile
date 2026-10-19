@@ -3,7 +3,7 @@
 PY ?= python
 RUN = cd pipeline && $(PY) -m
 
-.PHONY: setup data live calibrate gps-check calibrate-peak experiments sensitivity results web test \
+.PHONY: setup data live calibrate gps-check calibrate-peak experiments sensitivity results web test models \
         reproduce-core-results serve clean-cache
 
 setup:            ## create the environment
@@ -48,6 +48,12 @@ web: results      ## build the static site into web/dist
 
 test:
 	$(PY) -m pytest -q
+
+# Vehicle models for the explorer (web/public/models/*.glb) plus preview renders (docs/img/models/).
+# BLENDER is the Blender executable (run headless), or "python" with the PyPI bpy module installed.
+BLENDER ?= blender
+models:
+	$(if $(filter python%,$(BLENDER)),$(BLENDER) tools/blender/build_models.py --render,$(BLENDER) -b --factory-startup -P tools/blender/build_models.py -- --render)
 
 # Everything after `make data`. The live logs behind the calibration (15 Oct 2026) cannot be
 # downloaded again, so this uses the committed data/processed/calibration.json, gps_check.json

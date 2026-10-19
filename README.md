@@ -90,9 +90,27 @@ tests/             insertion kernel vs brute force, simulator exact times and ra
                    kerb queues, common lines, estimator check, demand sampling, bus wait draws,
                    real-network consistency
 web/               static explorer (deck.gl + d3), build and screenshot scripts
+tools/blender/     vehicle models for the explorer, generated in Blender
 docs/              decision record, methodology, validation, data registry
 data/processed/    calibration and experiment outputs (raw data is never committed)
 ```
+
+### Vehicle models
+
+The explorer draws each simulated vehicle as a 3D model heading along its route: a robovan for the 10-seat
+shuttles, a robotaxi coupe for the 4-seat fleet, and a feeder bus for today's buses. Click a vehicle (or press
+**R**) to ride along behind it. The flying trucks circling above the town are decoration and play no part in
+the simulation. The models are built from code by [`tools/blender/build_models.py`](tools/blender/build_models.py)
+and committed as `web/public/models/*.glb`. To rebuild or restyle them:
+
+```bash
+make models BLENDER=/Applications/Blender.app/Contents/MacOS/Blender   # macOS, Blender 4.2+
+make models BLENDER="python"                                           # or with `pip install bpy`
+```
+
+| Robotaxi (4-seat) | Robovan (10-seat shuttle) | Feeder bus | Flying truck (decorative) |
+|---|---|---|---|
+| ![](docs/img/models/robotaxi.png) | ![](docs/img/models/robovan.png) | ![](docs/img/models/bus.png) | ![](docs/img/models/skytruck.png) |
 
 <!-- LIMITATIONS -->
 ## Limitations
