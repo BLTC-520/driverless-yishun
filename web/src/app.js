@@ -317,9 +317,19 @@
     b.textContent = p ? "❚❚" : "▶"; b.setAttribute("aria-label", p ? "Pause" : "Play");
   }
 
+  // "Back to the map": the button pulses once the camera has left Yishun (or zoomed far away from it)
+  function updateAway(v) {
+    const btn = document.getElementById("home"); if (!btn || !v) return;
+    const k = 111320, dx = (v.longitude - HOME.longitude) * k * Math.cos(HOME.latitude * Math.PI / 180), dy = (v.latitude - HOME.latitude) * k;
+    btn.classList.toggle("away", Math.hypot(dx, dy) > 3000 || Math.abs(v.zoom - HOME.zoom) > 3);
+  }
+
+  let flyCount = 0;
   function flyTo(view) {
     if (!deckgl) return;
-    deckgl.setProps({ initialViewState: { ...view, transitionDuration: reduceMotion ? 0 : 1800, transitionInterpolator: new deck.FlyToInterpolator() } });
+    // the nonce makes every call differ: deck.gl ignores an initialViewState that deep-equals the previous one,
+    // which would turn a second flight to the same place (after panning by mouse) into a no-op
+    deckgl.setProps({ initialViewState: { ...view, nonce: ++flyCount, transitionDuration: reduceMotion ? 0 : 1800, transitionInterpolator: new deck.FlyToInterpolator() } });
   }
 
   // ------------------------------------------------------------------ WASD flight
@@ -350,7 +360,7 @@
       next.bearing = (view.bearing || 0) + ((held.has("e") ? 1 : 0) - (held.has("q") ? 1 : 0)) * 60 * boost * dt;
       next.zoom = Math.max(11, Math.min(19, view.zoom + ((held.has("r") ? 1 : 0) - (held.has("f") ? 1 : 0)) * 1.2 * boost * dt));
       next.transitionDuration = 0; next.transitionInterpolator = undefined;
-      view = next;
+      view = next; updateAway(next);
       deckgl.setProps({ initialViewState: next });
     }
     requestAnimationFrame(flyStep);
@@ -365,6 +375,7 @@
     };
     document.addEventListener("keydown", (e) => {
       const k = FLY_CODES[e.code];
+      if (e.code === "KeyH" && !e.ctrlKey && !e.metaKey && !e.altKey && !typing() && stageVisible()) { held.clear(); flyTo(HOME); return; }
       if (!k || e.ctrlKey || e.metaKey || e.altKey || typing()) return;
       if (k !== "shift") { if (!stageVisible()) return; e.preventDefault(); }
       held.add(k);
@@ -1237,7 +1248,7 @@
     deckgl = new deck.Deck({
       parent: document.getElementById("map"), initialViewState: HOME, controller: { dragRotate: true, touchRotate: true },
       views: new deck.MapView({ repeat: false }), layers: [], onHover,
-      onViewStateChange: ({ viewState }) => { view = viewState; },
+      onViewStateChange: ({ viewState }) => { view = viewState; updateAway(viewState); },
       effects: [new deck.LightingEffect({
         ambient: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.0 }),
         moon: new deck.DirectionalLight({ color: [255, 236, 214], intensity: 1.4, direction: [-1.2, -2, -3] }),
@@ -1245,6 +1256,7 @@
       parameters: { clearColor: [0, 0, 0, 0] },
     });
     view = HOME; flyKeys();
+    document.getElementById("home").onclick = () => { held.clear(); flyTo(HOME); };
     document.getElementById("play").onclick = () => setPlaying(!state.playing);
     document.getElementById("time").oninput = (e) => { state.t = +e.target.value; redraw(); };
     document.getElementById("speed").onchange = (e) => { state.speed = +e.target.value; };
