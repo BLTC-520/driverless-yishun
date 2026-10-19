@@ -277,9 +277,9 @@
       // flat discs whose AREA is proportional to riders waiting (radius = 12 m x sqrt(riders))
       L.push(new deck.ScatterplotLayer({
         id: "waiting", data, getPosition: (d) => [d.s.x, d.s.y], getRadius: (d) => 12 * Math.sqrt(d.w), radiusUnits: "meters",
-        radiusMinPixels: 1, stroked: true, getLineColor: [...C.rider, 230], lineWidthMinPixels: 1,
-        getFillColor: [...C.rider, 110], pickable: true,
-        updateTriggers: { getRadius: [state.t, state.scenario && state.scenario.id] },
+        radiusMinPixels: 1, stroked: true, lineWidthMinPixels: 1,
+        getFillColor: [...C.rider, state.follow ? 40 : 110], getLineColor: [...C.rider, state.follow ? 120 : 230], pickable: true,
+        updateTriggers: { getRadius: [state.t, state.scenario && state.scenario.id], getFillColor: !!state.follow, getLineColor: !!state.follow },
       }));
     }
     L.push(new deck.ScatterplotLayer({
@@ -312,6 +312,8 @@
         const r = 1.6 * Math.max(window.innerWidth, 400) * (156543 * Math.cos((1.42 * Math.PI) / 180)) / 2 ** zoom;
         near = act.heads.filter((d) => Math.hypot((d.p[0] - v.longitude) * M_LNG, (d.p[1] - v.latitude) * M_LAT) < r);
       }
+      const fp = state.follow && state.follow.pose;  // a parked vehicle has no moving leg: draw it anyway
+      if (fp && !fp.moving) near = near.concat([{ p: fp.p, h: fp.h, occ: fp.occ, veh: state.follow.veh }]);
       L.push(new deck.ScatterplotLayer({
         id: "heads", data: act.heads, getPosition: (d) => d.p, getRadius: 9, radiusMinPixels: 1.6, radiusMaxPixels: 4,
         getFillColor: (d) => vehColor(d.occ, 255), pickable: true, visible: !models,
@@ -320,7 +322,7 @@
       // life when zoomed out so they stay legible (sizeScale), true-ish size when riding along
       L.push(new deck.ScenegraphLayer({
         // one layer per model: deck.gl does not swap a loaded scenegraph when its URL changes
-        id: `models-${modelFor(sc)}`, data: near, scenegraph: MODELS[modelFor(sc)], visible: models,
+        id: `models-${modelFor(state.scenario)}`, data: near, scenegraph: MODELS[modelFor(state.scenario)], visible: models,
         getPosition: (d) => [d.p[0], d.p[1], 0], getOrientation: (d) => [0, d.h, 90],
         getColor: (d) => (d.occ === 0 ? [120, 120, 130, 255] : [255, 255, 255, 255]),
         sizeScale: state.follow ? 1 : Math.max(1.4, Math.min(4, 2 ** (18.5 - zoom))),
