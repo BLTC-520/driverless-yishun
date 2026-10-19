@@ -1,11 +1,12 @@
 """Build the static site: web/src (page fragment + app.js) + web/public/data -> web/dist.
 
-* dist/page.html  the page fragment with headline numbers pre-filled from the data (what the
-                  artifact host publishes; it supplies the document skeleton itself)
-* dist/play.html the game (Night Shift) with play.js, a standalone page
-* dist/models/    vehicle models (glTF) built in Blender by tools/blender/build_models.py
-* dist/index.html the same page wrapped in a full HTML document, for standalone hosting
+* dist/index.html the landing page: the game (Night Shift, play.html + play.js), a standalone page;
+                  dist/play.html is the same file, so older links keep working
+* dist/study.html the study, wrapped in a full HTML document, for standalone hosting
                   (GitHub Pages, `python -m http.server`)
+* dist/page.html  the study as a page fragment with headline numbers pre-filled from the data (what
+                  the artifact host publishes; it supplies the document skeleton itself)
+* dist/models/    vehicle models (glTF) built in Blender by tools/blender/build_models.py
 The numbers are filled again at runtime by app.js from the same JSON files.
 Usage: python web/build.py
 """
@@ -51,10 +52,11 @@ def main() -> None:
     DIST.mkdir(exist_ok=True)
     (DIST / "page.html").write_text(page)
     cut = page.index("<header")
-    (DIST / "index.html").write_text(HEAD + page[:cut] + "</head>\n<body>\n" + page[cut:] + "\n</body>\n</html>\n")
+    (DIST / "study.html").write_text(HEAD + page[:cut] + "</head>\n<body>\n" + page[cut:] + "\n</body>\n</html>\n")
     shutil.copy(SRC / "app.js", DIST / "app.js")
-    for game in ("play.html", "play.js"):  # the game: a standalone page, copied as is
-        shutil.copy(SRC / game, DIST / game)
+    shutil.copy(SRC / "play.js", DIST / "play.js")
+    for name in ("index.html", "play.html"):  # the game is the landing page, copied as is
+        shutil.copy(SRC / "play.html", DIST / name)
     if (DIST / "data").exists():
         shutil.rmtree(DIST / "data")
     shutil.copytree(DATA, DIST / "data")

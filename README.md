@@ -77,7 +77,7 @@ Python 3.12. An [LTA DataMall](https://datamall.lta.gov.sg/content/datamall/en/r
 make setup                    # uv venv + pinned requirements
 make data                     # LTA DataMall, data.gov.sg, OpenStreetMap
 make reproduce-core-results   # experiments -> sensitivity -> page data -> tests
-make web && make serve        # http://localhost:8000
+make web && make serve        # http://localhost:8000 (the game; the study is /study.html)
 # optional, at the hours you want to calibrate on:
 make live calibrate gps-check calibrate-peak
 ```
@@ -114,7 +114,8 @@ make models BLENDER="python"                                           # or with
 
 ### Night Shift (the game)
 
-[`play.html`](web/src/play.html) is a driving game on the same data, built with three.js. Every building footprint and
+The site opens on [Night Shift](web/src/play.html), a driving game on the same data built with three.js; the study
+itself is at `study.html`, linked from the game's menu and corner. Every building footprint and
 height, road area, park, stretch of water, the MRT line and the 180 bus stops come from the study's inputs, drawn
 at street level with lit windows, HDB void decks, street lamps and trees. You drive a robotaxi or robovan for a
 five-minute shift. Riders appear at each stop at that hour's observed rate (LTA fare-card OD) and head for stops

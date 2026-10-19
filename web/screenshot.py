@@ -39,7 +39,7 @@ def main() -> None:
             errors = []
             page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
             page.on("pageerror", lambda e: errors.append(str(e)))
-            page.goto(f"http://127.0.0.1:{port}/index.html#still", wait_until="networkidle")
+            page.goto(f"http://127.0.0.1:{port}/study.html#still", wait_until="networkidle")
             page.wait_for_function("document.documentElement.dataset.ready === '1'", timeout=180_000)
             # a reproducible frame at 07:45
             page.evaluate("""() => { const t = document.getElementById('time'); t.value = '465';

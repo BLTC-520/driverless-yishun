@@ -13,7 +13,9 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
+window.__nsAlive = true; // the 3D engine loaded: the page's watchdog stands down
 const $ = (id) => document.getElementById(id);
+const fail = (msg) => (window.nsFail ? window.nsFail(msg) : ($("load-text").textContent = msg));
 const PHONE = matchMedia("(pointer: coarse)").matches || innerWidth < 640;
 const AUTO = location.hash === "#auto"; // start straight away (screenshots, tests)
 const SHIFT = 300;                       // seconds of play
@@ -40,16 +42,37 @@ function ringXZ(ring) {
 const signedArea = (pts) => { let a = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; a += p.x * q.y - q.x * p.y; } return a / 2; };
 
 // ---------------------------------------------------------------- loading
-async function getJSON(name) {
-  const r = await fetch(`data/${name}`);
-  if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`);
-  return r.json();
+async function getJSON(name, tries = 3) {
+  for (let k = 1; ; k++) {
+    try {
+      const r = await fetch(`data/${name}`);
+      if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`);
+      return await r.json();
+    } catch (e) {
+      if (k >= tries) throw e;
+      await new Promise((ok) => setTimeout(ok, 1200 * k)); // a flaky connection gets another go
+    }
+  }
 }
+const optional = (p) => p.catch((e) => { console.warn("optional part skipped:", e.message || e); return null; });
 function progress(f, text) { $("load-bar").style.width = `${Math.round(f * 100)}%`; if (text) $("load-text").textContent = text; }
 const breathe = () => new Promise((r) => setTimeout(r, 0)); // let the loading bar paint between heavy steps
 
 // ---------------------------------------------------------------- renderer, scene, looks
-const renderer = new THREE.WebGLRenderer({ canvas: $("c"), antialias: !PHONE, powerPreference: "high-performance" });
+let renderer;
+try {
+  if (!document.createElement("canvas").getContext("webgl2")) throw new Error("WebGL 2 unavailable");
+  renderer = new THREE.WebGLRenderer({ canvas: $("c"), antialias: !PHONE, powerPreference: "high-performance" });
+} catch (e) {
+  fail("This browser or device can't draw the 3D city (WebGL 2 is switched off or not supported).");
+  throw e; // nothing below can run without a renderer
+}
+let contextLost = false;
+renderer.domElement.addEventListener("webglcontextlost", (e) => {
+  e.preventDefault(); contextLost = true; G.paused = true;
+  fail("The graphics driver reset the 3D view.");
+});
+renderer.domElement.addEventListener("webglcontextrestored", () => location.reload());
 renderer.setPixelRatio(Math.min(devicePixelRatio, PHONE ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -57,7 +80,7 @@ renderer.shadowMap.enabled = !PHONE;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.5, 9000);
-scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+try { scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; } catch (e) { console.warn(e); }
 
 const hemi = new THREE.HemisphereLight(0x9fb4d6, 0x20242b, 0.5);
 const sun = new THREE.DirectionalLight(0xffffff, 1);
@@ -70,11 +93,13 @@ scene.add(hemi, sun, sun.target);
 
 let composer = null, bloom = null;
 if (!PHONE) {
-  composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.45, 0.92);
-  composer.addPass(bloom);
-  composer.addPass(new OutputPass());
+  try {
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.45, 0.92);
+    composer.addPass(bloom);
+    composer.addPass(new OutputPass());
+  } catch (e) { console.warn("no bloom:", e); composer = bloom = null; } // plain rendering still works
 }
 
 // Four hours to play, each with its own light. `night` drives lit windows, lamps and headlights.
@@ -141,9 +166,11 @@ function flatGeometry(rings, y) {
   for (const ring of rings) {
     const pts = ringXZ(ring);
     if (pts.length < 3) continue;
+    let tris = [];
+    try { tris = THREE.ShapeUtils.triangulateShape(pts, []); } catch (e) { continue; }
     const base = pos.length / 3;
     for (const p of pts) pos.push(p.x, y, p.y);
-    for (const [a, b, c] of THREE.ShapeUtils.triangulateShape(pts, [])) {
+    for (const [a, b, c] of tris) {
       const A = pts[a], B = pts[b], C = pts[c];
       const up = (B.y - A.y) * (C.x - A.x) - (B.x - A.x) * (C.y - A.y) > 0; // face +y?
       idx.push(base + a, up ? base + b : base + c, up ? base + c : base + b);
@@ -173,8 +200,8 @@ function buildBuildings(list) {
   const pos = [], nor = [], wall = [], info = [], idx = [];
   let seed = 1;
   for (const b of list) {
-    const pts = ringXZ(b.p);
-    if (pts.length < 3) continue;
+    const pts = Array.isArray(b.p) ? ringXZ(b.p) : [];
+    if (pts.length < 3 || !Number.isFinite(b.h)) continue;
     const h = Math.max(3, b.h), hdb = b.k === "hdb" ? 1 : 0, s = (seed = (seed * 16807) % 2147483647) / 2147483647;
     const ccw = signedArea(pts) > 0;
     let run = 0;
@@ -193,9 +220,11 @@ function buildBuildings(list) {
       else idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
       run += len;
     }
+    let roof = [];
+    try { roof = THREE.ShapeUtils.triangulateShape(pts, []); } catch (e) { /* a self-crossing footprint: walls only */ }
     const base = pos.length / 3;
     for (const p of pts) { pos.push(p.x, h + s * 0.06, p.y); nor.push(0, 1, 0); wall.push(0, h); info.push(s, hdb, h); }
-    for (const [a, b2, c] of THREE.ShapeUtils.triangulateShape(pts, [])) {
+    for (const [a, b2, c] of roof) {
       const A = pts[a], B = pts[b2], C = pts[c];
       const up = (B.y - A.y) * (C.x - A.x) - (B.x - A.x) * (C.y - A.y) > 0;
       idx.push(base + a, up ? base + b2 : base + c, up ? base + c : base + b2);
@@ -269,6 +298,9 @@ function buildBuildings(list) {
 const MASK = { res: PHONE ? 3 : 2.5, x0: -3800, z0: -3500, w: 0, h: 0, data: null };
 const ROAD = 1, BLDG = 2, WATER = 4, PARK = 8;
 function buildMask(town, buildings) {
+  try { rasterMask(town, buildings); } catch (e) { console.warn("coarser mask:", e); MASK.res *= 2; rasterMask(town, buildings); }
+}
+function rasterMask(town, buildings) {
   const W = Math.ceil(8600 / MASK.res), H = Math.ceil(7600 / MASK.res);
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const ctx = cv.getContext("2d");
@@ -284,7 +316,7 @@ function buildMask(town, buildings) {
   fill(town.green, "rgb(0,0,100)");
   fill(town.water, "rgb(0,0,255)");
   fill(town.roads, "rgb(255,0,0)");
-  fill(buildings.map((b) => b.p), "rgb(0,255,0)");
+  fill(buildings.filter((b) => Array.isArray(b.p)).map((b) => b.p), "rgb(0,255,0)");
   const img = ctx.getImageData(0, 0, W, H).data, out = new Uint8Array(W * H);
   for (let i = 0; i < W * H; i++) {
     const r = img[i * 4], g = img[i * 4 + 1], b = img[i * 4 + 2];
@@ -331,7 +363,7 @@ function buildEdges(town) {
     const ccw = signedArea(pts) > 0, n = pts.length;
     const xs = new Float32Array(n + 1), zs = new Float32Array(n + 1), cum = new Float32Array(n + 1);
     for (let i = 0; i <= n; i++) { const p = pts[i % n]; xs[i] = p.x; zs[i] = p.y; if (i) cum[i] = cum[i - 1] + Math.hypot(xs[i] - xs[i - 1], zs[i] - zs[i - 1]); }
-    EDGES.push({ xs, zs, cum, len: cum[n], ccw });
+    if (cum[n] > 1) EDGES.push({ xs, zs, cum, len: cum[n], ccw });
   }
 }
 // point at distance s along a ring, pushed `off` metres off the road; also the direction of travel
@@ -362,6 +394,7 @@ function radialTexture(inner = "rgba(255,255,255,1)") {
 }
 
 function buildLamps() {
+  if (!EDGES.length) return;
   const total = EDGES.reduce((a, e) => a + e.len, 0);
   const spacing = Math.max(34, total / (PHONE ? 1500 : 3200));
   const spots = [];
@@ -479,7 +512,7 @@ function updateTrains(dt) {
 let STOPS = [];
 function buildStops(stopsData) {
   // orient each stop to its nearest kerb
-  STOPS = stopsData.stops.map((s, idx) => {
+  STOPS = (stopsData.stops || []).filter((s) => Number.isFinite(s.x) && Number.isFinite(s.y)).map((s, idx) => {
     const [x, z] = reachable(X(s.x), Z(s.y));
     let best = 1e9, bn = { nx: 0, nz: 1, dx: 1, dz: 0 };
     for (const e of EDGES) for (let i = 1; i < e.xs.length; i++) {
@@ -489,7 +522,7 @@ function buildStops(stopsData) {
       const d = (ax + u * vx - x) ** 2 + (az + u * vz - z) ** 2;
       if (d < best) { best = d; const l = Math.sqrt(l2), dx = vx / l, dz = vz / l; bn = { dx, dz, nx: e.ccw ? dz : -dz, nz: e.ccw ? -dx : dx }; }
     }
-    return { idx, code: s.c, name: s.n, x, z, hub: s.hub, o: s.o, d: s.d, ...bn, queue: [] };
+    return { idx, code: s.c, name: s.n || s.c, x, z, hub: !!s.hub, o: s.o || [], d: s.d || [], ...bn, queue: [] };
   });
   const frame = new THREE.InstancedMesh(mergeGeometries([
     new THREE.BoxGeometry(4.2, 0.14, 2.0).translate(0, 2.65, -0.2),
@@ -535,6 +568,7 @@ function crowdMeshes(n, walking) {
 
 let walkers = [], walkMesh = null;
 function buildWalkers() {
+  if (!EDGES.length) return;
   const n = PHONE ? 500 : 1600;
   // more people on pavements near the HDB town centre
   const weights = EDGES.map((e) => { const cx = e.xs[0], cz = e.zs[0]; return e.len * (0.4 + 3 * Math.exp(-Math.hypot(cx - 200, cz + 300) / 1400)); });
@@ -629,7 +663,9 @@ function updateFleet(simSec) {
   for (let i = i0; i < i1 && n < FLEET.cap; i++) {
     const end = L.t0[i] + (L.cut[i] > 0 ? L.cut[i] : L.dur[i]);
     if (end <= simSec) continue;
-    const p = poseOn(FLEET.paths[L.pid[i]], (simSec - L.t0[i]) / (L.dur[i] || 1));
+    const path = FLEET.paths[L.pid[i]];
+    if (!path || path.xs.length < 2) continue;
+    const p = poseOn(path, (simSec - L.t0[i]) / (L.dur[i] || 1));
     if (Math.abs(p.x - car.x) > 900 || Math.abs(p.z - car.z) > 900) continue;
     FLEET_SEEN.push(p);
     dummy.position.set(p.x, 0, p.z); dummy.rotation.set(0, p.yaw - Math.PI / 2, 0); dummy.updateMatrix();
@@ -666,7 +702,7 @@ const VEHICLES = {
   robotaxi: { seats: 4, accel: 4.2, vmax: 16.7, turn: 1.9, len: 4.6, cam: [10, 4.2] },
   robovan: { seats: 10, accel: 2.9, vmax: 13.9, turn: 1.45, len: 6.6, cam: [13, 5.4] },
 };
-const car = { x: 0, z: 0, yaw: 0, v: 0, steer: 0, spec: VEHICLES.robotaxi, obj: null, models: {} };
+const car = { x: 0, z: 0, yaw: 0, v: 0, steer: 0, spec: VEHICLES.robotaxi, obj: null, models: {}, safe: { x: 0, z: 0, yaw: 0 } };
 const keys = {};
 let camMode = 0; // 0 chase, 1 high, 2 overhead
 const head = new THREE.SpotLight(0xfff0d8, 0, 110, 0.55, 0.6, 1.2);
@@ -704,6 +740,8 @@ function driveStep(dt) {
     if (Math.abs(car.v) > 4) { bump(); shake = 0.4; }
     car.v = -car.v * 0.25;
   } else { car.x = nx; car.z = nz; }
+  if (!Number.isFinite(car.x + car.z + car.v + car.yaw + car.steer)) Object.assign(car, car.safe, { v: 0, steer: 0 });
+  else if (!(maskAt(car.x, car.z) & (BLDG | WATER))) car.safe = { x: car.x, z: car.z, yaw: car.yaw };
 }
 
 let shake = 0;
@@ -735,7 +773,7 @@ const byCode = new Map();
 function prepareDemand() {
   FLOWS.clear(); byCode.clear();
   STOPS.forEach((s) => byCode.set(s.code, s));
-  for (const [o, d, w] of D.demand.top_flows[HI] || []) {
+  for (const [o, d, w] of (D.demand.top_flows || [])[HI] || []) {
     if (!byCode.has(o) || !byCode.has(d)) continue;
     if (!FLOWS.has(o)) FLOWS.set(o, []);
     FLOWS.get(o).push({ d: byCode.get(d).idx, w });
@@ -763,7 +801,7 @@ function pickDest(s) {
 // 17 km/h stop to stop over a detour 1.3 times the straight line. A game estimate.
 function busEstimate(s, dest) {
   const dist = Math.hypot(STOPS[dest].x - s.x, STOPS[dest].z - s.z);
-  return (D.baseline.wait_min[HI] || 4) * 60 + (dist * 1.3) / 4.7 + 20;
+  return ((D.baseline.wait_min || [])[HI] || 4) * 60 + (dist * 1.3) / 4.7 + 20;
 }
 function spawnRider(s, t, age = 0) {
   const dest = pickDest(s);
@@ -957,6 +995,9 @@ function audioInit() {
 }
 function chime(freqs, dur = 0.12, vol = 0.1) {
   if (!ac || muted) return;
+  try { playChime(freqs, dur, vol); } catch (e) { ac = null; engine = null; }
+}
+function playChime(freqs, dur, vol) {
   let t = ac.currentTime;
   for (const fq of freqs) {
     const o = ac.createOscillator(), g = ac.createGain();
@@ -968,7 +1009,10 @@ function chime(freqs, dur = 0.12, vol = 0.1) {
 }
 const bump = () => chime([140, 90], 0.15, 0.12);
 function updateEngine() {
-  if (!engine) return;
+  if (!engine || !ac) return;
+  try { engineTone(); } catch (e) { engine = null; }
+}
+function engineTone() {
   const v = Math.abs(car.v) / car.spec.vmax;
   engine.o.frequency.setTargetAtTime(48 + v * 110, ac.currentTime, 0.1);
   engine.g.gain.setTargetAtTime(muted || !G.running || G.paused ? 0 : 0.012 + v * 0.025, ac.currentTime, 0.1);
@@ -1030,10 +1074,11 @@ function deliver(r, s) {
 }
 
 function startShift() {
+  if (!READY || !STOPS.length) return;
   $("menu").hidden = true; $("end").hidden = true; $("hud").hidden = false;
   $("touch").hidden = !matchMedia("(pointer: coarse)").matches;
   audioInit();
-  if (ac && ac.state === "suspended") ac.resume();
+  if (ac && ac.state === "suspended") ac.resume().catch(() => {});
   Object.assign(G, { running: true, paused: false, over: false, t: 0, score: 0, delivered: 0, beat: 0, onboard: [], dwell: 0 });
   HI = Math.max(0, Math.min(20, Math.floor(HOUR) - 5));
   applyLook(HOUR);
@@ -1043,6 +1088,7 @@ function startShift() {
   // start beside the busiest hub this hour, on the road, facing along the kerb
   const hub = STOPS.filter((s) => s.hub).sort((a, b) => (b.o[HI] || 0) - (a.o[HI] || 0))[0] || STOPS[0];
   car.x = hub.x - hub.nx * 3.5; car.z = hub.z - hub.nz * 3.5; car.yaw = Math.atan2(hub.dx, hub.dz); car.v = 0; car.steer = 0;
+  car.safe = { x: car.x, z: car.z, yaw: car.yaw };
   camera.position.set(car.x - Math.sin(car.yaw) * 40, 30, car.z - Math.cos(car.yaw) * 40);
   camLook.set(car.x, 0, car.z);
   renderPax(); updateBeams(); queueDirty = true;
@@ -1080,7 +1126,7 @@ addEventListener("keydown", (e) => {
 addEventListener("keyup", (e) => { if (KEYMAP[e.code]) keys[KEYMAP[e.code]] = false; });
 for (const [id, k] of [["t-left", "left"], ["t-right", "right"], ["t-go", "up"], ["t-brake", "down"]]) {
   const el = $(id);
-  el.addEventListener("pointerdown", (e) => { keys[k] = true; el.setPointerCapture(e.pointerId); e.preventDefault(); });
+  el.addEventListener("pointerdown", (e) => { keys[k] = true; try { el.setPointerCapture(e.pointerId); } catch (err) { /* already released */ } e.preventDefault(); });
   for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) el.addEventListener(ev, () => { keys[k] = false; });
 }
 function toggleMute() { muted = !muted; $("mute").setAttribute("aria-pressed", String(muted)); $("mute").textContent = muted ? "Sound off" : "Sound on"; }
@@ -1089,6 +1135,7 @@ $("pause").onclick = () => setPaused(true);
 $("resume").onclick = () => setPaused(false);
 $("quit").onclick = () => { setPaused(false); endShift(); };
 $("again").onclick = startShift;
+addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.closest("#touch")) e.preventDefault(); }); // long-press on touch buttons
 $("change").onclick = () => { $("end").hidden = true; $("menu").hidden = false; };
 $("start").onclick = startShift;
 for (const group of ["opt-veh", "opt-hour"]) {
@@ -1099,6 +1146,7 @@ for (const group of ["opt-veh", "opt-hour"]) {
   };
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) setPaused(true); });
+addEventListener("blur", () => { for (const k in keys) keys[k] = false; }); // no key stuck down after alt-tab
 addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight); if (composer) composer.setSize(innerWidth, innerHeight);
@@ -1106,38 +1154,57 @@ addEventListener("resize", () => {
 
 // ---------------------------------------------------------------- main loop
 let READY = false, last = performance.now(), clock = 0;
+let loopErrors = 0;
 function frame(now) {
-  const dt = Math.min(0.1, (now - last) / 1000); last = now; clock += dt;
-  if (READY) {
-    const live = G.running && !G.paused;
-    if (live) gameStep(dt);
-    updateWalkers(live || !G.running ? dt : 0);
-    updateTrains(dt); updateSky(clock, dt);
-    updateQueues();
-    updateFleet(HOUR * 3600 + G.t);
-    if (car.obj) { car.obj.position.set(car.x, 0, car.z); car.obj.rotation.y = car.yaw - Math.PI / 2; car.obj.visible = G.running || G.over; }
-    head.intensity = look.night > 0.3 ? 260 : 0;
-    updateCamera(dt, !G.running && !G.over, clock);
-    if (G.running) { updateChevron(); updateLabels(); updateFloaters(dt); updateHud(); drawMinimap(); } else chevron.visible = false;
-    updateEngine();
-    // the sun (and its shadow box) follows the camera
-    const fx = G.running ? car.x : camera.position.x, fz = G.running ? car.z : camera.position.z;
-    sun.target.position.set(fx, 0, fz);
-    sun.position.set(fx + look.sunDir[0] * 600, look.sunDir[1] * 600, fz + look.sunDir[2] * 600);
-    sky.position.copy(camera.position); stars.position.copy(camera.position);
+  const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now; clock += dt;
+  try {
+    if (READY && !contextLost) {
+      const live = G.running && !G.paused;
+      if (live) gameStep(dt);
+      updateWalkers(live || !G.running ? dt : 0);
+      updateTrains(dt); updateSky(clock, dt);
+      updateQueues();
+      updateFleet(HOUR * 3600 + G.t);
+      if (car.obj) { car.obj.position.set(car.x, 0, car.z); car.obj.rotation.y = car.yaw - Math.PI / 2; car.obj.visible = G.running || G.over; }
+      head.intensity = look.night > 0.3 ? 260 : 0;
+      updateCamera(dt, !G.running && !G.over, clock);
+      if (G.running) { updateChevron(); updateLabels(); updateFloaters(dt); updateHud(); drawMinimap(); } else chevron.visible = false;
+      updateEngine();
+      // the sun (and its shadow box) follows the camera
+      const fx = G.running ? car.x : camera.position.x, fz = G.running ? car.z : camera.position.z;
+      sun.target.position.set(fx, 0, fz);
+      sun.position.set(fx + look.sunDir[0] * 600, look.sunDir[1] * 600, fz + look.sunDir[2] * 600);
+      sky.position.copy(camera.position); stars.position.copy(camera.position);
+    }
+    if (!contextLost) { if (composer) composer.render(); else renderer.render(scene, camera); }
+    loopErrors = Math.max(0, loopErrors - 0.02);
+  } catch (e) {
+    // one bad frame is skipped; only an error that keeps coming back ends the game, with a way out
+    if (loopErrors < 1) console.error(e);
+    if ((loopErrors += 1) > 30) { G.running = false; fail("Something went wrong while drawing the city."); return; }
   }
-  if (composer) composer.render(); else renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
 // ---------------------------------------------------------------- boot
+// A plain stand-in if a vehicle model fails to download: a champagne box with light bars.
+function standInCar(len) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(len, 1.4, 1.9).translate(0, 0.9, 0), new THREE.MeshStandardMaterial({ color: 0xcfae7c, roughness: 0.4 }));
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 1.6).translate(len / 2, 1.1, 0), new THREE.MeshStandardMaterial({ color: 0x222, emissive: 0xfff4dc, emissiveIntensity: 4 }));
+  g.add(body, bar);
+  return g;
+}
+
 async function boot() {
   try {
     progress(0.05, "Loading the map…");
-    const [town, bjson, stops, demand, baseline, results, idx] = await Promise.all(
-      ["town.json", "buildings.json", "stops.json", "demand.json", "baseline.json", "results.json", "anim_index.json"].map(getJSON));
-    [LNG0, LAT0] = idx.origin;
-    D = { town, stops, demand, baseline, results };
+    const [town0, bjson, stops, demand, baseline] = await Promise.all(["town.json", "buildings.json", "stops.json", "demand.json", "baseline.json"].map((n) => getJSON(n)));
+    const [results, idx] = await Promise.all(["results.json", "anim_index.json"].map((n) => optional(getJSON(n))));
+    if (idx && Array.isArray(idx.origin)) [LNG0, LAT0] = idx.origin;
+    const town = { ...town0, roads: town0.roads || [], green: town0.green || [], water: town0.water || [], rail: town0.rail || [] };
+    const blds = bjson.buildings || [];
+    D = { town, stops, demand: demand || {}, baseline: baseline || {}, results: results || {} };
     applyLook(HOUR);
     progress(0.3, "Laying roads, parks and water…"); await breathe();
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(24000, 24000).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x3e5238, roughness: 1 }));
@@ -1145,24 +1212,26 @@ async function boot() {
     flatLayer(town.green, 0.02, 0x33532f, { offset: -1 });
     flatLayer(town.water, 0.03, 0x173350, { rough: 0.08, metal: 0.4, offset: -2 });
     flatLayer(town.roads, 0.06, 0x24272d, { rough: 0.8, offset: -3 });
-    buildMask(town, bjson.buildings);
+    buildMask(town, blds);
     buildEdges(town); buildKerbs();
-    progress(0.45, `Raising ${bjson.buildings.length.toLocaleString()} buildings…`); await breathe();
-    buildBuildings(bjson.buildings);
+    progress(0.45, `Raising ${blds.length.toLocaleString()} buildings…`); await breathe();
+    buildBuildings(blds);
     progress(0.6, "Planting trees, lighting streets…"); await breathe();
     buildLamps(); buildTrees(town); buildRail(town);
-    buildStops(stops); clearAroundStops(); buildBeams(); buildMinimapBase(town, bjson.buildings);
+    buildStops(stops); clearAroundStops(); buildBeams(); buildMinimapBase(town, blds);
     buildWalkers();
     progress(0.72, "Fetching the simulated fleet and the vehicles…"); await breathe();
     const loader = new GLTFLoader();
     const [taxi, van, truck, pathsRaw, anim] = await Promise.all([
-      loader.loadAsync("models/robotaxi.glb"), loader.loadAsync("models/robovan.glb"), loader.loadAsync("models/skytruck.glb"),
-      getJSON("paths.json"), getJSON("anim_s10_450.json"),
+      optional(loader.loadAsync("models/robotaxi.glb")), optional(loader.loadAsync("models/robovan.glb")), optional(loader.loadAsync("models/skytruck.glb")),
+      optional(getJSON("paths.json")), optional(getJSON("anim_s10_450.json")),
     ]);
-    car.models = { robotaxi: taxi.scene, robovan: van.scene };
-    FLEET.inst = instancedModel(van, FLEET.cap);
-    decodeFleet(pathsRaw, anim);
-    buildSkyTrucks(truck);
+    // the game still runs without any of these: stand-in cars, no traffic, no flying trucks
+    car.models = { robotaxi: taxi ? taxi.scene : standInCar(4.6), robovan: van ? van.scene : standInCar(6.6) };
+    if (van && pathsRaw && anim && anim.legs) {
+      try { decodeFleet(pathsRaw, anim); FLEET.inst = instancedModel(van, FLEET.cap); } catch (e) { console.warn("no fleet:", e); FLEET.legs = null; }
+    }
+    if (truck) buildSkyTrucks(truck);
     applyLook(HOUR); // again, now the lamps and trains exist
     progress(1, "Ready");
     READY = true;
@@ -1174,7 +1243,7 @@ async function boot() {
     }
   } catch (e) {
     console.error(e);
-    $("load-text").textContent = `Could not build the city (${e.message}). The game needs its data and model files next to it, and WebGL.`;
+    fail(`Could not build the city (${e.message || e}).`);
   }
 }
 requestAnimationFrame(frame);

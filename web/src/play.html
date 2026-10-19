@@ -116,6 +116,25 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
 } }
 </script>
+<script>
+  // When the game cannot start at all (an old browser, a blocked CDN, no WebGL), say so and offer
+  // the study, instead of a loading bar that never moves. play.js sets __nsAlive once it runs.
+  window.nsFail = function (msg) {
+    var t = document.getElementById("load-text"), l = document.getElementById("loading");
+    if (!t || !l) return;
+    ["menu", "hud", "touch", "paused", "end"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; });
+    l.hidden = false;
+    t.textContent = msg + " ";
+    var a = document.createElement("a"); a.href = "study.html"; a.textContent = "Read the study instead";
+    var r = document.createElement("a"); r.href = "#"; r.textContent = "try again";
+    r.onclick = function () { location.reload(); return false; };
+    t.appendChild(a); t.appendChild(document.createTextNode(", or ")); t.appendChild(r); t.appendChild(document.createTextNode("."));
+    var bar = document.getElementById("load-bar"); if (bar) bar.parentNode.hidden = true;
+  };
+  setTimeout(function () {
+    if (!window.__nsAlive) window.nsFail("The game could not start: its 3D engine did not load. Check your connection, or try a recent browser.");
+  }, 30000);
+</script>
 </head>
 <body>
 <canvas id="c" aria-label="3D Yishun at street level"></canvas>
@@ -138,7 +157,7 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
   <div id="hint" class="panel" hidden></div>
   <div id="toast"></div>
   <div id="labels"></div>
-  <div id="corner"><button id="mute" type="button" aria-pressed="false" title="Sound (M)">Sound on</button><button id="pause" type="button" title="Pause (P)">Pause</button><a href="index.html">Study ↗</a></div>
+  <div id="corner"><button id="mute" type="button" aria-pressed="false" title="Sound (M)">Sound on</button><button id="pause" type="button" title="Pause (P)">Pause</button><a href="study.html">Study ↗</a></div>
 </div>
 
 <div id="touch" hidden>
@@ -174,7 +193,7 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
     </div></div>
     <button class="go" id="start" type="button">Start shift</button>
     <div class="keys"><kbd>W A S D / arrows</kbd><span>drive · stop inside a beam to board or drop riders</span><kbd>C</kbd><span>camera · <kbd>M</kbd> sound · <kbd>P</kbd> pause</span></div>
-    <p class="small">The other shuttles on the road are the study's simulated fleet (450 ten-seat vehicles) at the same minute. Buildings, roads, stops and ride rates are real data; the walkers, the trains and the flying trucks are decoration. <a href="index.html">Read the study</a>.</p>
+    <p class="small">The other shuttles on the road are the study's simulated fleet (450 ten-seat vehicles) at the same minute. Buildings, roads, stops and ride rates are real data; the walkers, the trains and the flying trucks are decoration. <a href="study.html">Read the study</a>.</p>
   </div>
 </div>
 
@@ -193,10 +212,11 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
       <div><dt>Best score</dt><dd id="r-best">—</dd></div>
     </dl>
     <p class="small" id="r-note"></p>
-    <div class="row-btns"><button class="go" id="again" type="button">Drive again</button><button id="change" type="button">Change vehicle or hour</button><a href="index.html">Read the study</a></div>
+    <div class="row-btns"><button class="go" id="again" type="button">Drive again</button><button id="change" type="button">Change vehicle or hour</button><a href="study.html">Read the study</a></div>
   </div>
 </div>
 
-<script type="module" src="play.js"></script>
+<script type="module" src="play.js" onerror="nsFail('The game could not load.')"></script>
+<script nomodule>nsFail("This browser is too old to run the game.");</script>
 </body>
 </html>
