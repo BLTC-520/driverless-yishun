@@ -123,6 +123,10 @@ would. The shuttles on the road are the simulator's 450-vehicle fleet and the bu
 both at the same minute. The walkers, private cars, trains and flying trucks are decoration, and "beat the bus"
 uses a rough bus estimate made for the game.
 
+| A walker thrown over the bonnet at 60 km/h (19:30) | The robotaxi's nose after hitting a robovan (13:00) |
+|---|---|
+| ![](docs/img/nightshift_night.jpg) | ![](docs/img/nightshift_dents.jpg) |
+
 **Rendering.** The game draws with three.js's `WebGPURenderer`, which falls back to WebGL 2 by itself where WebGPU
 is missing (`?webgl` forces the fallback; the corner badge says which is in use). The shaders are written in
 TSL ([`web/src/shaders.js`](web/src/shaders.js)), so one source compiles to WGSL and to GLSL:

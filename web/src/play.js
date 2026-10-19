@@ -752,7 +752,7 @@ function buildStops(stopsData) {
     new THREE.BoxGeometry(3.6, 0.45, 0.5).translate(0, 0.45, -0.75),
   ]), new THREE.MeshStandardMaterial({ color: 0x2f5d46, roughness: 0.6, metalness: 0.3 }), STOPS.length);
   const glass = new THREE.InstancedMesh(new THREE.BoxGeometry(3.8, 1.9, 0.05).translate(0, 1.5, -1.0), new THREE.MeshPhysicalMaterial({ color: 0x9fc4d8, transparent: true, opacity: 0.3, roughness: 0.05, metalness: 0.1 }), STOPS.length);
-  const signMat = new THREE.MeshStandardMaterial({ color: 0x223, emissive: 0xffffff, emissiveIntensity: 0.6 });
+  const signMat = new THREE.MeshStandardMaterial({ color: 0x223, emissive: 0xd8e4f5, emissiveIntensity: 0.3 });
   const sign = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 0.6, 0.9).translate(0, 3.0, 0), signMat, STOPS.length);
   const post = new THREE.InstancedMesh(new THREE.BoxGeometry(0.08, 2.7, 0.08).translate(0, 1.35, 0), frame.material, STOPS.length);
   STOPS.forEach((s, i) => {
@@ -766,7 +766,7 @@ function buildStops(stopsData) {
   });
   frame.castShadow = true;
   scene.add(frame, glass, sign, post);
-  nightMats.push({ update: (n) => { signMat.emissiveIntensity = 0.3 + 1.7 * n; } });
+  nightMats.push({ update: (n) => { signMat.emissiveIntensity = 0.15 + 0.45 * n; } });
 }
 // ---------------------------------------------------------------- people
 // Walkers stroll the pavements and now and then cross the road; riders waiting at a stop stand in
@@ -1585,7 +1585,7 @@ const VEHICLES = {
 const car = {
   body: new PH.Body({ hl: 2.3, hw: 0.98, mass: 1500, e: 0.2, mu: 0.5 }),
   get x() { return this.body.x; }, get z() { return this.body.z; }, get yaw() { return this.body.yaw; },
-  v: 0, slide: 0, steer: 0, spec: VEHICLES.robotaxi, obj: null, models: {}, safe: [], lights: { head: [], tail: [] }, broken: 0, pull: 1,
+  v: 0, slide: 0, steer: 0, spec: VEHICLES.robotaxi, obj: null, models: {}, safe: [], lights: { head: [], tail: [] }, glass: [], broken: 0, pull: 1,
 };
 const keys = {};
 let camMode = 0; // 0 chase, 1 high, 2 overhead
@@ -1599,11 +1599,12 @@ function setVehicle(name) {
   if (car.obj) { car.obj.remove(head, head.target); scene.remove(car.obj); }
   car.obj = dentable(car.models[name].clone(true));
   // its own lamp materials: brake lights brighten, broken headlights go dark
-  car.lights = { head: [], tail: [] };
+  car.lights = { head: [], tail: [] }; car.glass = [];
   car.obj.traverse((o) => {
     if (!o.isMesh || !o.material) return;
     const n = o.material.name;
     if (n === "headlight" || n === "taillight") { o.material = o.material.clone(); car.lights[n === "headlight" ? "head" : "tail"].push(o.material); }
+    if (n === "glass") { o.material = o.material.clone(); car.glass.push(o.material); }
   });
   car.obj.add(head, head.target);
   head.position.x = car.spec.len / 2;
@@ -1994,6 +1995,7 @@ function playerImpact(dv, x, z, what, kind) {
     const [la] = car.body.toLocal(x, z);
     if (la > car.spec.hl * 0.4) car.broken |= 1; else if (la < -car.spec.hl * 0.4) car.broken |= 2;
   }
+  if (dv > 8 || G.condition < 0.3) for (const m of car.glass) { m.roughness = 0.6; m.color.setHex(0x46525c); m.metalness = 0; } // the glass crazes
   if (kind !== "vehicle" && dv > 4) toast(`Hit ${what}`, `Vehicle condition ${Math.round(G.condition * 100)}%`, "bad");
   if (G.condition <= 0 && G.tow <= 0) wrecked();
 }
@@ -2238,7 +2240,13 @@ function tick(dt, live) {
   if (live && G.tow <= 0) {
     const onCar = (dv, c) => playerImpact(dv, c.px, c.pz, "a vehicle", "vehicle");
     hitTraffic(car.body, car.obj, true, onCar);
-    for (const wk of WRECKS) { const c = PH.collide(car.body, wk.body); if (c) crash(car.body, wk.body, car.obj, wk.obj, c, onCar, (dv) => { wk.dmg += dv; }); }
+    for (const wk of WRECKS) {
+      const c = PH.collide(car.body, wk.body);
+      if (!c) continue;
+      const closing = (car.body.vx - wk.body.vx) * c.nx + (car.body.vz - wk.body.vz) * c.nz;
+      crash(car.body, wk.body, car.obj, wk.obj, c, onCar, (dv) => { wk.dmg += dv; });
+      if (closing > 4 && wk.kind !== "player") vehicleIncident(`a crashed ${wk.kind === "car" ? "car" : wk.kind === "bus" ? "bus" : "robovan"}`, closing);
+    }
     hitStatic(car.body, car.obj, (dv, c, what) => playerImpact(dv, c.px, c.pz, what));
   }
   updateWrecks(dt);
