@@ -54,7 +54,7 @@ def worker(k: int, a, url: str, frames: Path, total: int) -> None:
         pg.add_init_script(SEEDED % a.seed)
         pg.goto(url)
         pg.wait_for_function("window.__ns", timeout=600_000)
-        backend = pg.evaluate(f"(() => {{ const n = window.__ns; n.hour({a.hour}); n.pilot({a.route[0]}, {a.route[1]}, {a.speed}); return n.BACKEND; }})()")
+        backend = pg.evaluate(f"(() => {{ const n = window.__ns; n.hour({a.hour}); n.pilot({a.route[0]}, {a.route[1]}, {a.speed}); n.framing({a.shift}); return n.BACKEND; }})()")
         if backend != "WebGPU":
             print(f"worker {k}: rendering with {backend}", flush=True)
         dt = 1 / a.fps
@@ -83,6 +83,7 @@ def main() -> None:
     ap.add_argument("--route", type=float, nargs=2, default=[483, 60], metavar=("PATH", "METRES"),
                     help="road path (index into paths.json) and where along it to start; 483 runs past Yishun MRT")
     ap.add_argument("--speed", type=float, default=13, help="m/s")
+    ap.add_argument("--shift", type=float, default=10, help="metres the camera looks left of the car, so the car sits right of the text")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--frames", help="keep the rendered frames in this folder (and reuse any already there)")
@@ -115,7 +116,7 @@ def main() -> None:
         img.save(seq / f"s_{i:04d}.png")
     MEDIA.mkdir(parents=True, exist_ok=True)
     src = ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(a.fps), "-i", str(seq / "s_%04d.png"), "-an", "-pix_fmt", "yuv420p"]
-    subprocess.run(src + ["-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "37", "-row-mt", "1", "-deadline", "good", str(MEDIA / "nightshift-loop.webm")], check=True)
+    subprocess.run(src + ["-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "41", "-row-mt", "1", "-deadline", "good", str(MEDIA / "nightshift-loop.webm")], check=True)
     subprocess.run(src + ["-c:v", "libx264", "-crf", "27", "-preset", "slow", "-movflags", "+faststart", str(MEDIA / "nightshift-loop.mp4")], check=True)
     Image.open(seq / "s_0000.png").convert("RGB").save(MEDIA / "nightshift-loop.jpg", quality=82, optimize=True, progressive=True)
     shutil.rmtree(seq)

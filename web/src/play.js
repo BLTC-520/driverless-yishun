@@ -1614,7 +1614,7 @@ function setVehicle(name) {
 
 // Recording only (web/record_loop.py): drive along a road path at a steady speed, the heading
 // smoothed over a few metres so the camera glides through corners.
-let PILOT = null;
+let PILOT = null, CAM_SHIFT = 0;
 function pilotStep(dt) {
   const b = car.body, a = PILOT;
   // keep a safe gap to whatever is ahead in the lane, like the traffic does
@@ -1679,7 +1679,9 @@ function updateCamera(dt, attract, t) {
   _want.set(car.x - fx * back, upH, car.z - fz * back);
   const k = 1 - Math.exp(-dt * (camMode === 2 ? 3 : 4.5));
   camera.position.lerp(_want, k);
-  camLook.lerp(_look.set(car.x + fx * (camMode === 2 ? 1 : 6), 1.2, car.z + fz * (camMode === 2 ? 1 : 6)), Math.min(1, k * 1.5));
+  _look.set(car.x + fx * (camMode === 2 ? 1 : 6), 1.2, car.z + fz * (camMode === 2 ? 1 : 6));
+  if (CAM_SHIFT) _look.add(_v.set(fz * CAM_SHIFT, 0, -fx * CAM_SHIFT)); // recording: look left of the car, so it sits right of centre
+  camLook.lerp(_look, Math.min(1, k * 1.5));
   if (shake > 0) { camera.position.x += rand(-1, 1) * shake; camera.position.y += rand(-1, 1) * shake; shake = Math.max(0, shake - dt * 1.5); }
   camera.lookAt(camLook);
   const fov = 58 + 11 * Math.min(1, Math.abs(car.v) / car.spec.vmax) + (G.slow > 0 ? -6 : 0);
@@ -2418,6 +2420,7 @@ async function boot() {
         // recording: follow path pid from s metres at v m/s, then advance whole frames of dt seconds
         pilot: (pid, s = 0, v = 12) => { PILOT = pid === null ? null : { pid, s, v, vmax: v }; return PATHS && pid !== null ? pathCum(PATHS[pid]).at(-1) : 0; },
         paths: () => PATHS,
+        framing: (shift) => { CAM_SHIFT = shift; },
         step: (dt) => { advance(dt); chevron.visible = false; },
         hour: (h) => { HOUR = h; HI = Math.max(0, Math.min(20, Math.floor(HOUR) - 5)); applyLook(HOUR); },
         view: (mode = 0) => { // put the camera where the chase camera settles, and refresh the HUD
