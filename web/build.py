@@ -1,13 +1,14 @@
 """Build the static site: web/src (page fragment + app.js) + web/public/data -> web/dist.
 
-* dist/index.html the landing page: the game (Night Shift, play.html + play.js with physics.js and
-                  shaders.js), a standalone page;
-                  dist/play.html is the same file, so older links keep working
+* dist/index.html the landing page (home.html): a drive recorded in the game loops behind two ways
+                  in, the study and the game, with its headline numbers pre-filled
+* dist/play.html  the game (Night Shift: play.html + play.js with physics.js and shaders.js)
 * dist/study.html the study, wrapped in a full HTML document, for standalone hosting
                   (GitHub Pages, `python -m http.server`)
 * dist/page.html  the study as a page fragment with headline numbers pre-filled from the data (what
                   the artifact host publishes; it supplies the document skeleton itself)
 * dist/models/    vehicle models (glTF) built in Blender by tools/blender/build_models.py
+* dist/media/     the landing page's background drive, recorded by web/record_loop.py
 The numbers are filled again at runtime by app.js from the same JSON files.
 Usage: python web/build.py
 """
@@ -21,6 +22,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 SRC, DATA, DIST = ROOT / "src", ROOT / "public" / "data", ROOT / "dist"
 MODELS = ROOT / "public" / "models"  # vehicle .glb files from tools/blender/build_models.py
+MEDIA = ROOT / "public" / "media"    # the landing page's background video, from web/record_loop.py
+FILL = re.compile(r'(data-v="([a-z0-9_]+)">)—(</(?:span|td|b)>)')
 
 HEAD = """<!doctype html>
 <html lang="en">
@@ -42,8 +45,7 @@ def main() -> None:
     page = (SRC / "index.html").read_text()
     try:
         vals = numbers()
-        page = re.sub(r'(data-v="([a-z0-9_]+)">)—(</(?:span|td)>)',
-                      lambda m: m.group(1) + vals.get(m.group(2), "—") + m.group(3), page)
+        page = FILL.sub(lambda m: m.group(1) + vals.get(m.group(2), "—") + m.group(3), page)
         rs = json.loads((DATA / "results.json").read_text())
         page = page.replace('<span id="who-text">—</span>', f'<span id="who-text">{rs["who"]["text"]}</span>')
         if rs["who"].get("headline"):
@@ -57,14 +59,24 @@ def main() -> None:
     shutil.copy(SRC / "app.js", DIST / "app.js")
     for name in ("play.js", "physics.js", "shaders.js"):  # the game and its modules
         shutil.copy(SRC / name, DIST / name)
-    for name in ("index.html", "play.html"):  # the game is the landing page, copied as is
-        shutil.copy(SRC / "play.html", DIST / name)
+    shutil.copy(SRC / "play.html", DIST / "play.html")
+    home = (SRC / "home.html").read_text()
+    try:
+        vals = numbers()
+        home = FILL.sub(lambda m: m.group(1) + vals.get(m.group(2), "—") + m.group(3), home)
+    except FileNotFoundError as e:
+        print(f"landing numbers not pre-filled ({e})")
+    (DIST / "index.html").write_text(home)
     if (DIST / "data").exists():
         shutil.rmtree(DIST / "data")
     shutil.copytree(DATA, DIST / "data")
     if (DIST / "models").exists():
         shutil.rmtree(DIST / "models")
     shutil.copytree(MODELS, DIST / "models")
+    if (DIST / "media").exists():
+        shutil.rmtree(DIST / "media")
+    if MEDIA.exists():
+        shutil.copytree(MEDIA, DIST / "media")
     size = sum(p.stat().st_size for p in DIST.rglob("*") if p.is_file())
     print(f"built {DIST} ({size / 1e6:.1f} MB)")
 

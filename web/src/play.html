@@ -31,6 +31,8 @@ button:hover { border-color: var(--mute); }
 button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium); }
 .panel { background: color-mix(in srgb, var(--night-2) 82%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--rule); border-radius: 6px; }
 .eyebrow { font-family: var(--font-data); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }
+.eyebrow a.home { color: var(--mute); text-decoration: none; border-bottom: 1px solid var(--rule); }
+.eyebrow a.home:hover { color: var(--chalk); }
 
 /* ---- HUD ---- */
 #hud { position: fixed; inset: 0; pointer-events: none; font-family: var(--font-data); }
@@ -196,7 +198,7 @@ button[aria-pressed="true"] { border-color: var(--sodium); color: var(--sodium);
 
 <div id="menu" class="overlay" hidden>
   <div class="card panel">
-    <div class="eyebrow">Driverless Yishun · a game on the study's data</div>
+    <div class="eyebrow"><a class="home" href="./">Driverless Yishun</a> · a game on the study's data</div>
     <h1>Night <span>Shift</span></h1>
     <p>Drive a driverless shuttle through Yishun. Riders appear at its 180 bus stops at the rate LTA's fare-card data shows for that hour, bound for the stops they really travel to. Pick them up, pool them, and get them there before the bus would have.</p>
     <div class="choice"><div class="eyebrow">Vehicle</div><div class="opts" id="opt-veh">

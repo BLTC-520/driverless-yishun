@@ -4,7 +4,7 @@ PY ?= python
 RUN = cd pipeline && $(PY) -m
 
 .PHONY: setup data live calibrate gps-check calibrate-peak experiments sensitivity results web test models \
-        reproduce-core-results serve clean-cache
+        reproduce-core-results serve clean-cache loop
 
 setup:            ## create the environment
 	uv venv .venv --python 3.12 && . .venv/bin/activate && uv pip install -r requirements.txt
@@ -59,6 +59,11 @@ models:
 # downloaded again, so this uses the committed data/processed/calibration.json, gps_check.json
 # and calibration_pm_peak.json; run `make live calibrate gps-check calibrate-peak` to refit.
 reproduce-core-results: experiments sensitivity results test
+
+# The landing page's background: a night drive recorded in the game (headless Chromium, software WebGPU;
+# about an hour on 4 cores). Needs Playwright, Pillow and ffmpeg.
+loop:
+	$(PY) web/build.py && $(PY) web/record_loop.py
 
 serve:
 	cd web/dist && $(PY) -m http.server 8000

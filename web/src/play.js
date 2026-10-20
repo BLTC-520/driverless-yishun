@@ -880,7 +880,7 @@ function updateWalkers(dt, movers) {
       const back = Math.min(1, dt * 0.7);
       w.ox -= w.ox * back; w.oz -= w.oz * back;
       w.x = p.x + w.ox; w.z = p.z + w.oz; w.yaw = Math.atan2(p.dx * w.dir, p.dz * w.dir);
-      if (Math.random() < dt * 0.0022 && G.running) startCrossing(w, p);
+      if (Math.random() < dt * 0.0022 && G.running && !PILOT) startCrossing(w, p);
     } else if (w.mode === STAND) {
       stride = 0;
     } else { // crossing, or walking back after a fall
@@ -1612,7 +1612,23 @@ function setVehicle(name) {
   car.broken = 0; car.pull = Math.random() < 0.5 ? -1 : 1;
 }
 
+// Recording only (web/record_loop.py): drive along a road path at a steady speed, the heading
+// smoothed over a few metres so the camera glides through corners.
+let PILOT = null;
+function pilotStep(dt) {
+  const b = car.body, a = PILOT;
+  // keep a safe gap to whatever is ahead in the lane, like the traffic does
+  const gap = gapAhead(b.x, b.z, b.yaw, car.spec, obstacles, car);
+  a.v += clamp(Math.min(a.vmax, Math.sqrt(8 * Math.max(0, gap - 5))) - a.v, -6 * dt, 2 * dt);
+  a.s += a.v * dt;
+  const at = (s) => { const c = pathCum(PATHS[a.pid]), L = c[c.length - 1]; const q = { pid: a.pid, s: clamp(s, 0, L), yaw: 0 }; ambPose(q); return q; };
+  const p = at(a.s), f = at(a.s + 7), r = at(a.s - 7);
+  const yaw = Math.atan2(f.x - r.x, f.z - r.z), cx = p.x - Math.cos(p.yaw) * LANE, cz = p.z + Math.sin(p.yaw) * LANE;
+  Object.assign(b, { x: cx + Math.cos(yaw) * LANE, z: cz - Math.sin(yaw) * LANE, yaw, vx: Math.sin(yaw) * a.v, vz: Math.cos(yaw) * a.v, w: 0 });
+  car.v = a.v; car.slide = 0;
+}
 function driveStep(dt) {
+  if (PILOT) return pilotStep(dt);
   const S = car.spec, b = car.body, cond = G.condition;
   if (G.tow > 0) { PH.coast(b, dt); b.integrate(dt); PH.collideWalls(b, solid); car.v = 0; return; }
   const onRoad = maskAt(b.x, b.z) & ROAD;
@@ -2237,7 +2253,7 @@ function tick(dt, live) {
   obstacleList();
   updateFleets(simSec, dt, obstacles);
   updateAmbient(dt, obstacles);
-  if (live && G.tow <= 0) {
+  if (live && G.tow <= 0 && !PILOT) {
     const onCar = (dv, c) => playerImpact(dv, c.px, c.pz, "a vehicle", "vehicle");
     hitTraffic(car.body, car.obj, true, onCar);
     for (const wk of WRECKS) {
@@ -2265,36 +2281,14 @@ function tick(dt, live) {
 }
 
 // ---------------------------------------------------------------- main loop
-let READY = false, HOLD = false, last = performance.now(), clock = 0, menuClock = 0;
+// ?record (web/record_loop.py): nothing moves on its own; the recorder steps whole frames
+let READY = false, HOLD = QUERY.has("record"), last = performance.now(), clock = 0, menuClock = 0;
 let loopErrors = 0;
 function frame(now) {
-  const real = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now; clock += real;
+  const real = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
   if (HOLD) { requestAnimationFrame(frame); return; } // tests: frozen while a frame is captured
   try {
-    if (READY && !contextLost) {
-      const live = G.running && !G.paused;
-      let dt = real;
-      if (G.slow > 0) { G.slow -= real; dt *= 0.3; }
-      if (!G.running && !G.over) menuClock += real;
-      if (!G.paused) tick(dt, live);
-      updateSky(clock, real);
-      IMPACT.value = Math.max(0, IMPACT.value - real * 3);
-      if (car.obj) { car.obj.position.set(car.x, 0, car.z); car.obj.rotation.y = car.yaw - Math.PI / 2; car.obj.visible = G.running || G.over; }
-      const flick = car.broken & 1 ? (Math.random() < 0.15 ? 1 : 0) : 1;
-      head.intensity = look.night > 0.3 && G.tow <= 0 ? 260 * flick : 0;
-      for (const m of car.lights.head) m.emissiveIntensity = (car.broken & 1 ? 0.1 : 1) * flick;
-      const braking = (keys.down && car.v > 0.5) || keys.hand;
-      for (const m of car.lights.tail) m.emissiveIntensity = car.broken & 2 ? 0.05 : braking ? 4 : 1;
-      U.car.value.set(car.x, 0, car.z);
-      updateCamera(real, !G.running && !G.over, clock);
-      if (G.running) { updateChevron(); updateLabels(); updateFloaters(real); updateHud(); drawMinimap(); } else chevron.visible = false;
-      updateEngine();
-      // the sun (and its shadow box) follows the camera
-      const fx = G.running ? car.x : camera.position.x, fz = G.running ? car.z : camera.position.z;
-      sun.target.position.set(fx, 0, fz);
-      sun.position.set(fx + look.sunDir[0] * 600, look.sunDir[1] * 600, fz + look.sunDir[2] * 600);
-      sky.position.copy(camera.position);
-    }
+    if (READY && !contextLost) advance(real);
     if (!contextLost) draw();
     loopErrors = Math.max(0, loopErrors - 0.02);
   } catch (e) {
@@ -2303,6 +2297,32 @@ function frame(now) {
     if ((loopErrors += 1) > 30) { G.running = false; fail("Something went wrong while drawing the city."); return; }
   }
   requestAnimationFrame(frame);
+}
+// everything but drawing, for `real` seconds of wall time
+function advance(real) {
+  clock += real;
+  const live = G.running && !G.paused;
+  let dt = real;
+  if (G.slow > 0) { G.slow -= real; dt *= 0.3; }
+  if (!G.running && !G.over) menuClock += real;
+  if (!G.paused) tick(dt, live);
+  updateSky(clock, real);
+  IMPACT.value = Math.max(0, IMPACT.value - real * 3);
+  if (car.obj) { car.obj.position.set(car.x, 0, car.z); car.obj.rotation.y = car.yaw - Math.PI / 2; car.obj.visible = G.running || G.over; }
+  const flick = car.broken & 1 ? (Math.random() < 0.15 ? 1 : 0) : 1;
+  head.intensity = look.night > 0.3 && G.tow <= 0 ? 260 * flick : 0;
+  for (const m of car.lights.head) m.emissiveIntensity = (car.broken & 1 ? 0.1 : 1) * flick;
+  const braking = (keys.down && car.v > 0.5) || keys.hand;
+  for (const m of car.lights.tail) m.emissiveIntensity = car.broken & 2 ? 0.05 : braking ? 4 : 1;
+  U.car.value.set(car.x, 0, car.z);
+  updateCamera(real, !G.running && !G.over, clock);
+  if (G.running) { updateChevron(); updateLabels(); updateFloaters(real); updateHud(); drawMinimap(); } else chevron.visible = false;
+  updateEngine();
+  // the sun (and its shadow box) follows the camera
+  const fx = G.running ? car.x : camera.position.x, fz = G.running ? car.z : camera.position.z;
+  sun.target.position.set(fx, 0, fz);
+  sun.position.set(fx + look.sunDir[0] * 600, look.sunDir[1] * 600, fz + look.sunDir[2] * 600);
+  sky.position.copy(camera.position);
 }
 
 // ---------------------------------------------------------------- boot
@@ -2395,6 +2415,10 @@ async function boot() {
         carAhead: (d = 16, side = 0) => { const [x, z] = ahead(d, side); spawnWreck("car", { x, z, yaw: car.yaw + Math.PI / 2, vx: 0, vz: 0 }, 0x8b1e24); return WRECKS.length; },
         snap: snapshot,
         hold: (on) => { HOLD = !!on; IMPACT.value = 0; },
+        // recording: follow path pid from s metres at v m/s, then advance whole frames of dt seconds
+        pilot: (pid, s = 0, v = 12) => { PILOT = pid === null ? null : { pid, s, v, vmax: v }; return PATHS && pid !== null ? pathCum(PATHS[pid]).at(-1) : 0; },
+        paths: () => PATHS,
+        step: (dt) => { advance(dt); chevron.visible = false; },
         hour: (h) => { HOUR = h; HI = Math.max(0, Math.min(20, Math.floor(HOUR) - 5)); applyLook(HOUR); },
         view: (mode = 0) => { // put the camera where the chase camera settles, and refresh the HUD
           camMode = mode; car.obj.position.set(car.x, 0, car.z); car.obj.rotation.y = car.yaw - Math.PI / 2;

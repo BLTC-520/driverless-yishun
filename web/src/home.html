@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Driverless Yishun</title>
+<meta name="description" content="Could driverless shuttles carry every bus ride inside Yishun? Read the simulation study on LTA fare-card data, or drive the town yourself in Night Shift.">
+<meta property="og:title" content="Driverless Yishun">
+<meta property="og:description" content="A simulation study of driverless shuttles in a Singapore town, and a game on the same data.">
+<meta property="og:image" content="media/nightshift-loop.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230c111b'/%3E%3Ccircle cx='8' cy='8' r='4' fill='%23f2a53a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400..600&display=swap">
+<style>
+/* The landing page: a drive recorded in Night Shift loops behind two ways in, the study or the
+   game. Same palette as both: sodium amber, chalk on night panels. */
+:root {
+  --night: #0c111b; --night-2: #131a27; --rule: #263044;
+  --chalk: #e9e6de; --mute: #8f99ab; --sodium: #f2a53a; --ion: #7cc8ff;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Source Serif 4", Georgia, serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--night); color: var(--chalk); font-family: var(--font-body); }
+a { color: inherit; }
+[hidden] { display: none !important; }
+
+/* the recorded drive, behind everything */
+.bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; background: var(--night); }
+.shade { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, #0c111bf2 0%, #0c111bcc 38%, #0c111b55 72%, #0c111b33 100%),
+    linear-gradient(0deg, #0c111bdd 0%, #0c111b00 30%); }
+
+main { position: relative; z-index: 2; min-height: 100vh; min-height: 100dvh; display: grid; align-content: center;
+  padding: max(28px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+.inner { width: min(1120px, 100%); margin: 0 auto; display: grid; gap: 28px; }
+.intro { max-width: 640px; display: grid; gap: 16px; }
+.eyebrow { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }
+.wordmark { font-family: var(--font-display); font-weight: 780; font-stretch: 118%; font-size: 1.05rem; letter-spacing: 0.01em; }
+.wordmark span { color: var(--sodium); }
+h1 { font-family: var(--font-display); font-weight: 760; font-stretch: 112%; font-size: clamp(2rem, 5.2vw, 3.6rem); line-height: 1.02; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.lede { font-size: clamp(1rem, 1.6vw, 1.15rem); line-height: 1.55; margin: 0; max-width: 58ch; color: #d9d6cd; }
+.lede b { color: var(--sodium); font-weight: 600; }
+
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; max-width: 820px; }
+.choice { display: grid; gap: 10px; align-content: start; padding: 20px 22px 18px; text-decoration: none; border-radius: 8px;
+  background: color-mix(in srgb, var(--night-2) 80%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--rule); transition: border-color 0.2s, transform 0.2s, background 0.2s; }
+.choice:hover { border-color: var(--mute); transform: translateY(-2px); background: color-mix(in srgb, var(--night-2) 90%, transparent); }
+.choice:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
+.choice .kind { font-family: var(--font-data); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }
+.choice h2 { font-family: var(--font-display); font-weight: 720; font-stretch: 110%; font-size: 1.55rem; margin: 0; line-height: 1.1; }
+.choice p { margin: 0; line-height: 1.5; font-size: 0.97rem; color: #cfccc3; }
+.choice .go { justify-self: start; margin-top: 6px; font-family: var(--font-data); font-size: 0.82rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 10px 14px; border-radius: 4px; border: 1px solid var(--chalk); color: var(--night); background: var(--chalk); }
+.choice.game h2 span { color: var(--sodium); }
+.choice.game .go { background: var(--sodium); border-color: var(--sodium); }
+.choice:hover .go { filter: brightness(1.08); }
+.choice small { font-family: var(--font-data); font-size: 0.7rem; color: var(--mute); }
+
+footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-family: var(--font-data); font-size: 0.7rem; color: var(--mute); max-width: 820px; }
+footer button { font: inherit; color: var(--chalk); background: #1a2333cc; border: 1px solid var(--rule); border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+footer button:hover { border-color: var(--mute); }
+footer a { color: var(--mute); }
+
+@media (max-width: 720px) {
+  .choices { grid-template-columns: 1fr; }
+  .shade { background: linear-gradient(180deg, #0c111bcc 0%, #0c111be6 45%, #0c111bf2 100%); }
+  .choice { padding: 16px 16px 14px; }
+  .choice h2 { font-size: 1.35rem; }
+  .lede .more, .choice small { display: none; }
+  .inner { gap: 20px; }
+}
+</style>
+</head>
+<body>
+<!-- Recorded in Night Shift by web/record_loop.py: a drive at 19:30 past Yishun MRT. -->
+<video class="bg" id="bg" autoplay muted loop playsinline preload="auto" poster="media/nightshift-loop.jpg" aria-hidden="true">
+  <source src="media/nightshift-loop.webm" type="video/webm">
+  <source src="media/nightshift-loop.mp4" type="video/mp4">
+</video>
+<div class="shade"></div>
+
+<main>
+  <div class="inner">
+    <div class="intro">
+      <div class="wordmark">Driverless <span>Yishun</span></div>
+      <h1>Could driverless shuttles carry every bus ride inside Yishun?</h1>
+      <p class="lede">On a school-term weekday, <b data-v="rides">—</b> bus rides start and end inside the town.<span class="more"> This study replays every one through a fleet of on-demand shuttles and compares it, ride by ride, with today's buses, on LTA's own fare-card and live bus data.</span> In the model, <b data-v="parity">—</b> ten-seat shuttles keep up with the bus in every hour.</p>
+    </div>
+
+    <nav class="choices" aria-label="Two ways in">
+      <a class="choice study" href="study.html">
+        <span class="kind">Read · findings, maps and charts</span>
+        <h2>The study</h2>
+        <p>The fleet it takes, the driving it adds, the queue at the MRT kerb and who gains, with a map of the simulated day you can explore.</p>
+        <span class="go">Read the study ▸</span>
+      </a>
+      <a class="choice game" href="play.html">
+        <span class="kind">Play · a five-minute shift</span>
+        <h2>Night <span>Shift</span></h2>
+        <p>Drive a robotaxi through 3D Yishun after dark. Every block, road and bus stop is real, riders appear at the observed rates, and crashes dent.</p>
+        <span class="go">Start driving ▸</span>
+        <small>Best on a computer with a recent browser (WebGPU, or WebGL 2)</small>
+      </a>
+    </nav>
+
+    <footer>
+      <button id="motion" type="button" aria-pressed="false">Pause background</button>
+      <span>Background: a drive recorded in Night Shift at 19:30.</span>
+      <span>Data: LTA DataMall, HDB, URA, SingStat (<a href="https://data.gov.sg/open-data-licence">Singapore Open Data Licence</a>), © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</span>
+    </footer>
+  </div>
+</main>
+
+<script>
+  // The drive pauses for anyone who asks for less motion (or to save data), and on the button.
+  (function () {
+    var v = document.getElementById("bg"), b = document.getElementById("motion");
+    var calm = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) || (navigator.connection && navigator.connection.saveData);
+    function set(paused) {
+      if (paused) v.pause(); else { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+      b.textContent = paused ? "Play background" : "Pause background";
+      b.setAttribute("aria-pressed", String(paused));
+    }
+    if (calm) { v.removeAttribute("autoplay"); v.preload = "none"; set(true); }
+    b.onclick = function () { set(!v.paused); };
+  })();
+</script>
+</body>
+</html>

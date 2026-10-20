@@ -77,7 +77,7 @@ Python 3.12. An [LTA DataMall](https://datamall.lta.gov.sg/content/datamall/en/r
 make setup                    # uv venv + pinned requirements
 make data                     # LTA DataMall, data.gov.sg, OpenStreetMap
 make reproduce-core-results   # experiments -> sensitivity -> page data -> tests
-make web && make serve        # http://localhost:8000 (the game; the study is /study.html)
+make web && make serve        # http://localhost:8000 (landing page; the study is /study.html, the game /play.html)
 # optional, at the hours you want to calibrate on:
 make live calibrate gps-check calibrate-peak
 ```
@@ -89,7 +89,7 @@ pipeline/yishun/   fetchers, network, routing, calibration, bus model, simulator
 tests/             insertion kernel vs brute force, simulator exact times and randomized invariants,
                    kerb queues, common lines, estimator check, demand sampling, bus wait draws,
                    real-network consistency
-web/               static explorer (deck.gl + d3), the game (WebGPU, physics.js + tests), build and screenshot scripts
+web/               landing page, static explorer (deck.gl + d3), the game (WebGPU, physics.js + tests), build, screenshot and loop-recording scripts
 tools/blender/     vehicle models for the explorer, generated in Blender
 docs/              decision record, methodology, validation, data registry
 data/processed/    calibration and experiment outputs (raw data is never committed)
@@ -114,8 +114,11 @@ make models BLENDER="python"                                           # or with
 
 ### Night Shift (the game)
 
-The site opens on [Night Shift](web/src/play.html), a driving game on the same data. The study itself is at
-`study.html`, linked from the game's menu and corner. Every building footprint and height, road area, park,
+The site opens on a landing page ([`web/src/home.html`](web/src/home.html)) that offers two ways in: the study
+(`study.html`) or [Night Shift](web/src/play.html) (`play.html`), a driving game on the same data. Behind them
+loops a night drive recorded in the game by [`web/record_loop.py`](web/record_loop.py) (`make loop` re-records
+it; rendering in software takes about an hour). The page pauses it for visitors who prefer reduced motion or
+save data, and it has a pause button. Every building footprint and height, road area, park,
 stretch of water, the MRT line and the 180 bus stops come from the study's inputs. You drive a robotaxi or
 robovan for a five-minute shift. Riders appear at each stop at that hour's observed rate (LTA fare-card OD) and
 head for stops riders really travel to. You pick them up, pool them and try to get them there before the bus
