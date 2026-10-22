@@ -11,7 +11,7 @@ import pandas as pd
 
 from .experiments import OUT
 
-KEY = ["scenario", "option", "capacity", "theta_min", "fleet", "availability", "berths", "w_max_s", "sim"]
+KEY = ["scenario", "option", "capacity", "theta_min", "hours", "fleet", "availability", "berths", "w_max_s", "sim"]
 SPREAD = ["saved_h", "saved_h_R2", "saved_h_R3", "pax_h", "pax_h_A", "mean_min", "mean_min_A", "p90_min",
           "p90_min_A", "n_declined", "n_refused", "veh_km", "veh_km_empty"]
 
@@ -26,6 +26,9 @@ def load_runs(names: list[str]) -> pd.DataFrame:
     if not parts:
         return pd.DataFrame()
     r = pd.concat(parts, ignore_index=True).sort_values("grid_order")
+    if "hours" not in r:
+        r["hours"] = ""
+    r["hours"] = r.hours.fillna("")
     r = r.drop_duplicates("run_id", keep="last")
     r["theta_min"] = r.theta_min.astype(float)
     return r
@@ -37,6 +40,9 @@ def load_table(names: list[str], table: str) -> pd.DataFrame:
     if not parts:
         return pd.DataFrame()
     t = pd.concat(parts, ignore_index=True)
+    if "hours" not in t:
+        t["hours"] = ""
+    t["hours"] = t.hours.fillna("")
     last = t.groupby("run_id").grid_order.transform("max")   # same replacement rule as load_runs
     return t[t.grid_order == last]
 

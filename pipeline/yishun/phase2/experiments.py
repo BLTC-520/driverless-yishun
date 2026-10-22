@@ -31,7 +31,7 @@ from ..experiments import provenance, service_day_requests
 from ..model import build_model, default_baseline_params
 from ..paths import PROCESSED
 from .assign import _cell_gaps, ride_gap, table_digest
-from .runs import OptionSpec, by_group, by_hour, run_option, summarise
+from .runs import ALL_RIDES, OptionSpec, by_group, by_hour, run_option, summarise
 
 OUT = PROCESSED / "phase2"
 SEEDS = (1, 2, 3)
@@ -105,7 +105,7 @@ def run_job(j: dict) -> dict:
     r = out["rides"]
     lab = {"run_id": j["run_id"], "scenario": j["scenario"], "option": spec.option, "label": spec.label(),
            "fleet": spec.fleet, "capacity": spec.capacity, "theta_min": spec.theta_min, "w_max_s": spec.w_max_s,
-           "availability": spec.availability, "berths": -1 if spec.berths is None else spec.berths,
+           "hours": spec.hours, "availability": spec.availability, "berths": -1 if spec.berths is None else spec.berths,
            "sim": json.dumps(spec.sim, sort_keys=True), "seed": j["seed"], "tag": j["tag"]}
     res = out["resources"]
     summary = {**lab, **summarise(r), **{k: v for k, v in res.items() if not isinstance(v, list)}}
@@ -219,10 +219,18 @@ STRESSES = [  # (label, scenario, availability, berths)
 ]
 
 
+# B at its parity fleet sits on the edge of its capacity cliff; a 50-vehicle margin shows whether
+# that, rather than full replacement as such, makes it fragile under the fleet and kerb stresses
+B_MARGIN = OptionSpec("B", fleet=500)
+B_MARGIN_STRESSES = {"15 % of the fleet unavailable", "kerb: 10 shuttles at once per station",
+                     "combined: slower roads, 15 % unavailable, kerb 7"}
+
+
 def grid_stress() -> list[dict]:
     jobs = [job(OptionSpec("A"), s, sc) for sc in ("slow_roads", "pm_peak") for s in SEEDS]
     for label, sc, av, b in STRESSES:
-        for spec in REFERENCE:
+        specs = REFERENCE + ([B_MARGIN] if label in B_MARGIN_STRESSES else [])
+        for spec in specs:
             jobs += [job(replace(spec, availability=av, berths=b), s, sc, tag=label) for s in SEEDS]
     return jobs
 
@@ -233,8 +241,18 @@ def grid_replicates() -> list[dict]:
     return [job(spec, s) for spec in [OptionSpec("A")] + REFERENCE for s in seeds]
 
 
+def grid_window() -> list[dict]:
+    """Shuttles only in the period with the longest bus headways: every internal ride requested from
+    20:00 (service-day hours 20-25) is offered a shuttle, and the fleet is in service only then; and
+    rule C-theta (8 min) confined to the same window."""
+    jobs = [job(OptionSpec("C", fleet=n, theta_min=ALL_RIDES, hours="20-25"), s) for n in (250, 300, 350, 400)
+            for s in SEEDS]
+    jobs += [job(OptionSpec("C", fleet=n, theta_min=8, hours="20-25"), s) for n in (75, 100, 125, 150) for s in SEEDS]
+    return jobs
+
+
 GRIDS = {"coarse": grid_coarse, "refine": grid_refine, "capacity": grid_capacity, "wmax": grid_wmax,
-         "stress": grid_stress, "replicates": grid_replicates}
+         "window": grid_window, "stress": grid_stress, "replicates": grid_replicates}
 
 if __name__ == "__main__":
     name = sys.argv[1] if len(sys.argv) > 1 else "coarse"

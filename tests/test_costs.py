@@ -215,6 +215,20 @@ def test_onboard_mode_adds_vehicle_hours_times_wage(p):
     assert shuttle_daily_cost(day(), onboard_p)["categories"]["staff"] == pytest.approx(onboard["total"])
 
 
+def test_onboard_mode_monitors_at_its_own_ratio(p):
+    """With a safety operator on every vehicle the control room watches more vehicles per person;
+    the file's onboard monitoring ratio replaces the remote-operation ratio in that mode only."""
+    d = copy.deepcopy(FIXTURE)
+    d["parameters"]["vehicles_per_monitor_onboard_mode"] = entry("vehicles per monitor", 50, 25, 10)
+    q = CostParams.from_dict(d)
+    onboard = q.with_switches(staff_mode="onboard")
+    s = staff_cost(day(), onboard)                     # 100 vehicles: ceil(100 / 25) = 4 monitors per hour
+    assert s["control_room_ratio"] == "vehicles_per_monitor_onboard_mode"
+    assert s["hours"]["remote_operator"] == pytest.approx(4 * 20) and s["hours"]["onboard"] == pytest.approx(100 * 20)
+    assert staff_cost(day(), q)["hours"]["remote_operator"] == pytest.approx(10 * 20)   # remote mode: 1 per 10
+    assert staff_cost(day(), p.with_switches(staff_mode="onboard"))["control_room_ratio"] == "vehicles_per_remote_operator"
+
+
 def test_staff_follow_a_non_uniform_hourly_profile(p):
     o = day(service_hours=4, in_service_by_hour=[100, 50, 5, 0])
     s = staff_cost(o, p.with_switches(staff_mode="onboard"))

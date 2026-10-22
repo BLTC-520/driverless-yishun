@@ -27,6 +27,7 @@ from .assign import offered, offered_rates, ride_gap
 PERIODS = {"early": (5, 6), "am_peak": (7, 8), "offpeak": (9, 16), "pm_peak": (17, 19), "evening": (20, 25)}
 DIST_BANDS_M = [0, 500, 1000, 1500, 2000, 3000, 1e9]
 REFUSED_WAIT_S = 2700.0           # Phase 1: a refused rider waited at least 45 min, then rode direct
+ALL_RIDES = -5.0                  # a C threshold this low offers every ride with a bus option (gaps exceed -1 min)
 DECLINED_EXTRA_S = 300.0          # treatment R3: a declined rider loses 5 min before taking the bus
 
 
@@ -42,7 +43,9 @@ class OptionSpec:
     option: str                         # "A" current bus, "B" full replacement, "C" combined
     fleet: int = 0                      # vehicles planned in service (B, C)
     capacity: int = 10
-    theta_min: float | None = None      # C: rule C-theta threshold (minutes)
+    theta_min: float | None = None      # C: rule C-theta threshold (minutes); ALL_RIDES offers every ride
+    hours: str = ""                     # C: offer only rides requested in service-day hours "a-b" (inclusive);
+                                        # the fleet is in service only then. Default: all day
     w_max_s: float = 900.0              # C: declined when the quoted pickup is later than this
     availability: float = 1.0           # stress: share of the planned fleet actually in service
     berths: int | None = None           # stress: shuttles boarding/alighting at once per station
@@ -53,8 +56,16 @@ class OptionSpec:
             return "A"
         s = f"{self.option}:C{self.capacity}:N{self.fleet}"
         if self.option == "C":
-            s += f":th{self.theta_min:g}"
+            s += ":all" if self.theta_min <= ALL_RIDES else f":th{self.theta_min:g}"
+            if self.hours:
+                s += f":h{self.hours}"
         return s
+
+    def window(self) -> tuple[int, int] | None:
+        if not self.hours:
+            return None
+        a, b = (int(x) for x in self.hours.split("-"))
+        return a, b
 
 
 def ride_frame(M, req: pd.DataFrame) -> pd.DataFrame:
@@ -100,7 +111,10 @@ def run_option(M, req: pd.DataFrame, spec: OptionSpec, seed: int, plan_gap: np.n
         else:
             gap = ride_gap(M, req) if plan_gap is None else plan_gap
             offer = offered(gap, spec.theta_min)
-            rates = offered_rates(plan_M or M, spec.theta_min)
+            if spec.window():
+                a, b = spec.window()
+                offer &= (r.hour.to_numpy() >= a) & (r.hour.to_numpy() <= b)
+            rates = offered_rates(plan_M or M, spec.theta_min, spec.window())
             w_max = spec.w_max_s
         fleet_in_service = max(1, int(round(spec.fleet * spec.availability)))
         cfg = replace(SimConfig(**spec.sim), fleet=fleet_in_service, capacity=spec.capacity, seed=seed,
@@ -138,6 +152,9 @@ def resources_of(M, res, spec: OptionSpec, fleet_in_service: int, offer: np.ndar
     rq = res.requests
     t_end = float(np.nanmax(rq.t_drop)) if rq.t_drop.notna().any() else 4.75 * 3600
     service_h = (t_end - 4.75 * 3600) / 3600
+    if spec.window():               # in service, and staffed, in the window and the hour before it
+        a, b = spec.window()        # (positioning for the window's first hour)
+        service_h = float(b - a + 2)
     vkm = res.veh_km_loaded + res.veh_km_empty
     out = {"fleet_planned": spec.fleet, "fleet_in_service": fleet_in_service, "capacity": spec.capacity,
            "service_hours": service_h, "veh_hours_in_service": fleet_in_service * service_h,

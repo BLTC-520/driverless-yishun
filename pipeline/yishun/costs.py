@@ -66,10 +66,13 @@ PARAMETER_IDS = {
 SHUTTLE_IDS = tuple(k for ids in PARAMETER_IDS.values() for k in ids)
 BUS_IDS = ("bus_sgd_per_bus_km", "bus_sgd_per_bus_hour")
 SOCIAL_IDS = ("vot_ivt_sgd_per_hour", "wait_time_weight")
-KNOWN_IDS = SHUTTLE_IDS + BUS_IDS + SOCIAL_IDS
+# optional: control-room monitoring ratio while a safety operator rides every vehicle (the current
+# pilot arrangement); without it the remote-operation ratio is used in both staff modes
+OPTIONAL_IDS = ("vehicles_per_monitor_onboard_mode",)
+KNOWN_IDS = SHUTTLE_IDS + BUS_IDS + SOCIAL_IDS + OPTIONAL_IDS
 POSITIVE_IDS = {"veh_life_years", "charger_life_years", "charging_efficiency", "battery_usable_kwh",
                 "charger_power_kw", "vehicles_per_remote_operator", "vehicles_per_field_staff",
-                "vehicles_per_charger"}                         # divisors
+                "vehicles_per_charger", "vehicles_per_monitor_onboard_mode"}                         # divisors
 FRACTION_IDS = {"veh_residual_share", "charging_efficiency"}   # at most 1
 
 CATEGORIES = ("vehicles", "energy", "maintenance", "cleaning", "insurance_permits", "software_comms", "staff",
@@ -433,12 +436,15 @@ def staff_cost(ops: ShuttleOps, p: CostParams, case: str = "central") -> dict:
     """Staff-hours and cost per day (definitions §7). In each service hour: remote operators =
     max(min_remote_operators, ceil(in service / vehicles_per_remote_operator)), field staff =
     ceil(in service / vehicles_per_field_staff), and staff_mode "onboard" adds one person on every
-    vehicle in service. Cost = hours x fully loaded hourly cost."""
+    vehicle in service. With a safety operator on board, the control room monitors at
+    vehicles_per_monitor_onboard_mode when the file has it. Cost = hours x fully loaded hourly cost."""
     v = _values(p, case, ops.capacity)
     n, w = ops.hourly()
     mode = p.switches["staff_mode"]
+    ratio = ("vehicles_per_monitor_onboard_mode" if mode == "onboard" and p.has("vehicles_per_monitor_onboard_mode")
+             else "vehicles_per_remote_operator")
     persons = {
-        "remote_operator": np.maximum(v("min_remote_operators"), _ceil(n / v("vehicles_per_remote_operator"))),
+        "remote_operator": np.maximum(v("min_remote_operators"), _ceil(n / v(ratio))),
         "field_staff": _ceil(n / v("vehicles_per_field_staff")),
         "onboard": n if mode == "onboard" else np.zeros_like(n),
     }
@@ -446,7 +452,7 @@ def staff_cost(ops: ShuttleOps, p: CostParams, case: str = "central") -> dict:
             "onboard": v("onboard_staff_sgd_per_hour")}
     hours = {k: float(x @ w) for k, x in persons.items()}
     cost = {k: hours[k] * wage[k] for k in persons}
-    return {"staff_mode": mode, "hour_lengths": w.tolist(),
+    return {"staff_mode": mode, "control_room_ratio": ratio, "hour_lengths": w.tolist(),
             "persons_by_hour": {k: x.tolist() for k, x in persons.items()},
             "hours": hours, "sgd_per_hour": wage, "cost": cost, "total": sum(cost.values())}
 

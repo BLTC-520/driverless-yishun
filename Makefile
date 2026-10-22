@@ -72,6 +72,7 @@ phase2-experiments: ## options A, B, C on shared demand days, coarse search to s
 	$(RUN) yishun.phase2.experiments refine 4
 	$(RUN) yishun.phase2.experiments capacity 4
 	$(RUN) yishun.phase2.experiments wmax 4
+	$(RUN) yishun.phase2.experiments window 4
 	$(RUN) yishun.phase2.experiments stress 4
 	$(RUN) yishun.phase2.experiments replicates 4
 

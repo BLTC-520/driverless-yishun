@@ -65,16 +65,23 @@ def _cell_gaps(M) -> pd.DataFrame:
     return out
 
 
-def offered_rates(M, theta_min: float) -> np.ndarray:
+def offered_rates(M, theta_min: float, window: tuple[int, int] | None = None) -> np.ndarray:
     """(24, S) expected shuttle requests per second by clock hour and origin stop under rule
     C-theta, i.e. what the operator knows in advance about shuttle demand (used for the initial
-    fleet positions and for repositioning, as Phase 1 uses the expected rates of all rides)."""
+    fleet positions and for repositioning, as Phase 1 uses the expected rates of all rides).
+    window: service-day hours (a, b) outside which nothing is offered. The hour before the window
+    carries the window's first-hour rates, so idle vehicles move into position before service starts."""
     g = _cell_gaps(M).to_numpy()
     share = (np.nan_to_num(g, nan=-np.inf) >= theta_min * 60.0).mean(axis=1)   # no bus option: not offered
     od = M.od
+    if window is not None:
+        sday = np.where(od.hour.to_numpy() < 4, od.hour.to_numpy() + 24, od.hour.to_numpy())
+        share = share * ((sday >= window[0]) & (sday <= window[1]))
     rates = np.zeros((24, len(M.R.codes)))
     w = od.rides_per_weekday.to_numpy() * share / 3600.0
     np.add.at(rates, (od.hour.to_numpy() % 24, od.o.map(M.stop_index).to_numpy()), w)
+    if window is not None:
+        rates[(window[0] - 1) % 24] = rates[window[0] % 24]
     return rates
 
 
