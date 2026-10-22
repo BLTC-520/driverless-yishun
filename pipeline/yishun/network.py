@@ -41,8 +41,36 @@ DEFAULT_KMH = {
 }
 
 
-def _first(v):
-    return v[0] if isinstance(v, list) else v
+def _all(v) -> list:
+    """Every value of an edge tag. osmnx's simplification merges consecutive OSM ways into one
+    edge and lists their values when they differ, in set order, which changes with Python's
+    per-process hash seed. Phase 1 used the first listed value, so the graph changed from run to
+    run (5,171-5,195 nodes on one extract); the rules below use all values instead."""
+    if v is None:
+        return []
+    return list(v) if isinstance(v, list) else [v]
+
+
+def keep_edge(d: dict) -> bool:
+    """An edge is drivable when every merged part is a drivable class, no part is an excluded
+    service road and no part is closed (access=no/private). Public-transport vehicles may use
+    bus-only links, kept whenever any part is one (e.g. the interchange driveway, tagged
+    access=no, service=driveway, name="Yishun Bus Interchange")."""
+    hws = _all(d.get("highway"))
+    psv_ok = "busway" in hws or any("Bus Interchange" in str(n) for n in _all(d.get("name"))) or any(
+        x in ("yes", "designated") for t in ("psv", "bus") for x in _all(d.get(t)))
+    if psv_ok:
+        return True
+    return (bool(hws) and all(h in DRIVABLE for h in hws)
+            and not any(s in EXCLUDED_SERVICE for s in _all(d.get("service")))
+            and not any(a in ("no", "private") for a in _all(d.get("access"))))
+
+
+def road_class(d: dict) -> str:
+    """Speed class of an edge: the slowest class among its merged parts (ties alphabetical);
+    a busway counts as a service road."""
+    hws = ["service" if h == "busway" else h for h in _all(d.get("highway"))] or ["service"]
+    return min(hws, key=lambda h: (DEFAULT_KMH.get(h, 25.0), h))
 
 
 def build_drive_graph() -> nx.MultiDiGraph:
@@ -51,29 +79,13 @@ def build_drive_graph() -> nx.MultiDiGraph:
         return pickle.loads(cache.read_bytes())
     ox.settings.useful_tags_way = sorted(set(ox.settings.useful_tags_way) | {"psv", "bus", "maxspeed", "lanes"})
     G = ox.graph_from_xml(RAW / "osm" / "highways.osm", simplify=True, retain_all=True)
-    drop = []
-    for u, v, k, d in G.edges(keys=True, data=True):
-        hw = _first(d.get("highway"))
-        svc = _first(d.get("service"))
-        access = _first(d.get("access"))
-        name = str(_first(d.get("name")) or "")
-        # Public-transport vehicles may use bus-only roads (e.g. the interchange driveway,
-        # tagged access=no, service=driveway, name="Yishun Bus Interchange").
-        psv_ok = hw == "busway" or "Bus Interchange" in name or any(
-            _first(d.get(t)) in ("yes", "designated") for t in ("psv", "bus"))
-        if psv_ok:
-            continue
-        if hw not in DRIVABLE or svc in EXCLUDED_SERVICE or access in ("no", "private"):
-            drop.append((u, v, k))
-    G.remove_edges_from(drop)
+    G.remove_edges_from([(u, v, k) for u, v, k, d in G.edges(keys=True, data=True) if not keep_edge(d)])
     G.remove_nodes_from([n for n in list(G.nodes) if G.degree(n) == 0])
     largest = max(nx.strongly_connected_components(G), key=len)
     G = G.subgraph(largest).copy()
     G = ox.project_graph(G, to_crs=CRS_METRIC)
     for u, v, k, d in G.edges(keys=True, data=True):
-        d["cls"] = _first(d.get("highway"))
-        if d["cls"] == "busway":
-            d["cls"] = "service"
+        d["cls"] = road_class(d)
         if "geometry" not in d:
             d["geometry"] = LineString([(G.nodes[u]["x"], G.nodes[u]["y"]), (G.nodes[v]["x"], G.nodes[v]["y"])])
     _count_signals(G)

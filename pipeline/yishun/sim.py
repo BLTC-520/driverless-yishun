@@ -74,6 +74,8 @@ class SimResult:
     hub_idle: pd.DataFrame                # stop, t_start, t_end (idle vehicles staging at hubs)
     legs: list = field(default_factory=list)
     hub_queue: pd.DataFrame | None = None  # stop, t_arrive, t_berth (waits for a free berth)
+    moving_h_by_hour: np.ndarray | None = None   # (26,) vehicle-hours driving, by hour of day
+    dwell_h_by_hour: np.ndarray | None = None    # (26,) vehicle-hours stopped to board/alight, by hour of start
 
 
 class Simulator:
@@ -108,6 +110,8 @@ class Simulator:
         self.km_loaded = 0.0
         self.km_empty = 0.0
         self.km_by_hour = np.zeros(26)
+        self.moving_s_by_hour = np.zeros(26)
+        self.dwell_s_by_hour = np.zeros(26)
         self.pax_m = 0.0
         self.hub_visits: list[tuple[int, float, float]] = []
         self.hub_idle: list[tuple[int, float, float]] = []
@@ -170,6 +174,7 @@ class Simulator:
             h = int(lg.t[a] // 3600)
             if 0 <= h < 26:
                 self.km_by_hour[h] += lg.dist[a + 1] - lg.dist[a]
+                self.moving_s_by_hour[h] += lg.t[a + 1] - lg.t[a]
         if self.cfg.record_legs:
             cut = float(lg.t[k]) if idx_end is not None else None
             self.legs_out.append(Leg(v, lg.t, lg.pts, lg.dist, lg.onboard, lg.rebal, cut))
@@ -304,8 +309,12 @@ class Simulator:
 
     def _on_depart(self, v, t):
         s = self.stop[v]
-        if self.st[v] == DWELL and self.hub[s]:
-            self.hub_visits.append((s, self.dwell_start[v], t))
+        if self.st[v] == DWELL:
+            h = int(self.dwell_start[v] // 3600)
+            if 0 <= h < 26:
+                self.dwell_s_by_hour[h] += t - self.dwell_start[v]
+            if self.hub[s]:
+                self.hub_visits.append((s, self.dwell_start[v], t))
         if self.n_ev[v] == 0:
             self._begin_idle(v, t)
             self._recompute_plan_end(v, t)
@@ -498,4 +507,5 @@ class Simulator:
         hi = pd.DataFrame(self.hub_idle, columns=["stop", "t_start", "t_end"])
         hq = pd.DataFrame(self.hub_queue, columns=["stop", "t_arrive", "t_berth"])
         return SimResult(out, self.km_loaded / 1000, self.km_empty / 1000, self.km_by_hour / 1000,
-                         self.pax_m / 1000, hv, hi, self.legs_out, hq)
+                         self.pax_m / 1000, hv, hi, self.legs_out, hq,
+                         self.moving_s_by_hour / 3600, self.dwell_s_by_hour / 3600)

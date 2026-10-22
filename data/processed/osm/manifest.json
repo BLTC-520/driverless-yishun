@@ -1,0 +1,21 @@
+{
+  "bbox_swne": [
+    1.39,
+    103.805,
+    1.452,
+    103.875
+  ],
+  "retrieved_utc": "2026-10-22T00:14:00+00:00",
+  "licence": "ODbL 1.0, (c) OpenStreetMap contributors",
+  "note": "highways.osm retrieved 2026-10-22 00:14 UTC and context.json 00:17 UTC from the maps.mail.ru Overpass mirror (the query in fetch_osm.py); the Phase 1 extract of 15 Oct 2026 was not kept",
+  "files": {
+    "highways.osm": {
+      "sha256": "335973d6e1c4eebccfea749b037d4c36a2245ef54b81f5b435126df4c68aa237",
+      "bytes": 8636245
+    },
+    "context.json": {
+      "sha256": "c1cffe36d2c7b2ef9ef553cd423f6f5a88df3247caca5915518041058584598f",
+      "bytes": 12478308
+    }
+  }
+}
