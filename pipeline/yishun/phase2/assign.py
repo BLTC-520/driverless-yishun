@@ -16,6 +16,7 @@ is simulated, but keep the eligibility table that was planned on the base case.
 from __future__ import annotations
 
 import hashlib
+import os
 
 import numpy as np
 import pandas as pd
@@ -58,7 +59,9 @@ def _cell_gaps(M) -> pd.DataFrame:
             e = M.baseline.expected(r.o, r.d, minute)
             rows[k, s] = e["total_s"] - direct if e else np.nan
     out = pd.DataFrame(rows, columns=[f"g{s}" for s in range(GAP_SAMPLES)])
-    out.to_parquet(path)
+    tmp = path.with_suffix(f".{os.getpid()}.tmp")
+    out.to_parquet(tmp)
+    os.replace(tmp, path)        # atomic: a worker never reads a half-written cache
     return out
 
 

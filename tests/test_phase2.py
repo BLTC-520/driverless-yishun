@@ -146,3 +146,24 @@ def test_vehicle_hour_counters_match_a_single_ride(toy):
     i, j = toy["stop_index"][o], toy["stop_index"][d]
     assert res.moving_h_by_hour.sum() * 3600 == pytest.approx(R.T[i, j])
     assert res.dwell_h_by_hour.sum() * 3600 == pytest.approx(2 * (cfg.d0 + cfg.d1))
+
+
+def test_frontier_and_budgets_keep_only_better_options():
+    from yishun.phase2.summary import budget_table, frontier
+    cr = pd.DataFrame({"id": ["a", "b", "c", "d"], "case": "central", "bus_case": "all buses kept",
+                       "delta_cost": [10_000.0, 20_000.0, 30_000.0, 40_000.0], "saved_h": [500.0, 400.0, 900.0, 950.0],
+                       "cost_per_hour_saved": [20.0, 50.0, 33.3, 42.1]})
+    assert frontier(cr, "central") == ["a", "c", "d"]          # b costs more than a and saves less
+    rows = {r["budget_sgd_per_day"]: r for r in budget_table(pd.concat([cr.assign(case=c) for c in ("low", "central", "high")]),
+                                                              {"a", "b", "c", "d"})}
+    assert rows[10_000]["central"]["id"] == "a"
+    assert rows[30_000]["central"]["id"] == "c"                # the best within budget, not the cheapest
+    assert rows[300_000]["central"]["id"] == "d"
+
+
+def test_config_ids_are_unique_per_setting():
+    from yishun.phase2.summary import config_id
+    a = config_id({"option": "C", "capacity": 10, "fleet": 100, "theta_min": 10.0, "w_max_s": 900.0})
+    b = config_id({"option": "C", "capacity": 10, "fleet": 100, "theta_min": 10.0, "w_max_s": 2700.0})
+    c = config_id({"option": "B", "capacity": 10, "fleet": 450, "theta_min": float("nan"), "w_max_s": 900.0})
+    assert len({a, b, c, config_id({"option": "A"})}) == 4 and a == "C-10-100-th10" and c == "B-10-450"

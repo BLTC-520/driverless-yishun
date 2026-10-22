@@ -76,11 +76,16 @@ def ride_frame(M, req: pd.DataFrame) -> pd.DataFrame:
 
 
 def run_option(M, req: pd.DataFrame, spec: OptionSpec, seed: int, plan_gap: np.ndarray | None = None,
-               plan_M=None) -> dict:
+               plan_M=None, sim_M=None) -> dict:
     """Simulate one option on one day of requests. Returns per-ride outcomes and resources.
 
     plan_gap: timetable gaps from the planning model (default: from M itself). Rule C-theta is
-    evaluated on it, so a stress test keeps the eligibility planned on the base case."""
+    evaluated on it, so a stress test keeps the eligibility planned on the base case.
+    sim_M: model whose road times the shuttles drive on (default M), for stresses that slow the
+    shuttles but not the buses; it must have the same stops."""
+    sim_M = sim_M or M
+    if sim_M is not M and list(sim_M.R.codes) != list(M.R.codes):
+        raise ValueError("the shuttle model must use the same stops as the bus model")
     t0 = time.time()
     r = ride_frame(M, req)
     r["mode"] = "bus"
@@ -101,7 +106,7 @@ def run_option(M, req: pd.DataFrame, spec: OptionSpec, seed: int, plan_gap: np.n
         cfg = replace(SimConfig(**spec.sim), fleet=fleet_in_service, capacity=spec.capacity, seed=seed,
                       start_s=4.75 * 3600, max_wait_reject=w_max, berths=spec.berths)
         sub = req.loc[offer, ["t", "o", "d", "hour"]]
-        sim = Simulator(M.R, M.study_idx, rates, M.hub_idx, cfg,
+        sim = Simulator(sim_M.R, M.study_idx, rates, M.hub_idx, cfg,
                         stop_group=stop_groups(M) if spec.berths is not None else None)
         res = sim.run(sub.reset_index(drop=True), M.stop_index)
         out = res.requests.set_index(sub.index)
@@ -200,6 +205,11 @@ def summarise(r: pd.DataFrame) -> dict:
     out["saved_h"] = out["pax_h_A"] - out["pax_h"]
     for t in ("R2", "R3"):
         out[f"saved_h_{t}"] = out["pax_h_A"] - out[f"pax_h_{t}"]
+    # Option A's wait and in-vehicle hours of the rides the shuttle carried: the only bus times that
+    # differ between the two sides, so if the bus model overstates bus time by a share e for them,
+    # the saving falls by e x these hours (summary.bus_error_sensitivity)
+    out["sh_wait_h_A"] = float(sh.a_wait.sum() / 3600)
+    out["sh_ivt_h_A"] = float(sh.a_ivt.sum() / 3600)
     if len(sh):
         out["shuttle_faster_share"] = float((sh.total < sh.a_total_draw).mean())
         out["shuttle_mean_min"] = float(sh.total.mean() / 60)

@@ -30,7 +30,7 @@ import pandas as pd
 from ..experiments import provenance, service_day_requests
 from ..model import build_model, default_baseline_params
 from ..paths import PROCESSED
-from .assign import ride_gap, table_digest
+from .assign import _cell_gaps, ride_gap, table_digest
 from .runs import OptionSpec, by_group, by_hour, run_option, summarise
 
 OUT = PROCESSED / "phase2"
@@ -53,6 +53,11 @@ def scenarios() -> dict[str, dict]:
             "kw": {"cal": {"mult_arterial": slow["mult"], "mult_local": slow["mult"], "sig_s": slow["sig_s"]},
                    "baseline_params": replace(bp, dwell_s=slow["dwell_s"], hub_extra_s=slow["hub_extra_s"])}},
     }
+    out["shuttle_slow"] = {
+        "label": ("Shuttles 25 % slower than buses on every road (cruise time x1.25, same signal delay); buses and "
+                  "demand as in the base case. Assumption standing in for cautious automated driving"),
+        "kw": {}, "sim_kw": {"cal": {"mult_arterial": c["mult"] * 1.25, "mult_local": c["mult"] * 1.25,
+                                     "sig_s": c["sig_s"]}}}
     peak = PROCESSED / "calibration_pm_peak.json"
     if peak.exists():
         p = json.loads(peak.read_text())
@@ -68,10 +73,14 @@ _MODELS: dict = {}
 _SCEN: dict = {}
 
 
-def _model(name: str):
-    if name not in _MODELS:
-        _MODELS[name] = build_model(**_SCEN[name]["kw"])
-    return _MODELS[name]
+def _model(name: str, part: str = "kw"):
+    """The scenario's bus-and-demand model ("kw"), or the model its shuttles drive on ("sim_kw",
+    the same model unless the scenario slows the shuttles only)."""
+    if part == "sim_kw" and "sim_kw" not in _SCEN[name]:
+        return _model(name)
+    if (name, part) not in _MODELS:
+        _MODELS[(name, part)] = build_model(**_SCEN[name][part])
+    return _MODELS[(name, part)]
 
 
 def job(spec: OptionSpec, seed: int, scenario: str = "base", tag: str = "") -> dict:
@@ -92,7 +101,7 @@ def run_job(j: dict) -> dict:
         if not same:
             raise RuntimeError("a scenario changed the requests; the planned eligibility table does not apply")
         plan_gap, plan_M = ride_gap(Mb, rb), Mb
-    out = run_option(M, req, spec, j["seed"], plan_gap, plan_M)
+    out = run_option(M, req, spec, j["seed"], plan_gap, plan_M, sim_M=_model(j["scenario"], "sim_kw"))
     r = out["rides"]
     lab = {"run_id": j["run_id"], "scenario": j["scenario"], "option": spec.option, "label": spec.label(),
            "fleet": spec.fleet, "capacity": spec.capacity, "theta_min": spec.theta_min, "w_max_s": spec.w_max_s,
@@ -123,6 +132,8 @@ def run_jobs(name: str, jobs: list[dict], workers: int = 4) -> pd.DataFrame:
     _SCEN = scenarios()
     for s in sorted({j["scenario"] for j in jobs} | {"base"}):   # build once, share copy-on-write
         _model(s)
+        _model(s, "sim_kw")
+    _cell_gaps(_model("base"))     # rule C-theta's planning table, built before the workers fork
     out_dir = OUT / name
     out_dir.mkdir(parents=True, exist_ok=True)
     t = time.time()
@@ -139,8 +150,8 @@ def run_jobs(name: str, jobs: list[dict], workers: int = 4) -> pd.DataFrame:
     runs.to_parquet(out_dir / "runs.parquet")
     pd.concat([r["hourly"] for r in results], ignore_index=True).to_parquet(out_dir / "hourly.parquet")
     pd.concat([r["groups"] for r in results], ignore_index=True).to_parquet(out_dir / "groups.parquet")
-    prov = {s: {"model_key": _model(s).key, "inputs": _model(s).inputs, "label": _SCEN[s]["label"]}
-            for s in sorted({j["scenario"] for j in jobs} | {"base"})}
+    prov = {s: {"model_key": _model(s).key, "shuttle_model_key": _model(s, "sim_kw").key, "inputs": _model(s).inputs,
+                "label": _SCEN[s]["label"]} for s in sorted({j["scenario"] for j in jobs} | {"base"})}
     (out_dir / "config.json").write_text(json.dumps({
         "grid": name, "jobs": jobs, "elapsed_s": time.time() - t, "seeds": sorted({j["seed"] for j in jobs}),
         "scenarios": prov, "provenance": provenance(_model("base"))}, indent=1, default=str))
@@ -161,7 +172,69 @@ def grid_coarse() -> list[dict]:
     return jobs
 
 
-GRIDS = {"coarse": grid_coarse}
+# refine: intermediate coverage levels and finer fleets around each service-level fleet of the
+# coarse search (theta 4: 350, 6: 300, 8: 200, 10: 100, 12: 75), same seeds
+REFINE_THETA_FLEETS = {4: [325, 375], 5: [275, 300, 325, 350], 6: [275, 325], 7: [200, 225, 250, 275],
+                       8: [175, 225], 9: [100, 125, 150, 175], 10: [85, 110], 11: [60, 75, 90, 100],
+                       12: [60, 85], 14: [30, 40, 50, 60], 16: [20, 30, 40, 50]}
+
+
+def grid_refine() -> list[dict]:
+    return [job(OptionSpec("C", fleet=n, theta_min=th), s) for th, fl in REFINE_THETA_FLEETS.items()
+            for n in fl for s in SEEDS]
+
+
+# vehicle size: 4 and 20 seats at a targeted and a broad coverage level, and B at the Phase 1
+# parity fleets of those sizes (700 four-seat, 375 twenty-seat)
+CAPACITY_FLEETS = {(4, 10): [100, 125, 150, 175, 200], (20, 10): [60, 75, 90, 100, 125],
+                   (4, 6): [350, 400, 450, 500], (20, 6): [200, 225, 250, 275, 300]}
+
+
+def grid_capacity() -> list[dict]:
+    jobs = [job(OptionSpec("C", fleet=n, capacity=cap, theta_min=th), s)
+            for (cap, th), fl in CAPACITY_FLEETS.items() for n in fl for s in SEEDS]
+    jobs += [job(OptionSpec("B", fleet=n, capacity=cap), s) for cap, n in ((4, 700), (20, 375)) for s in SEEDS]
+    return jobs
+
+
+def grid_wmax() -> list[dict]:
+    """Declining at 45 min (Phase 1's refusal limit) instead of 15, at and below the service-level fleets."""
+    return [job(OptionSpec("C", fleet=n, theta_min=th, w_max_s=2700.0), s)
+            for th, fl in ((6, [250, 275]), (8, [150, 175]), (10, [85, 100]), (14, [30, 40])) for n in fl for s in SEEDS]
+
+
+# reference options for stress tests and extra replicates: B at its parity fleet, and C at the
+# service-level fleet (<= 1 % declined in every hour) of four coverage levels, from the refine grid
+REFERENCE = [OptionSpec("B", fleet=450), OptionSpec("C", fleet=275, theta_min=6),
+             OptionSpec("C", fleet=175, theta_min=8), OptionSpec("C", fleet=100, theta_min=10),
+             OptionSpec("C", fleet=40, theta_min=14)]
+STRESSES = [  # (label, scenario, availability, berths)
+    ("slower roads and buses", "slow_roads", 1.0, None),
+    ("evening-peak roads and buses all day", "pm_peak", 1.0, None),
+    ("shuttles 25 % slower", "shuttle_slow", 1.0, None),
+    ("15 % of the fleet unavailable", "base", 0.85, None),
+    ("kerb: 10 shuttles at once per station", "base", 1.0, 10),
+    ("kerb: 7 shuttles at once per station", "base", 1.0, 7),
+    ("combined: slower roads, 15 % unavailable, kerb 7", "slow_roads", 0.85, 7),
+]
+
+
+def grid_stress() -> list[dict]:
+    jobs = [job(OptionSpec("A"), s, sc) for sc in ("slow_roads", "pm_peak") for s in SEEDS]
+    for label, sc, av, b in STRESSES:
+        for spec in REFERENCE:
+            jobs += [job(replace(spec, availability=av, berths=b), s, sc, tag=label) for s in SEEDS]
+    return jobs
+
+
+def grid_replicates() -> list[dict]:
+    """Seeds 4-10 for the reference options, to show variation between simulated days."""
+    seeds = range(4, 11)
+    return [job(spec, s) for spec in [OptionSpec("A")] + REFERENCE for s in seeds]
+
+
+GRIDS = {"coarse": grid_coarse, "refine": grid_refine, "capacity": grid_capacity, "wmax": grid_wmax,
+         "stress": grid_stress, "replicates": grid_replicates}
 
 if __name__ == "__main__":
     name = sys.argv[1] if len(sys.argv) > 1 else "coarse"
