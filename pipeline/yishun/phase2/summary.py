@@ -29,7 +29,7 @@ from .. import costs
 from ..experiments import provenance
 from ..model import build_model
 from ..paths import PROCESSED, WEB_DATA
-from .aggregate import KEY, configs, load_runs, load_table, service_level_fleet
+from .aggregate import KEY, acceptable, configs, load_runs, load_table, service_level_fleet
 from .bus_allocation import internal_only_supply
 from .experiments import OUT, REFERENCE, STRESSES
 from .tables import PERIOD_LABELS, who_table
@@ -321,17 +321,24 @@ def run() -> dict:
     runs = load_runs(MAIN_GRIDS)
     runs = runs[(runs.scenario == "base") & (runs.availability == 1.0) & (runs.berths == -1)]
     cfg = configs(runs)
-    cfg["id"] = [config_id(r) for _, r in cfg.iterrows()]
-    cr = cost_rows(cfg, p, bus)
     hourly = load_table(MAIN_GRIDS, "hourly")
     groups = load_table(MAIN_GRIDS, "groups")
-    sl = service_level_fleet(hourly[(hourly.scenario == "base") & (hourly.availability == 1.0) & (hourly.berths == -1)])
+    base_h = hourly[(hourly.scenario == "base") & (hourly.availability == 1.0) & (hourly.berths == -1)]
+    acc = acceptable(base_h).fillna({"theta_min": -1.0})
+    cfg = cfg.fillna({"theta_min": -1.0}).merge(acc, on=KEY, how="left")
+    cfg["theta_min"] = cfg.theta_min.replace(-1.0, np.nan)
+    cfg["acceptable"] = cfg.acceptable.fillna(True) | (cfg.option == "A")
+    cfg["id"] = [config_id(r) for _, r in cfg.iterrows()]
+    cr = cost_rows(cfg, p, bus)
+    sl = service_level_fleet(base_h)
     sl_ids = set()
     for _, s in sl.iterrows():
         if s.fleet_sl is not None and not pd.isna(s.fleet_sl):
             sl_ids.add(config_id({"option": "C", "capacity": s.capacity, "fleet": s.fleet_sl, "theta_min": s.theta_min,
                                   "w_max_s": s.w_max_s}))
-    main_ids = set(cfg[(cfg.w_max_s == 900.0) | (cfg.option != "C")].id)
+    # the frontier and the budget table use acceptable service only (<= 1 % declined in every hour
+    # for C, no refusals for B) and the default 15-minute decline limit
+    main_ids = set(cfg[((cfg.w_max_s == 900.0) | (cfg.option != "C")) & cfg.acceptable].id)
     ref = cfg[_ref_mask(cfg)]
     fr = {case: frontier(cr, case, main_ids) for case in CASES}
     out = {

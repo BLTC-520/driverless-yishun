@@ -187,10 +187,15 @@ serving fewer people.
 - Labelled an estimate, not a charging simulation.
 - Energy per in-service vehicle per day: E = vehicle-km × e / in-service, where e is the battery
   energy per km.
-- If E exceeds the usable battery B, each in-service vehicle needs (E − B)/P hours of daytime
-  charging at charger power P. The charging reserve is then ceil(in-service × (E − B)/(P × H)).
-  - This assumes charging is spread over the service day, a conservative choice. Absorbing it in
-    off-peak idle time is the low-cost case.
+- Overnight, in the 24 − H hours without service, a vehicle takes back at most
+  O = min(B, P × (24 − H) / vehicles per charger): its usable battery B, or its share of a
+  charger's output in that window.
+- The rest, E − O, is charged by day: (E − O)/P hours per in-service vehicle. The charging reserve
+  is then ceil(in-service × (E − O)/(P × H)).
+  - This assumes daytime charging is spread over the service day, a conservative choice. Absorbing
+    it in off-peak idle time is the low-cost case.
+  - Because of this overnight limit, vehicles per charger acts both ways: fewer chargers cost less
+    but move charging into the day.
 
 **Cost categories and formulas** (SGD per day).
 
@@ -288,3 +293,6 @@ Parameter ids (units fixed here):
 ## Change log
 
 - 22 Oct 2026: first version.
+- 22 Oct 2026: availability estimate limits the overnight top-up to what the chargers deliver in
+  the 24 − H hours without service (the cost-model review found 3 h overnight with H ≈ 21 h).
+- 22 Oct 2026: fifteen internal-only services (117A and 811A added by `phase2/bus_allocation.py`).

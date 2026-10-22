@@ -83,3 +83,15 @@ def service_level_fleet(hourly: pd.DataFrame, limit: float = DECLINE_LIMIT) -> p
     if len(out):
         out["theta_min"] = out.theta_min.replace(-1.0, np.nan)
     return out
+
+
+def acceptable(hourly: pd.DataFrame, limit: float = DECLINE_LIMIT) -> pd.DataFrame:
+    """Per configuration: whether its service is acceptable in every hour of every replicate. C: at
+    most `limit` of offered rides declined; B: no rider refused (Phase 1's rule). Only acceptable
+    configurations enter the cost-time frontier and the budget table."""
+    h = hourly.fillna({"theta_min": -1.0}).copy()
+    bad = np.where(h.option == "C", (h.n_declined > limit * h.n_offered) & (h.n_offered > 0), h.n_refused > 0)
+    h["bad"] = bad
+    out = (~h.groupby(KEY, dropna=False).bad.any()).rename("acceptable").reset_index()
+    out["theta_min"] = out.theta_min.replace(-1.0, np.nan)
+    return out
