@@ -167,3 +167,29 @@ def test_config_ids_are_unique_per_setting():
     b = config_id({"option": "C", "capacity": 10, "fleet": 100, "theta_min": 10.0, "w_max_s": 2700.0})
     c = config_id({"option": "B", "capacity": 10, "fleet": 450, "theta_min": float("nan"), "w_max_s": 900.0})
     assert len({a, b, c, config_id({"option": "A"})}) == 4 and a == "C-10-100-th10" and c == "B-10-450"
+
+
+def test_cost_rows_cancel_bus_cost_and_subtract_only_avoidable_bus_cost():
+    from test_costs import FIXTURE
+
+    from yishun import costs
+    from yishun.phase2.summary import CASES, cost_rows
+    p = costs.CostParams.from_dict(FIXTURE)
+    bus = {"cost": {c: {"all": 200_000.0, "allocated_internal": 107_000.0, "avoidable_internal_only": 90_000.0}
+                    for c in CASES}}
+    base = {"capacity": 10, "service_hours": 20.0, "veh_km": 20_000.0, "veh_km_empty": 4_000.0, "pax_km_direct": 280_000.0,
+            "shuttle_pax_km_direct": 50_000.0, "n": 1000.0, "n_refused": 0.0, "n_declined": 10.0, "pax_h": 900.0,
+            "pax_h_A": 1000.0, "saved_h": 100.0, "saved_h_R2": 80.0, "saved_h_R3": 95.0, "w_max_s": 900.0, "hours": ""}
+    cfg = pd.DataFrame([{**base, "option": "C", "fleet": 100, "theta_min": 10.0, "n_shuttle": 300.0, "n_bus": 690.0},
+                        {**base, "option": "B", "fleet": 100, "theta_min": np.nan, "n_shuttle": 990.0, "n_bus": 0.0,
+                         "n_declined": 0.0, "n_refused": 10.0}])
+    cr = cost_rows(cfg, p, bus)
+    assert set(cr.staff_mode) == {"onboard", "remote"} and set(cr.case) == set(CASES)
+    c = cr[cr.id.str.startswith("C")]
+    assert np.allclose(c.delta_cost, c.shuttle_cost)                     # identical buses cancel
+    assert (c.bus_case == "all buses kept").all()
+    b = cr[cr.id.str.startswith("B")]
+    kept, cut = b[b.bus_case == "all buses kept"], b[b.bus_case == "internal-only services withdrawn"]
+    assert np.allclose(kept.delta_cost, kept.shuttle_cost)
+    assert np.allclose(cut.delta_cost.to_numpy(), cut.shuttle_cost.to_numpy() - 90_000.0)
+    assert np.allclose(cr.cost_per_hour_saved, cr.delta_cost / 100.0)  # only defined because time is saved

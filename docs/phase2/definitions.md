@@ -214,10 +214,14 @@ serving fewer people.
 - Remote operators per hour = ceil(vehicles in service / vehicles per operator), with a minimum
   per hour.
 - Field staff per hour = ceil(vehicles in service / vehicles per field staff).
-- The onboard case puts one person on every vehicle in service. This is the current pilot
-  arrangement, to be confirmed by evidence.
 - Hours × fully loaded hourly cost.
-- **Current pilot requirements and possible future arrangements are separate cases.**
+- **Three staffing cases, each a separate switch, never mixed into one cost range:**
+
+  | Case | Who staffs the service |
+  |---|---|
+  | `onboard` | A safety operator on every vehicle in service, plus a control room monitoring at its own ratio. This is the current Singapore pilot requirement (LTA, MOT; evidence register) |
+  | `remote_with_attendant` | Remote operators at the remote ratio, plus an attendant on every vehicle. This is LTA's stated next phase for its autonomous public buses |
+  | `remote` | Remote operators only. Singapore's one precedent is a private resort loop |
 
 **Reported per option.**
 - Daily cost by category and its fixed, distance and staff shares.
@@ -296,3 +300,5 @@ Parameter ids (units fixed here):
 - 22 Oct 2026: availability estimate limits the overnight top-up to what the chargers deliver in
   the 24 − H hours without service (the cost-model review found 3 h overnight with H ≈ 21 h).
 - 22 Oct 2026: fifteen internal-only services (117A and 811A added by `phase2/bus_allocation.py`).
+- 23 Oct 2026: three staffing cases (the AV evidence found LTA's stated next phase: remote
+  operation with an onboard attendant).

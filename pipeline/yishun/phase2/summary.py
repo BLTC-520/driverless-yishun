@@ -39,9 +39,15 @@ MAIN_GRIDS = ["coarse", "refine", "capacity", "wmax", "window", "replicates"]
 CASES = ("low", "central", "high")
 # staffing is a structural switch, never part of a cost range: today's pilot rule (a safety operator
 # on board every vehicle in service, plus real-time monitoring) and possible future remote supervision
-MODES = ("onboard", "remote")
+MODES = ("onboard", "remote_with_attendant", "remote")
 MODE_LABELS = {"onboard": "safety operator on board (current pilot requirement)",
-               "remote": "remote supervision (possible future arrangement)"}
+               "remote_with_attendant": "remote supervision with an onboard attendant (LTA's stated next phase for AV buses)",
+               "remote": "remote supervision only (possible future arrangement)"}
+
+
+def active_modes(p: costs.CostParams) -> tuple[str, ...]:
+    """The staff modes the parameter file can price (the attendant case needs its wage)."""
+    return tuple(m for m in MODES if m != "remote_with_attendant" or p.has("attendant_sgd_per_hour"))
 BUDGETS = [10_000, 20_000, 30_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000]
 BUS_ERROR = (0.1, 0.2, 0.3)
 
@@ -105,7 +111,7 @@ def cost_rows(cfg: pd.DataFrame, p: costs.CostParams, bus: dict) -> pd.DataFrame
         if r["option"] == "A":
             continue
         ops = ops_of(r)
-        for mode, case in ((m, c) for m in MODES for c in CASES):
+        for mode, case in ((m, c) for m in active_modes(p) for c in CASES):
             sc = costs.shuttle_daily_cost(ops, p.with_switches(staff_mode=mode), case)
             bc = bus["cost"][case]
             bus_cases = [("all buses kept", 0.0)]
@@ -206,8 +212,10 @@ def thresholds(ref: pd.DataFrame, cr: pd.DataFrame, p: costs.CostParams, bus: di
     out = {}
     vot = p.value("vot_ivt_sgd_per_hour", "central") if p.has("vot_ivt_sgd_per_hour") else None
     p = p.with_switches(staff_mode=mode)
-    solve_ids = ((("vehicles_per_remote_operator", (0.5, 200.0)), ("remote_operator_sgd_per_hour", (0.0, 200.0)))
-                 if mode == "remote" else (("onboard_staff_sgd_per_hour", (0.0, 200.0)),)) + (("veh_price", (0.0, 3e6)),)
+    solve_ids = {"remote": (("vehicles_per_remote_operator", (0.5, 200.0)), ("remote_operator_sgd_per_hour", (0.0, 200.0))),
+                 "onboard": (("onboard_staff_sgd_per_hour", (0.0, 200.0)),),
+                 "remote_with_attendant": (("attendant_sgd_per_hour", (0.0, 200.0)),
+                                           ("vehicles_per_remote_operator", (0.5, 200.0)))}[mode] + (("veh_price", (0.0, 3e6)),)
     for _, r in ref.iterrows():
         if r["option"] == "A":
             continue
@@ -289,7 +297,7 @@ def stress_table(p: costs.CostParams) -> list[dict]:
     for _, r in cfg.iterrows():
         if r["option"] == "A":
             continue
-        sc = {m: costs.shuttle_daily_cost(ops_of(r), p.with_switches(staff_mode=m), "central") for m in MODES}
+        sc = {m: costs.shuttle_daily_cost(ops_of(r), p.with_switches(staff_mode=m), "central") for m in active_modes(p)}
         out.append({"id": config_id(r), "stress": r.get("tag", ""), "scenario": r["scenario"],
                     "availability": _f(r["availability"], 2), "berths": int(r["berths"]),
                     "saved_h": _f(r["saved_h"], 0), "saved_h_min": _f(r["saved_h_min"], 0),
@@ -298,7 +306,7 @@ def stress_table(p: costs.CostParams) -> list[dict]:
                     "offered": _f(r["n_offered"], 0), "mean_min": _f(r["mean_min"], 2), "mean_min_A": _f(r["mean_min_A"], 2),
                     "p90_min": _f(r["p90_min"], 2), "p90_min_A": _f(r["p90_min_A"], 2),
                     **{f"cost_per_hour_saved_central_{m}": _f(sc[m]["total"] / r["saved_h"], 2) if r["saved_h"] > 0 else None
-                       for m in MODES},
+                       for m in active_modes(p)},
                     "kerb_max_Yishun": _f(r.get("kerb_max_Yishun"), 0), "n_seeds": int(r["n_seeds"])})
     return out
 
@@ -340,7 +348,8 @@ def run() -> dict:
     # for C, no refusals for B) and the default 15-minute decline limit
     main_ids = set(cfg[((cfg.w_max_s == 900.0) | (cfg.option != "C")) & cfg.acceptable].id)
     ref = cfg[_ref_mask(cfg)]
-    fr = {m: {case: frontier(cr, case, main_ids, m) for case in CASES} for m in MODES}
+    modes = active_modes(p)
+    fr = {m: {case: frontier(cr, case, main_ids, m) for case in CASES} for m in modes}
     out = {
         "provenance": {**provenance(M), "grids": MAIN_GRIDS + ["stress"], "cost_parameters": p.source,
                        "seeds": sorted(runs.seed.unique().tolist())},
@@ -352,14 +361,14 @@ def run() -> dict:
         "service_level_ids": sorted(sl_ids),
         "reference_ids": [config_id(r) for _, r in ref.iterrows()],
         "frontier": fr,
-        "staff_modes": MODE_LABELS,
-        "budgets": {m: budget_table(cr, main_ids, m) for m in MODES},
-        "thresholds": {m: thresholds(ref, cr, p, bus, m) for m in MODES},
-        "sensitivity": {"cost_swings": {m: cost_swings(ref, p, m) for m in MODES},
+        "staff_modes": {m: MODE_LABELS[m] for m in modes},
+        "budgets": {m: budget_table(cr, main_ids, m) for m in modes},
+        "thresholds": {m: thresholds(ref, cr, p, bus, m) for m in modes},
+        "sensitivity": {"cost_swings": {m: cost_swings(ref, p, m) for m in modes},
                         "bus_error": bus_error(ref), "stress": stress_table(p)},
         "social": {config_id(r): social(r, {m: float(cr[(cr.id == config_id(r)) & (cr.case == "central") &
                                                         (cr.bus_case == "all buses kept") & (cr.staff_mode == m)]
-                                                     .delta_cost.iloc[0]) for m in MODES}, p)
+                                                     .delta_cost.iloc[0]) for m in modes}, p)
                    for _, r in ref.iterrows() if r["option"] != "A"},
         "who": {}, "hourly": {},
     }

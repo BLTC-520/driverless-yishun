@@ -68,7 +68,7 @@ BUS_IDS = ("bus_sgd_per_bus_km", "bus_sgd_per_bus_hour")
 SOCIAL_IDS = ("vot_ivt_sgd_per_hour", "wait_time_weight")
 # optional: control-room monitoring ratio while a safety operator rides every vehicle (the current
 # pilot arrangement); without it the remote-operation ratio is used in both staff modes
-OPTIONAL_IDS = ("vehicles_per_monitor_onboard_mode",)
+OPTIONAL_IDS = ("vehicles_per_monitor_onboard_mode", "attendant_sgd_per_hour")
 KNOWN_IDS = SHUTTLE_IDS + BUS_IDS + SOCIAL_IDS + OPTIONAL_IDS
 POSITIVE_IDS = {"veh_life_years", "charger_life_years", "charging_efficiency", "battery_usable_kwh",
                 "charger_power_kw", "vehicles_per_remote_operator", "vehicles_per_field_staff",
@@ -78,7 +78,10 @@ FRACTION_IDS = {"veh_residual_share", "charging_efficiency"}   # at most 1
 CATEGORIES = ("vehicles", "energy", "maintenance", "cleaning", "insurance_permits", "software_comms", "staff",
               "charging_depot")
 CLASSES = ("fixed", "distance", "staff")
-SWITCHES = {"acquisition": ("purchase", "lease"), "staff_mode": ("remote", "onboard")}
+# staff modes: "onboard" = a safety operator on every vehicle in service (the current pilot rule);
+# "remote_with_attendant" = remote supervision plus an onboard attendant (LTA's stated next phase for
+# its autonomous buses); "remote" = remote supervision only
+SWITCHES = {"acquisition": ("purchase", "lease"), "staff_mode": ("remote", "onboard", "remote_with_attendant")}
 # What a vehicle lease may bundle. A contract that also covers energy or staff is a service
 # contract, which is never treated as a vehicle price (§5).
 LEASABLE = ("maintenance", "cleaning", "insurance_permits", "software_comms", "charging_depot")
@@ -437,7 +440,9 @@ def staff_cost(ops: ShuttleOps, p: CostParams, case: str = "central") -> dict:
     max(min_remote_operators, ceil(in service / vehicles_per_remote_operator)), field staff =
     ceil(in service / vehicles_per_field_staff), and staff_mode "onboard" adds one person on every
     vehicle in service. With a safety operator on board, the control room monitors at
-    vehicles_per_monitor_onboard_mode when the file has it. Cost = hours x fully loaded hourly cost."""
+    vehicles_per_monitor_onboard_mode when the file has it. "remote_with_attendant" keeps the
+    remote-operation ratio and adds one attendant per vehicle at attendant_sgd_per_hour (required in
+    that mode). Cost = hours x fully loaded hourly cost."""
     v = _values(p, case, ops.capacity)
     n, w = ops.hourly()
     mode = p.switches["staff_mode"]
@@ -446,10 +451,12 @@ def staff_cost(ops: ShuttleOps, p: CostParams, case: str = "central") -> dict:
     persons = {
         "remote_operator": np.maximum(v("min_remote_operators"), _ceil(n / v(ratio))),
         "field_staff": _ceil(n / v("vehicles_per_field_staff")),
-        "onboard": n if mode == "onboard" else np.zeros_like(n),
+        "onboard": n if mode in ("onboard", "remote_with_attendant") else np.zeros_like(n),
     }
+    if mode == "remote_with_attendant" and not p.has("attendant_sgd_per_hour"):
+        raise KeyError("staff_mode remote_with_attendant needs attendant_sgd_per_hour")
     wage = {"remote_operator": v("remote_operator_sgd_per_hour"), "field_staff": v("field_staff_sgd_per_hour"),
-            "onboard": v("onboard_staff_sgd_per_hour")}
+            "onboard": v("attendant_sgd_per_hour") if mode == "remote_with_attendant" else v("onboard_staff_sgd_per_hour")}
     hours = {k: float(x @ w) for k, x in persons.items()}
     cost = {k: hours[k] * wage[k] for k in persons}
     return {"staff_mode": mode, "control_room_ratio": ratio, "hour_lengths": w.tolist(),

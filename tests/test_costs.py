@@ -229,6 +229,18 @@ def test_onboard_mode_monitors_at_its_own_ratio(p):
     assert staff_cost(day(), p.with_switches(staff_mode="onboard"))["control_room_ratio"] == "vehicles_per_remote_operator"
 
 
+def test_remote_with_attendant_keeps_the_remote_ratio_and_adds_an_attendant(p):
+    d = copy.deepcopy(FIXTURE)
+    d["parameters"]["attendant_sgd_per_hour"] = entry("SGD per hour", 15, 18, 22)
+    q = CostParams.from_dict(d).with_switches(staff_mode="remote_with_attendant")
+    s = staff_cost(day(), q)
+    assert s["control_room_ratio"] == "vehicles_per_remote_operator"
+    assert s["hours"]["remote_operator"] == pytest.approx(10 * 20) and s["hours"]["onboard"] == pytest.approx(100 * 20)
+    assert s["cost"]["onboard"] == pytest.approx(100 * 20 * 18)
+    with pytest.raises(KeyError, match="attendant"):
+        staff_cost(day(), p.with_switches(staff_mode="remote_with_attendant"))
+
+
 def test_staff_follow_a_non_uniform_hourly_profile(p):
     o = day(service_hours=4, in_service_by_hour=[100, 50, 5, 0])
     s = staff_cost(o, p.with_switches(staff_mode="onboard"))
