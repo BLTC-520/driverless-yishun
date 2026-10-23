@@ -15,6 +15,7 @@ data:             ## download raw inputs (LTA DataMall, data.gov.sg, OpenStreetM
 	$(RUN) yishun.fetch_lta pv-od 202608
 	$(RUN) yishun.fetch_datagov
 	$(RUN) yishun.fetch_osm pinned
+	$(RUN) yishun.fetch_lta pinned   # the stops, services and routes the results were computed from
 
 osm-latest:       ## today's OSM extract instead of the pinned one of 22 Oct 2026 (results will differ slightly)
 	$(RUN) yishun.fetch_osm latest

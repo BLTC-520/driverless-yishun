@@ -10,6 +10,8 @@ Usage:
     python -m yishun.fetch_lta pv 202609      # passenger volumes for a month (YYYYMM)
     python -m yishun.fetch_lta geo            # geospatial whole-island layers
     python -m yishun.fetch_lta speedbands     # one snapshot of v4 TrafficSpeedBands
+    python -m yishun.fetch_lta pinned         # restore the committed stops, services and routes
+    python -m yishun.fetch_lta pin            # commit-ready copies of the current ones
 """
 from __future__ import annotations
 
@@ -142,8 +144,56 @@ def fetch_speedbands() -> None:
     print(f"TrafficSpeedBands: {len(rows)} links -> {out.relative_to(ROOT)}")
 
 
+# LTA updates routes and headways without notice, and these three files define the bus model, rule
+# C's eligibility table, the internal-only services and the bus supply. The versions the results
+# were computed from are committed (xz-compressed, Singapore Open Data Licence) and restored with
+# `python -m yishun.fetch_lta pinned`, checked against their SHA-256.
+PINNED = ROOT / "data" / "processed" / "lta"
+
+
+def _sha256(b: bytes) -> str:
+    import hashlib
+    return hashlib.sha256(b).hexdigest()
+
+
+def pin() -> None:
+    """Write xz copies of the current stops, services and routes and their checksums to data/processed/lta."""
+    import lzma
+    PINNED.mkdir(parents=True, exist_ok=True)
+    got = json.loads((RAW / "manifest.json").read_text()) if (RAW / "manifest.json").exists() else {}
+    meta = {"licence": "Singapore Open Data Licence v1.0; contains information from LTA DataMall", "files": {}}
+    for endpoint, name in PAGED.items():
+        raw = (RAW / name).read_bytes()
+        (PINNED / f"{name}.xz").write_bytes(lzma.compress(raw, preset=9))
+        meta["files"][name] = {"endpoint": endpoint, "sha256": _sha256(raw), "bytes": len(raw),
+                               "records": got.get(endpoint, {}).get("records"),
+                               "retrieved_utc": got.get(endpoint, {}).get("retrieved_utc")}
+    (PINNED / "manifest.json").write_text(json.dumps(meta, indent=2))
+    print(f"pinned {', '.join(PAGED.values())} -> {PINNED.relative_to(ROOT)}")
+
+
+def restore_pinned() -> None:
+    """Restore the committed stops, services and routes into data/raw/lta, checking their checksums."""
+    import lzma
+    meta = json.loads((PINNED / "manifest.json").read_text())
+    RAW.mkdir(parents=True, exist_ok=True)
+    for name, info in meta["files"].items():
+        raw = lzma.decompress((PINNED / f"{name}.xz").read_bytes())
+        if _sha256(raw) != info["sha256"]:
+            sys.exit(f"{name}: checksum does not match {PINNED / 'manifest.json'}")
+        (RAW / name).write_bytes(raw)
+        _write_manifest(info["endpoint"], {"file": name, "records": info["records"],
+                                           "restored_from": f"data/processed/lta/{name}.xz",
+                                           "originally_retrieved_utc": info["retrieved_utc"]})
+    print(f"restored {', '.join(meta['files'])} into {RAW.relative_to(ROOT)}")
+
+
 def main(argv: list[str]) -> None:
     cmd = argv[1] if len(argv) > 1 else "all"
+    if cmd == "pin":
+        return pin()
+    if cmd == "pinned":
+        return restore_pinned()
     if cmd in ("bus", "all"):
         fetch_paged()
     if cmd in ("pv", "all"):
