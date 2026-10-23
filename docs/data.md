@@ -5,8 +5,9 @@ not committed. Each has a `manifest.json` with the retrieval time. `make data` r
 everything still available; an LTA DataMall key is needed in `LTA_DATAMALL_KEY`. DataMall
 serves passenger-volume months for three months only, and live feeds cannot be replayed, so
 the derived tables the results depend on are committed in `data/processed/`:
-`internal_od_202607_202608.csv.gz` (Yishun OD), `calibration.json`, `calibration_pm_peak.json`
-and `gps_check.json`.
+`internal_od_202607_202608.csv.gz` (Yishun OD), `calibration.json`, `calibration_pm_peak.json`,
+`gps_check.json` and `deck_mix.json` (the bus deck-type mix from the live log). LTA's static bus
+files and the OpenStreetMap extract are pinned in `data/processed/lta/` and `data/processed/osm/`.
 
 | # | Dataset | Provider | Access | Licence | What we use | Known limitations |
 |---|---|---|---|---|---|---|
@@ -54,8 +55,11 @@ profiles), used only for the "places" comparison.
   datasets and derived works, with attribution.
   - LTA's general website terms are more restrictive. The DataMall API terms place the API
     datasets under the SODL.
-  - For that reason this repository commits only **derived** outputs (`data/processed`,
-    `web/public/data`), never raw LTA files.
+  - For that reason this repository commits **derived** outputs (`data/processed`,
+    `web/public/data`). The one exception is LTA's static Bus Stops, Bus Services and Bus Routes,
+    committed xz-compressed in `data/processed/lta/` with their checksums, because they define the
+    bus model and LTA updates them without notice (Phase 2 review, R7). They are API datasets under
+    the SODL, which permits redistribution with attribution.
 - **OpenStreetMap.** Derived map data is © OpenStreetMap contributors under ODbL 1.0. The
   files in `web/public/data` that contain OSM-derived geometry (`buildings.json`,
   `town.json`, `paths.json` and the animation files) are made available under the ODbL 1.0.
