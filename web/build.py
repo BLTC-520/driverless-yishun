@@ -2,6 +2,7 @@
 
 * dist/index.html the landing page (home.html): a drive recorded in the game loops behind two ways
                   in, the study and the game, with its headline numbers pre-filled
+* dist/evidence.html the checks, the charts behind them, the data files and provenance (evidence.js)
 * dist/play.html  the game (Night Shift: play.html + play.js with physics.js and shaders.js)
 * dist/study.html the study (Phase 1 chapters and the Phase 2 chapter, phase2.js), wrapped in a full HTML document, for standalone hosting
                   (GitHub Pages, `python -m http.server`)
@@ -39,7 +40,11 @@ def numbers() -> dict[str, str]:
     """The page's quoted numbers, formatted once by the pipeline (results.json "numbers", and the
     Phase 2 chapter's phase2.json "numbers" when present), so the first frame shows real figures;
     app.js and phase2.js fill the same values at runtime."""
-    vals = json.loads((DATA / "results.json").read_text()).get("numbers", {})
+    rs = json.loads((DATA / "results.json").read_text())
+    vals = dict(rs.get("numbers", {}))
+    if rs.get("frontier_audit"):   # the evidence page's monotonicity check
+        vals["audit_checked"] = f"{rs['frontier_audit']['checked']:,}"
+        vals["audit_viol"] = "no" if rs["frontier_audit"]["violations"] == 0 else f"{rs['frontier_audit']['violations']:,}"
     p2 = DATA / "phase2.json"
     if p2.exists():
         vals = {**vals, **json.loads(p2.read_text()).get("numbers", {})}
@@ -63,6 +68,7 @@ def main() -> None:
     (DIST / "study.html").write_text(HEAD + page[:cut] + "</head>\n<body>\n" + page[cut:] + "\n</body>\n</html>\n")
     shutil.copy(SRC / "app.js", DIST / "app.js")
     shutil.copy(SRC / "phase2.js", DIST / "phase2.js")
+    shutil.copy(SRC / "evidence.js", DIST / "evidence.js")
     for name in ("play.js", "physics.js", "shaders.js"):  # the game and its modules
         shutil.copy(SRC / name, DIST / name)
     shutil.copy(SRC / "play.html", DIST / "play.html")
@@ -73,6 +79,13 @@ def main() -> None:
     except FileNotFoundError as e:
         print(f"landing numbers not pre-filled ({e})")
     (DIST / "index.html").write_text(home)
+    ev = (SRC / "evidence.html").read_text()   # the evidence page: checks, charts, files, provenance
+    try:
+        vals = numbers()
+        ev = FILL.sub(lambda m: m.group(1) + vals.get(m.group(2), "—") + m.group(3), ev)
+    except FileNotFoundError as e:
+        print(f"evidence numbers not pre-filled ({e})")
+    (DIST / "evidence.html").write_text(ev)
     if (DIST / "data").exists():
         shutil.rmtree(DIST / "data")
     shutil.copytree(DATA, DIST / "data")

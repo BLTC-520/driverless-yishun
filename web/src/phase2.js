@@ -10,13 +10,16 @@
   const css = getComputedStyle(root);
   const tok = (n) => css.getPropertyValue(n).trim();
   const COL = { A: tok("--p2-a"), B: tok("--p2-b"), C: tok("--p2-c"), staff: tok("--p2-staff"), fixed: tok("--p2-fixed"),
-                distance: tok("--p2-dist"), surface: tok("--night-3") || "#1a2333", rule: tok("--rule"), chalk: tok("--chalk"),
-                mute: tok("--mute") };
+                distance: tok("--p2-dist"), surface: tok("--bg-2") || "#fff", rule: tok("--rule"), ink: tok("--fg"),
+                mute: tok("--mute"), faint: tok("--faint") };
   const CLASS_ORDER = [["staff", "Staff"], ["fixed", "Fixed (vehicles, depot, software, insurance…)"], ["distance", "Distance (energy, per-km maintenance)"]];
   const fmt = d3.format(",.0f");
   const sgdk = (v) => (v == null ? "—" : `SGD ${d3.format(",.0f")(Math.round(v / 1000))}k`);
   const sgd = (v, nd = 0) => (v == null ? "—" : `SGD ${d3.format(`,.${nd}f`)(v)}`);
-  const state = { mode: null, P: null };
+  const state = { mode: null, P: null, all: false };
+  const BASE_TAG = "base case (same three days)";   // the stress grid's own base runs (phase2/experiments.py)
+  // full replacement under C's decline rule (every ride offered, decline to the bus), from the stress grid
+  const shortOf = (i, cfg) => (cfg[i] ? cfg[i].short : /^C-\d+-\d+-all$/.test(i) ? "B, C's rule" : i);
   const tip = document.getElementById("p2-tip");
 
   // ------------------------------------------------------------------ tooltip
@@ -90,9 +93,12 @@
     const H = Math.round(Math.max(340, Math.min(500, W * 0.56)));
     const m = { l: narrow ? 46 : 60, r: 18, t: 26, b: 46 };
     const { g, w, h } = svgFrame("ch-p2-trade", W, H, m);
+    // by default only today, the best-value line and the reference designs; every design on request
+    const frIds = new Set((P.frontier[mode] || {}).central || []), refSet = new Set(refIds());
     const pts = [];
     for (const c of P.configs) {
       if (c.option === "A") { pts.push({ c, x: 0, y: 0 }); continue; }
+      if (!state.all && !frIds.has(c.id) && !refSet.has(c.id)) continue;
       const e = costOf(c.id); if (!e || e.delta_cost.central == null) continue;
       pts.push({ c, x: e.delta_cost.central, y: c.saved_h, e });
     }
@@ -114,13 +120,13 @@
       g.append("text").attr("class", "lab").attr("x", x(xe) - 4).attr("y", y(ye) + (top ? 13 : -5)).attr("text-anchor", "end").text(narrow ? `SGD ${c}/h` : `SGD ${c}/h saved`);
     }
     // the C family: one thin line per coverage level, joining its fleets
-    for (const [, ps] of d3.groups(pts.filter((p) => p.c.kind === "C"), (p) => p.c.theta)) {
+    if (state.all) for (const [, ps] of d3.groups(pts.filter((p) => p.c.kind === "C"), (p) => p.c.theta)) {
       ps.sort((a, b) => a.c.fleet - b.c.fleet);
       g.append("path").attr("d", d3.line().x((p) => x(p.x)).y((p) => y(p.y))(ps)).attr("fill", "none").attr("stroke", COL.C).attr("stroke-opacity", 0.35).attr("stroke-width", 1.5);
     }
     // frontier
     const fr = ((P.frontier[mode] || {}).central || []).map((i) => pts.find((p) => p.c.id === i)).filter(Boolean).sort((a, b) => a.x - b.x);
-    if (fr.length > 1) g.append("path").attr("d", d3.line().x((p) => x(p.x)).y((p) => y(p.y))([{ x: 0, y: 0 }, ...fr])).attr("fill", "none").attr("stroke", COL.chalk).attr("stroke-width", 2);
+    if (fr.length > 1) g.append("path").attr("d", d3.line().x((p) => x(p.x)).y((p) => y(p.y))([{ x: 0, y: 0 }, ...fr])).attr("fill", "none").attr("stroke", COL.ink).attr("stroke-width", 2);
     // markers: variants first, then the main family, then B and A on top
     const order = { "C-cap": 0, "C-window": 0, "C-wmax": 0, C: 1, B: 2, A: 3 };
     pts.sort((a, b) => (order[a.c.kind] ?? 1) - (order[b.c.kind] ?? 1));
@@ -154,11 +160,54 @@
     legend("p2-trade-legend", [
       { kind: "svg", svg: `<path d="${d3.symbol(d3.symbolSquare, 110)()}" fill="${COL.A}"/>`, label: "A: today's buses" },
       { kind: "svg", svg: `<path d="${d3.symbol(d3.symbolDiamond, 110)()}" fill="${COL.B}"/>`, label: "B: full replacement" },
-      { kind: "svg", svg: `<circle r="4" fill="${COL.C}"/>`, label: "C: combined (lines join fleets of one θ)" },
-      { kind: "svg", svg: `<circle r="4" fill="${COL.surface}" stroke="${COL.C}" stroke-width="2"/>`, label: "C variant" },
-      { kind: "svg", svg: `<path d="M-4,-4L4,4M-4,4L4,-4" stroke="${COL.mute}" stroke-width="2"/>`, label: "service not acceptable" },
-      { kind: "line", color: COL.chalk, label: "best saving for the cost" },
+      { kind: "svg", svg: `<circle r="4" fill="${COL.C}"/>`, label: state.all ? "C: combined (lines join fleets of one θ)" : "C: combined" },
+      ...(state.all ? [
+        { kind: "svg", svg: `<circle r="4" fill="${COL.surface}" stroke="${COL.C}" stroke-width="2"/>`, label: "C variant" },
+        { kind: "svg", svg: `<path d="M-4,-4L4,4M-4,4L4,-4" stroke="${COL.mute}" stroke-width="2"/>`, label: "service not acceptable" }] : []),
+      { kind: "line", color: COL.ink, label: "best saving for the cost" },
     ]);
+  }
+
+  // ------------------------------------------------------------------ is it worth it?
+  // Value of the riders' time saved per SGD 1 of added operating cost (the summary's social estimate:
+  // in-vehicle hours plus weighted waiting hours at the value of time), one row per reference design.
+  function drawWorth() {
+    const P = state.P, mode = state.mode, cfg = cfgById();
+    const key = `benefit_cost_ratio_${mode}`;
+    const ids = refIds().filter((i) => ((P.social[i] || {}).central || {})[key] != null);
+    const W = widthOf("ch-p2-worth", 1040), narrow = W < 560;
+    const m = { l: narrow ? 8 : 150, r: 70, t: 30, b: 42 }, rowH = narrow ? 50 : 40;
+    const H = m.t + m.b + rowH * Math.max(1, ids.length);
+    const { g, w, h } = svgFrame("ch-p2-worth", W, H, m);
+    if (!ids.length) return;
+    const val = (i, c) => ((P.social[i] || {})[c] || {})[key];
+    const hi = Math.max(1.25, d3.max(ids, (i) => val(i, "high") ?? val(i, "central")) * 1.05);
+    const x = d3.scaleLinear().domain([0, hi]).range([0, w]).nice();
+    const y = d3.scaleBand().domain(ids).range([0, h]).padding(0);
+    const money = (v) => `SGD ${v.toFixed(2)}`;
+    g.append("g").attr("class", "grid").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x).ticks(narrow ? 4 : 6).tickSize(-h).tickFormat(""));
+    g.append("g").attr("class", "axis").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x).ticks(narrow ? 4 : 6).tickFormat((v) => `${v.toFixed(2)}`));
+    g.append("text").attr("class", "lab").attr("x", w).attr("y", h + 36).attr("text-anchor", "end")
+      .text(narrow ? "SGD of time saved per SGD 1 spent" : "value of riders' time saved per SGD 1 of added cost (SGD)");
+    g.append("line").attr("x1", x(1)).attr("x2", x(1)).attr("y1", -8).attr("y2", h).attr("stroke", COL.ink).attr("stroke-dasharray", "4 4");
+    g.append("text").attr("class", "lab").attr("x", x(1) + 6).attr("y", -12).text("worth what it costs");
+    for (const i of ids) {
+      const c = cfg[i], col = familyColor(c), cy = y(i) + (narrow ? rowH - 14 : rowH / 2);
+      const lo = val(i, "low"), mid = val(i, "central"), up = val(i, "high");
+      if (lo != null && up != null) g.append("line").attr("x1", x(lo)).attr("x2", x(up)).attr("y1", cy).attr("y2", cy).attr("stroke", col).attr("stroke-width", 2).attr("stroke-linecap", "round");
+      g.append("circle").attr("cx", x(mid)).attr("cy", cy).attr("r", 6).attr("fill", col).attr("stroke", COL.surface).attr("stroke-width", 2);
+      const name = c.option === "B" ? "B: full replacement" : `C: θ ${c.theta} min, ${c.fleet}`;
+      if (narrow) g.append("text").attr("class", "lab").attr("x", 0).attr("y", cy - 13).text(name);
+      else g.append("text").attr("class", "lab").attr("x", -12).attr("y", cy + 4).attr("text-anchor", "end").text(name);
+      g.append("text").attr("class", "lab callout").attr("x", x(Math.max(mid, up ?? mid)) + 10).attr("y", cy + 4).text(money(mid));
+      g.append("rect").attr("x", -m.l).attr("y", y(i)).attr("width", w + m.l + m.r).attr("height", rowH).attr("fill", "transparent")
+        .on("mousemove", (evt) => showTip(evt, `<b>${c.label}</b><br>riders' time saved worth ${money(mid)} per SGD 1 of added cost` +
+          `<br><span class="mute">low value of time ${lo != null ? money(lo) : "—"} · high ${up != null ? money(up) : "—"}</span>` +
+          `<br><span class="mute">${fmt(c.saved_h)} passenger-hours saved a day; ${sgd((costOf(i) || {}).cost_per_hour_saved?.central, 1)} per hour saved</span>`))
+        .on("mouseleave", hideTip);
+    }
+    legend("p2-worth-legend", [{ kind: "svg", svg: `<circle r="4" fill="${COL.mute}"/>`, label: "central value of time" },
+      { kind: "line", color: COL.mute, label: "low to high value of time" }, { kind: "line", color: COL.ink, dash: true, label: "worth what it costs" }]);
   }
 
   // ------------------------------------------------------------------ cost by class
@@ -244,7 +293,7 @@
     g.append("g").attr("class", "axis").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x).tickFormat((p) => (narrow ? PERIOD_SHORT[p] : (P.period_names || {})[p]) || p));
     g.append("g").attr("class", "axis").call(d3.axisLeft(y).ticks(5).tickFormat((v) => (Math.abs(v) >= 1000 ? `${fmt(v / 1000)}k` : fmt(v))));
     const cIds = ids.filter((i) => cfg[i].option === "C");
-    const ramp = (k) => (cIds.length > 1 ? d3.interpolateRgb("#f2a9c6", "#a33461")(k / (cIds.length - 1)) : COL.C);
+    const ramp = (k) => (cIds.length > 1 ? d3.interpolateRgb("#d9a3d2", "#6b2163")(k / (cIds.length - 1)) : COL.C);
     const colorOf = (i) => (cfg[i].option === "B" ? COL.B : ramp(cIds.indexOf(i)));
     const items = [], ends = [];
     for (const i of ids) {
@@ -288,7 +337,7 @@
     g.append("g").attr("class", "grid").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x).ticks(5).tickSize(-h).tickFormat(""));
     g.append("g").attr("class", "axis").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x).ticks(5).tickFormat((v) => `${v}`));
     g.append("text").attr("class", "lab").attr("x", w).attr("y", h + 34).attr("text-anchor", "end").text("SGD per passenger-hour saved");
-    g.append("line").attr("x1", x(c0)).attr("x2", x(c0)).attr("y1", -6).attr("y2", h).attr("stroke", COL.chalk).attr("stroke-width", 1.5);
+    g.append("line").attr("x1", x(c0)).attr("x2", x(c0)).attr("y1", -6).attr("y2", h).attr("stroke", COL.ink).attr("stroke-width", 1.5);
     for (const r of rows) {
       const a = Math.min(r.low.cost_per_hour_saved, r.high.cost_per_hour_saved), b = Math.max(r.low.cost_per_hour_saved, r.high.cost_per_hour_saved);
       const cy = yb(r.param_id) + yb.bandwidth() - bh - (narrow ? 2 : (yb.bandwidth() - bh) / 2);
@@ -305,19 +354,24 @@
   // ------------------------------------------------------------------ tables
   function stressTable() {
     const P = state.P, cfg = cfgById();
+    const rowsIn = (P.stress || []).filter((r) => r.stress !== BASE_TAG);
+    const baseIn = (P.stress || []).filter((r) => r.stress === BASE_TAG);
     const ids = refIds(), extra = [...new Set((P.stress || []).map((r) => r.id))].filter((i) => !ids.includes(i));
     if (extra.length) ids.splice(1, 0, ...extra);
     const tbl = d3.select("#p2-stress");
-    tbl.select("thead tr").html("<th>Condition</th>" + ids.map((i) => `<th class="cfg">${cfg[i] ? cfg[i].short : i}</th>`).join(""));
-    const base = { stress: "Base case", cells: Object.fromEntries(ids.map((i) => [i, cfg[i] ? { saved_h: cfg[i].saved_h, declined: cfg[i].n_declined, refused: cfg[i].n_refused } : null])) };
-    const by = d3.group(P.stress || [], (r) => r.stress);
+    tbl.select("thead tr").html("<th>Condition</th>" + ids.map((i) => `<th class="cfg n">${shortOf(i, cfg)}</th>`).join(""));
+    // the base row from the stress grid's own three days when it has them, else the configurations' means
+    const base = { stress: baseIn.length ? "Base case" : "Base case (all simulated days)", cells: baseIn.length
+      ? Object.fromEntries(baseIn.map((r) => [r.id, r]))
+      : Object.fromEntries(ids.map((i) => [i, cfg[i] ? { saved_h: cfg[i].saved_h, declined: cfg[i].n_declined, refused: cfg[i].n_refused } : null])) };
+    const by = d3.group(rowsIn, (r) => r.stress);
     const order = [...(P.stress_labels || []).filter((k) => by.has(k)), ...[...by.keys()].filter((k) => !(P.stress_labels || []).includes(k))];
     const rows = [base, ...order.map((k) => ({ stress: k, cells: Object.fromEntries((by.get(k) || []).map((r) => [r.id, r])) }))];
+    const count = (v) => (v > 0 && v < 0.5 ? "<1" : fmt(v));
     const cell = (r) => {
       if (!r) return "<td class=\"n\">—</td>";
-      const lost = (r.declined || 0) + (r.refused || 0);
-      const note = r.refused ? `${fmt(r.refused)} refused` : r.declined ? `${fmt(r.declined)} declined` : "";
-      return `<td class="n">${fmt(r.saved_h)}${lost ? `<br><span class="mute small">${note}</span>` : ""}</td>`;
+      const notes = [r.declined > 0 ? `${count(r.declined)} declined` : "", r.refused > 0 ? `${count(r.refused)} refused` : ""].filter(Boolean);
+      return `<td class="n">${fmt(r.saved_h)}${notes.length ? `<br><span class="mute small">${notes.join(", ")}</span>` : ""}</td>`;
     };
     tbl.select("tbody").html(rows.map((r) => `<tr><td>${r.stress}</td>${ids.map((i) => cell(r.cells[i])).join("")}</tr>`).join(""));
   }
@@ -325,9 +379,11 @@
   function budgetTable() {
     const P = state.P, cfg = cfgById();
     const rows = (P.budgets[state.mode] || []).filter((r) => r.central);
+    const narrow = document.getElementById("p2-budget").getBoundingClientRect().width < 560;
     const html = rows.length ? rows.map((r) => {
       const b = r.central, c = cfg[b.id];
-      return `<tr><td class="n" style="text-align:left">${sgd(r.budget)}</td><td>${c ? c.label : b.id}</td><td class="n">${fmt(b.saved_h)}</td><td class="n">${sgd(b.cost_per_hour_saved, 1)}</td></tr>`;
+      const name = !c ? b.id : narrow ? c.short : c.label;
+      return `<tr><td class="n" style="text-align:left">${sgd(r.budget)}</td><td>${name}</td><td class="n">${fmt(b.saved_h)}</td><td class="n">${sgd(b.cost_per_hour_saved, 1)}</td></tr>`;
     }).join("") : `<tr><td colspan="4">No configuration with acceptable service fits these budgets in this staffing case.</td></tr>`;
     d3.select("#p2-budget tbody").html(html);
   }
@@ -338,7 +394,7 @@
     d3.selectAll("#p2-modes button").attr("aria-pressed", function () { return this.dataset.mode === m ? "true" : "false"; });
     const lab = ((state.P.staff_modes || {})[m] || {}).label || m;
     document.getElementById("p2-modenote").textContent = `Costs below: ${lab}. Passenger time does not depend on staffing.`;
-    for (const f of [drawTrade, drawCost, drawTornado, budgetTable]) { try { f(); } catch (e) { console.error("phase2", f.name, e); } }
+    for (const f of [drawWorth, drawTrade, drawCost, drawTornado, budgetTable]) { try { f(); } catch (e) { console.error("phase2", f.name, e); } }
   }
 
   function fillNumbers() {
@@ -365,6 +421,11 @@
     };
     stressTable();
     drawAll();
+    const all = document.getElementById("p2-all");
+    if (all) all.onclick = () => { state.all = !state.all; all.setAttribute("aria-pressed", String(state.all)); try { drawTrade(); } catch (e) { console.error(e); } };
+    // charts inside the closed details have no width yet: draw them when it opens
+    const more = document.getElementById("p2-more");
+    if (more) more.addEventListener("toggle", () => { if (more.open) drawAll(); });
     let rz = null, lastW = window.innerWidth;
     window.addEventListener("resize", () => {
       clearTimeout(rz);

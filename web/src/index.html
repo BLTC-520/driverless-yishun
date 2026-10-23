@@ -260,14 +260,16 @@ button.show:not(.ride-cta):hover { background: var(--fg); color: var(--bg); }
 .chart-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 
 /* ---- phase 2: options compared on cost and passenger time ---- */
-.p2 { --p2-a: #1f9fb4; --p2-b: #c98500; --p2-c: #d55181; --p2-staff: #3987e5; --p2-fixed: #199e70; --p2-dist: #9085e9; }
-.p2-banner { border: 1px solid var(--bad); color: var(--chalk); padding: 8px 12px; border-radius: 4px; font-size: var(--step--1); }
+/* Part 2 series: A today's buses (bus teal), B full replacement (the shuttle amber of Part 1), C combined;
+   cost classes staff / fixed / distance. Both sets checked for colour-vision separation on this paper. */
+:root { --p2-a: #0089a8; --p2-b: #c96a0a; --p2-c: #a33b9a; --p2-staff: #2a78d6; --p2-fixed: #1baf7a; --p2-dist: #6250d6; }
+.p2-banner { border: 1px solid var(--bad); color: var(--fg); padding: 8px 12px; border-radius: 4px; font-size: var(--step--1); }
 .p2-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: baseline; }
 .p2-key.a { background: var(--p2-a); } .p2-key.b { background: var(--p2-b); } .p2-key.c { background: var(--p2-c); }
 .p2-modes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 26px; }
 .p2-modes button { font: inherit; font-family: var(--font-data); font-size: var(--step--1); color: var(--mute); background: transparent;
   border: 1px solid var(--rule); border-radius: 4px; padding: 6px 10px; cursor: pointer; }
-.p2-modes button[aria-pressed="true"] { color: var(--chalk); border-color: var(--chalk); }
+.p2-modes button[aria-pressed="true"] { color: var(--fg); border-color: var(--fg); background: var(--bg-2); }
 .p2-modenote { color: var(--mute); font-size: var(--step--1); margin: 8px 0 0; max-width: 70ch; }
 .p2-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; margin-top: 28px; }
 .p2 .chart svg { width: auto; max-width: 100%; }
@@ -275,11 +277,49 @@ button.show:not(.ride-cta):hover { background: var(--fg); color: var(--bg); }
 .p2 .legend-row i.ln { height: 0; border-top: 2px solid; }
 .p2 .legend-row svg { display: inline-block; width: 14px; max-width: none; height: 14px; overflow: visible; }
 #p2-stress th.cfg { text-align: right; text-transform: none; }
-.p2-tip { position: fixed; z-index: 30; pointer-events: none; background: var(--night-2); border: 1px solid var(--rule); border-radius: 4px;
-  padding: 8px 10px; font-family: var(--font-data); font-size: 12px; color: var(--chalk); max-width: 320px; line-height: 1.45; }
+.p2-tip { position: fixed; z-index: 30; pointer-events: none; background: var(--bg-2); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 8px 10px; font-family: var(--font-data); font-size: 12px; color: var(--fg); max-width: 320px; line-height: 1.45;
+  box-shadow: 0 4px 16px rgb(0 0 0 / .08); }
 .p2-tip b { font-weight: 600; } .p2-tip .mute { color: var(--mute); }
 #p2-stress td, #p2-budget td { white-space: nowrap; } #p2-stress td:first-child { white-space: normal; min-width: 14em; }
 @media (max-width: 860px) { .p2-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- two parts: the opening answers, the dividers, the grouped contents ---- */
+.parts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 40px 0 0; }
+.part { display: grid; align-content: start; gap: 8px; padding: 18px 20px 20px; background: var(--bg-2); border: 1px solid var(--rule);
+  border-radius: 6px; text-decoration: none; color: var(--fg); transition: border-color .2s ease; }
+.part:hover { color: var(--fg); border-color: var(--fg); }
+.part-k { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.part-q { font-size: var(--step-1); font-weight: 500; letter-spacing: -0.01em; }
+.part-big { font-weight: 500; font-size: clamp(2rem, 3.4vw, 2.75rem); line-height: 1.05; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.part-big .sh { color: var(--sodium); } .part-big .c2 { color: var(--p2-c); }
+.part-big small { display: block; font-size: var(--step--1); font-weight: 400; letter-spacing: 0; color: var(--mute); margin-top: 4px; }
+.part-a { font-size: var(--step--1); color: var(--mute); line-height: 1.55; }
+.toc .toc-g { color: var(--faint); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; margin-left: 10px; }
+.toc .toc-g:first-child { margin-left: 0; }
+.part-head { padding-block: 72px 0; }
+.part-head .inner { border-top: 2px solid var(--fg); padding-top: 16px; }
+.part-head h2 { font-weight: 500; font-size: var(--step-2); letter-spacing: -0.03em; line-height: 1.1; margin: 10px 0 12px; max-width: 26ch; }
+.part-head p { color: var(--mute); max-width: 62ch; margin: 0; }
+@media (max-width: 760px) { .parts { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- Part 2 ---- */
+.p2-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+.p2-opt { border-top: 3px solid var(--k); padding-top: 12px; min-width: 0; }
+.p2-opt b { font-weight: 500; font-size: var(--step-1); }
+.p2-opt p { font-size: var(--step--1); color: var(--mute); margin: 6px 0 0; line-height: 1.55; }
+.p2-opt-k { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 4px; margin-right: 8px; background: var(--k);
+  color: #fff; font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; vertical-align: 2px; }
+.p2 h2 { max-width: 30ch; }
+.p2-all-row { margin-bottom: 8px; }
+.p2-all-row button { font: inherit; font-family: var(--font-data); font-size: var(--step--1); color: var(--mute); background: transparent;
+  border: 1px solid var(--rule); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+.p2-all-row button[aria-pressed="true"] { color: var(--fg); border-color: var(--fg); background: var(--bg-2); }
+#p2-budget { margin-top: 0; }
+details.p2-more { max-width: none; margin-top: 48px; }
+details.p2-more summary { font-size: var(--step-0); }
+.figs.trust { margin-top: 28px; }
+@media (max-width: 760px) { .p2-options { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- method + data ---- */
 .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 32px; }
@@ -407,23 +447,38 @@ html.still .steps { padding-block: 0; }
       <div class="eyebrow">[ Simulation study, WebGL, 2026 ]</div>
       <h1 id="title">Driverless Yishun</h1>
       <p class="dek">Could autonomous shuttles carry every bus ride inside Yishun?</p>
-      <p class="answer" id="answer">Short answer: in the model, yes, with a fleet sized for the morning rush and at a cost. About <span class="sh-t" data-v="parity">—</span> ten-seat shuttles running all day beat today's buses in every hour; <span data-v="parity_lo">—</span> do not. That is <span data-v="vehx">—</span> as many vehicles as the <span class="bu-t" data-v="busesin">—</span> buses of all services inside Yishun at 07:00, driving <span data-v="vkmx">—</span> the kilometres, with up to <span data-v="kerbmax">—</span> shuttles stopped at once at Yishun MRT.</p>
+      <p class="answer" id="answer">A simulation study in two parts, on LTA's fare-card counts of the <span data-v="rides">—</span> bus rides that start and end inside the town on a school-term weekday, and its live bus data.</p>
+      <div class="parts">
+        <a class="part" href="#part1">
+          <span class="part-k">Part 1 · capacity</span>
+          <span class="part-q">Could shuttles carry every ride?</span>
+          <span class="part-big"><span class="sh" data-v="parity">—</span><small>ten-seat shuttles, running all day</small></span>
+          <span class="part-a">Yes in the model, with a fleet sized for the morning rush: <span data-v="vehx">—</span> as many vehicles as the <span data-v="busesin">—</span> buses inside Yishun at 07:00, driving <span data-v="vkmx">—</span> the kilometres. Across <span data-v="sens_n">—</span> alternative assumptions the fleet ranges <span data-v="sens_lo">—</span>–<span data-v="sens_hi">—</span>.</span>
+        </a>
+        <a class="part" href="#phase2">
+          <span class="part-k">Part 2 · cost</span>
+          <span class="part-q">Is a bus and shuttle mix worth it?</span>
+          <span class="part-big"><span class="c2" data-v="p2_c_per1_range_onboard">—</span><small>of riders' time saved per SGD 1 spent</small></span>
+          <span class="part-a">Shuttles for the rides the bus serves worst save time, but no option tested lowers the operating cost. With a safety operator on board, as today's pilots require, every SGD 1 added buys riders' time worth less than SGD 1; with remote supervision only, not permitted today, about <span data-v="p2_c_per1_range_remote">—</span>.</span>
+        </a>
+      </div>
       <details class="notes"><summary>About this study and what it assumes</summary><div class="prose">
         <p class="small">Singapore is starting driverless shuttles inside new towns. This study asks what it would take in a <em>mature</em> one. It sends a simulated weekday of Yishun's internal bus rides, drawn from LTA fare-card counts between every pair of stops, through an on-demand shuttle fleet and compares every ride with today's buses. Road times are calibrated to LTA's live bus data and checked against bus GPS movement.</p>
         <p class="small">Four-seat vehicles would need <span data-v="par4">—</span>, twenty-seat ones <span data-v="par20">—</span>. The dispatcher matters as much as the vehicles: one that considers four times as many shuttles per request needs only <span data-v="disp4">—</span>. Across <span data-v="sens_n">—</span> alternative assumptions the ten-seat fleet ranges <span data-v="sens_lo">—</span>–<span data-v="sens_hi">—</span>. Several assumptions favour the shuttles: unlimited kerb space, no traffic added by the fleet itself, no charging, travel times known exactly, and road speeds measured outside the morning rush. Two favour the bus: crowding is ignored, and the dispatcher is a simple one.</p>
       </div></details>
       <div class="cta-row"><button class="show ride-cta" type="button" data-show="ride">Ride along with a shuttle</button><a class="play-cta" href="play.html">Play Night Shift ↗</a></div>
     </div>
-    <dl class="figs" id="figs">
-      <div class="fig"><dt>Bus rides inside Yishun</dt><dd><span data-v="rides">—</span><small>per weekday; both ends in the town</small></dd></div>
-      <div class="fig"><dt>Median ride</dt><dd><span data-v="median">—</span><small>straight line; <span data-v="hubshare">—</span> start or end at an MRT or the interchange</small></dd></div>
-      <div class="fig"><dt>Shuttles to match the bus</dt><dd><span class="sh" data-v="parity">—</span> <small>10-seat, running all day; <span class="bu-t" data-v="busesin">—</span> buses are inside Yishun at 07:00 (<span data-v="feeders">—</span> of them feeders)</small></dd></div>
-      <div class="fig"><dt>Vehicle-km in town</dt><dd><span class="sh" data-v="vkmx">—</span><small>that shuttle fleet against all buses inside Yishun today</small></dd></div>
-    </dl>
     <nav class="toc" aria-label="Sections">
-      <a href="#explore">Explore</a><a href="#trips">Trips</a><a href="#cliff">Fleet</a><a href="#cost">Vehicles</a><a href="#kerb">Kerb</a><a href="#who">Who gains</a><a href="#method">Method</a><a href="#data">Data</a><a href="play.html">Play Night Shift ↗</a>
+      <span class="toc-g">Part 1</span><a href="#explore">Explore the day</a><a href="#trips">Trips</a><a href="#cliff">Fleet</a><a href="#cost">Vehicles</a><a href="#kerb">Kerb</a><a href="#who">Who gains</a>
+      <span class="toc-g">Part 2</span><a href="#phase2">Options</a><a href="#p2-worth">Worth it?</a><a href="#p2-budget-h">Budgets</a><a href="#p2-who">Who gains</a><a href="#p2-more">Details</a>
+      <span class="toc-g">Evidence</span><a href="#trust">How far to trust it</a><a href="evidence.html">Checks, data and code ↗</a>
     </nav>
   </div>
+</section>
+
+<section class="part-head wrap" id="part1" aria-labelledby="part1-h">
+  <div class="inner"><span class="part-k">Part 1 · capacity</span><h2 id="part1-h">Could autonomous shuttles carry every bus ride inside Yishun?</h2>
+  <p>Every internal ride of a simulated weekday goes through a fleet of pooled, on-demand shuttles and is compared, ride by ride, with today's buses. Press play to watch the day, or scroll for what it showed.</p></div>
 </section>
 
 <section class="stage-wrap wrap" id="explore" aria-label="Interactive map of the simulated day">
@@ -654,121 +709,102 @@ html.still .steps { padding-block: 0; }
   </div>
 </section>
 
+<section class="part-head wrap" aria-labelledby="part2-h">
+  <div class="inner"><span class="part-k">Part 2 · cost and passenger time</span><h2 id="part2-h">If not every ride, which ones, and at what cost?</h2>
+  <p>Part 1 replaced every bus ride. Part 2 asks whether a combined service, keeping every bus and adding shuttles only where the timetable is slowest, saves riders' time at a cost worth paying.</p></div>
+</section>
+
 <section class="chapter wrap p2" id="phase2" aria-labelledby="p2-h2">
   <div class="inner" style="grid-template-columns: minmax(0,1fr);">
     <div class="prose">
-      <div class="kicker">Phase 2 · cost and passenger time</div>
-      <h2 id="p2-h2">Can a combined bus and shuttle service save time at an acceptable cost?</h2>
+      <div class="kicker">Part 2 · the options</div>
+      <h2 id="p2-h2">Three ways to carry the same rides</h2>
       <p class="p2-banner" id="p2-banner" hidden>Development data: the cost figures in this section are synthetic and are not results.</p>
-      <p id="p2-lead">Phase 2 compares three ways of carrying the <span data-v="p2_rides">—</span> internal rides of an average weekday, on the same simulated days, stop to stop.</p>
-      <p id="p2-answer"><strong>In short:</strong> no option tested lowers operating cost. With a safety operator on board, as today's pilots require, the combined service buys time more cheaply than any full-replacement fleet: C saves <span data-v="p2_c_saved_range">—</span> passenger-hours a weekday for <span data-v="p2_c_dcost_range_onboard">—</span> more a day (central case), or <span data-v="p2_c_cphs_range_onboard">—</span> per passenger-hour saved. Full replacement saves <span data-v="p2_b_saved">—</span> hours for <span data-v="p2_b_dcost_onboard">—</span> (<span data-v="p2_b_cphs_onboard">—</span> an hour). Remote supervision with nobody on board, not permitted today, would bring C to <span data-v="p2_c_cphs_range_remote">—</span> an hour. What counts as acceptable is a budget choice: the table below shows what each daily budget buys.</p>
+      <p id="p2-lead">Each option carries the same <span data-v="p2_rides">—</span> internal rides of an average weekday, on the same simulated days, timed stop to stop: waiting plus riding, as in Part 1.</p>
     </div>
-    <div class="table-wrap"><table id="p2-options"><thead><tr><th>Option</th><th>What runs</th><th>Bus service</th></tr></thead><tbody>
-      <tr><td><span class="p2-key a"></span>A · today's buses</td><td>Published routes and headways (Phase 1 bus model)</td><td>As today</td></tr>
-      <tr><td><span class="p2-key b"></span>B · full replacement</td><td>A fixed fleet of pooled shuttles carries every internal ride (Phase 1's definition)</td><td>Kept; or, as a theoretical bound, the 15 services that carry only internal riders withdrawn</td></tr>
-      <tr><td><span class="p2-key c"></span>C · combined</td><td>Shuttles carry the rides the timetable serves worst: those whose expected bus time exceeds a direct drive by at least θ minutes, decided from published routes and headways before the rider travels. Every other ride stays on the bus</td><td>Kept</td></tr>
-    </tbody></table></div>
+    <div class="p2-options">
+      <div class="p2-opt" style="--k: var(--p2-a)"><span class="p2-opt-k">A</span><b>Today's buses</b><p>Published routes and headways, as in Part 1. The baseline every option is compared with.</p></div>
+      <div class="p2-opt" style="--k: var(--p2-b)"><span class="p2-opt-k">B</span><b>Full replacement</b><p>Part 1's fleet: <span data-v="p2_b_fleet">—</span> shuttles carry every internal ride. Buses are kept, or, as a theoretical bound, the <span data-v="p2_bus_n_internal_only">—</span> services that carry only internal riders are withdrawn.</p></div>
+      <div class="p2-opt" style="--k: var(--p2-c)"><span class="p2-opt-k">C</span><b>Combined</b><p>Every bus is kept. A shuttle is offered only where the bus is expected to take at least θ minutes longer than driving direct, judged from the published timetable before anyone travels. A smaller θ offers more rides.</p></div>
+    </div>
+
+    <div class="prose after" id="p2-worth">
+      <div class="kicker">Is it worth it?</div>
+      <h2>Shuttles save riders' time, but nothing tested saves money</h2>
+      <p id="p2-answer">Every option with acceptable service costs more to run than today's buses and saves passenger time. With a safety operator on board, as today's pilots require, the four C designs save <span data-v="p2_c_saved_range">—</span> passenger-hours a weekday for <span data-v="p2_c_dcost_range_onboard">—</span> more a day: <span data-v="p2_c_cphs_range_onboard">—</span> for each hour of riders' time saved. Full replacement costs <span data-v="p2_b_cphs_onboard">—</span> an hour with every bus kept, and <span data-v="p2_bw_cphs_onboard">—</span> if the services that carry only internal riders were withdrawn (<span data-v="p2_bwf_cphs_onboard">—</span> counting the bus operator's fee only). Remote supervision with nobody on board, not permitted today, would bring C to <span data-v="p2_c_cphs_range_remote">—</span> an hour.</p>
+      <p class="small">Is an hour of riders' time worth that much? A separate social estimate values it at <span data-v="p2_vot">—</span> in the vehicle and <span data-v="p2_wait_weight">—</span> times as much spent waiting. Time saved is not revenue: nobody is paid it.</p>
+    </div>
     <div class="p2-modes" role="group" aria-label="Staffing case" id="p2-modes"></div>
     <p class="small p2-modenote" id="p2-modenote"></p>
     <div class="chart">
-      <figure><svg id="ch-p2-trade" viewBox="0 0 760 420" role="img" aria-label="Additional cost per day against passenger-hours saved per day, every simulated configuration"></svg>
+      <figure><svg id="ch-p2-worth" viewBox="0 0 760 300" role="img" aria-label="Value of riders' time saved per SGD 1 of added operating cost, by option"></svg>
+      <div class="legend-row" id="p2-worth-legend"></div>
+      <figcaption id="p2-worth-cap">What the riders' time saved is worth for each SGD 1 of added operating cost (central costs, all buses kept), for the selected staffing case. The dot uses the central value of time; the line spans the low and high values. Left of the dashed line the time saved is worth less than it costs.</figcaption></figure>
+    </div>
+
+    <div class="prose after" id="p2-budget-h">
+      <div class="kicker">What a budget buys</div>
+      <h2>More money buys more time, at a rising price per hour</h2>
+      <p>There is no single acceptable cost, so the study shows what each daily budget buys. Each point is one simulated design; the line joins the designs that save more than any cheaper one. Combined designs fill the line at small and medium budgets; full replacement is the most time money can buy, at the highest price per hour.</p>
+    </div>
+    <div class="chart">
+      <div class="chart-tabs p2-all-row"><button type="button" id="p2-all" aria-pressed="false">Show all <span data-v="p2_n_configs">—</span> simulated designs</button></div>
+      <figure><svg id="ch-p2-trade" viewBox="0 0 760 420" role="img" aria-label="Additional cost per day against passenger-hours saved per day"></svg>
       <div class="legend-row" id="p2-trade-legend"></div>
-      <figcaption id="p2-trade-cap">Every simulated configuration: additional operating cost per weekday against Option A (central case, all buses kept) and passenger-hours saved per weekday on the same rides (mean of the simulated days). The line joins the configurations that save more than every cheaper one. Faint rays mark constant cost per passenger-hour saved. Hollow markers: variants (other vehicle sizes, evening only, a 45-minute decline limit). Crossed markers: service not acceptable (more than 1 % of offered rides declined in some hour, or riders refused).</figcaption></figure>
+      <figcaption id="p2-trade-cap">Additional operating cost per weekday against today's buses (central case, all buses kept) and passenger-hours saved per weekday on the same rides (mean of the simulated days). Faint rays mark a constant cost per hour saved. With every design shown, hollow markers are variants (other vehicle sizes, evening only, a 45-minute decline limit) and crosses are designs whose service is not acceptable (more than 1 % of offered rides declined in some hour, or riders refused).</figcaption></figure>
     </div>
-    <div class="p2-grid">
-      <div class="chart"><figure><svg id="ch-p2-cost" viewBox="0 0 640 300" role="img" aria-label="Daily cost by class for the reference options"></svg>
-        <div class="legend-row" id="p2-cost-legend"></div>
-        <figcaption>Shuttle operating cost per weekday by class, central case, for the selected staffing case; the line spans the low- to high-cost cases. Today's buses inside Yishun cost <span data-v="p2_bus_cost">—</span> a weekday (<span data-v="p2_bus_cost_range">—</span>), shared with riders from outside the town.</figcaption></figure></div>
-      <div class="chart"><figure><svg id="ch-p2-time" viewBox="0 0 640 300" role="img" aria-label="Passenger-hours per weekday by option, waiting and in-vehicle"></svg>
-        <div class="legend-row" id="p2-time-legend"></div>
-        <figcaption>Passenger-hours per weekday on the same rides, stop to stop, split into waiting and in-vehicle time. Bus times are modelled; shuttle times are simulated.</figcaption></figure></div>
+    <div class="table-wrap"><table id="p2-budget"><caption>The most passenger-hours saved within each daily budget, central case, for the selected staffing case.</caption><thead><tr><th>Budget per weekday</th><th>Best design</th><th style="text-align:right">Passenger-hours saved</th><th style="text-align:right">Per hour saved</th></tr></thead><tbody><tr><td colspan="4">—</td></tr></tbody></table></div>
+
+    <div class="prose after" id="p2-who">
+      <div class="kicker">Who gains</div>
+      <h2>Riders on looping feeders and long headways</h2>
+      <p>The time saved goes to riders whose bus trip is slow next to a direct drive: the feeders that loop through the estates, and the long waits early in the morning and late at night. Under the combined designs, riders who stay on the bus keep today's trip, and riders declined a shuttle take the bus as today.</p>
     </div>
-    <div class="p2-grid">
-      <div class="chart"><figure><svg id="ch-p2-period" viewBox="0 0 640 300" role="img" aria-label="Passenger-hours saved by time of day"></svg>
-        <div class="legend-row" id="p2-period-legend"></div>
-        <figcaption>Passenger-hours saved per weekday by the period in which the ride is requested, against Option A on the same rides (sums, not averages of means).</figcaption></figure></div>
+    <div class="chart"><figure><svg id="ch-p2-period" viewBox="0 0 760 300" role="img" aria-label="Passenger-hours saved by time of day"></svg>
+      <div class="legend-row" id="p2-period-legend"></div>
+      <figcaption>Passenger-hours saved per weekday by the period in which the ride is requested, against today's buses on the same rides (sums, not averages of means).</figcaption></figure></div>
+
+    <details class="notes p2-more" id="p2-more">
+      <summary>More detail: cost structure, passenger time, cost sensitivity and stress tests</summary>
+      <div class="p2-grid">
+        <div class="chart"><figure><svg id="ch-p2-cost" viewBox="0 0 640 300" role="img" aria-label="Daily cost by class for the reference options"></svg>
+          <div class="legend-row" id="p2-cost-legend"></div>
+          <figcaption>Shuttle operating cost per weekday by class, central case, for the selected staffing case; the line spans the low- to high-cost cases. Today's buses inside Yishun cost <span data-v="p2_bus_cost">—</span> a weekday (<span data-v="p2_bus_cost_range">—</span>), shared with riders from outside the town.</figcaption></figure></div>
+        <div class="chart"><figure><svg id="ch-p2-time" viewBox="0 0 640 300" role="img" aria-label="Passenger-hours per weekday by option, waiting and in-vehicle"></svg>
+          <div class="legend-row" id="p2-time-legend"></div>
+          <figcaption>Passenger-hours per weekday on the same rides, stop to stop, split into waiting and in-vehicle time. Bus times are modelled; shuttle times are simulated.</figcaption></figure></div>
+      </div>
       <div class="chart"><figure><svg id="ch-p2-tornado" viewBox="0 0 640 360" role="img" aria-label="Cost per passenger-hour saved when one cost parameter moves to its low or high value"></svg>
-        <figcaption id="p2-tornado-cap">Cost per passenger-hour saved when one cost parameter at a time moves to its low-cost or high-cost value, the others central, for <span data-v="p2_focus_onboard">—</span>.</figcaption></figure></div>
-    </div>
-    <div class="prose after">
-      <h3>Stress tests</h3>
-      <p class="small">Passenger-hours saved per weekday against Option A in the same conditions (mean of three simulated days). Speed stresses scale road times; added shuttle traffic does not slow anything, because congestion is not modelled.</p>
-    </div>
-    <div class="table-wrap"><table id="p2-stress"><thead><tr><th>Condition</th></tr></thead><tbody><tr><td>—</td></tr></tbody></table></div>
-    <div class="prose after">
-      <h3>What a budget buys</h3>
-      <p class="small">The most passenger-hours saved per weekday by any configuration with acceptable service whose additional cost is within the budget, central case, for the selected staffing case. There is no single acceptable cost; the table shows the trade-off across budgets.</p>
-    </div>
-    <div class="table-wrap"><table id="p2-budget"><thead><tr><th>Budget per weekday</th><th>Configuration</th><th style="text-align:right">Passenger-hours saved</th><th style="text-align:right">Cost per hour saved</th></tr></thead><tbody><tr><td colspan="4">—</td></tr></tbody></table></div>
-    <div class="prose after" id="p2-notes">
-      <h3>What is observed, simulated and assumed</h3>
-      <p class="small"><span class="tag known">observed</span> rides by stop pair and hour (LTA fare-card OD), routes and headways, all Singapore bus rides, which share Yishun's bus-km between internal and other riders (internal riders account for <span data-v="p2_bus_internal_share">—</span> of in-area bus passenger-km). <span class="tag model">simulated</span> shuttle waits, rides, declines, refusals, vehicle-km and vehicle-hours; bus times modelled. <span class="tag assumed">assumed</span> cost values without published evidence (insurance, software, staffing ratios, permits, control centre), the charging-reserve estimate (not a charging simulation), fixed demand, no congestion feedback. Time savings are not operator revenue; their value appears only in a separate social estimate.</p>
-      <p class="small">Full method, sources and limits: <a href="https://github.com/BLTC-520/testing-yishun/blob/main/docs/phase2/report.md">the Phase 2 report</a>, the <a href="https://github.com/BLTC-520/testing-yishun/blob/main/data/parameters/cost_register.csv">source register</a> and the <a href="https://github.com/BLTC-520/testing-yishun/blob/main/docs/phase2/definitions.md">definitions</a>.</p>
-    </div>
+        <figcaption id="p2-tornado-cap">Cost per passenger-hour saved when one cost parameter at a time moves to its low-cost or high-cost value, the others central.</figcaption></figure></div>
+      <div class="prose after">
+        <h3>Stress tests</h3>
+        <p class="small">Passenger-hours saved per weekday against today's buses in the same conditions, mean of the same three simulated days in every row. Full replacement (B) accepts a quoted pickup up to 45 minutes away and refuses beyond that, with no bus; the combined designs decline beyond 15 minutes and the rider takes the bus. The column "B, C's rule" is full replacement under the combined designs' rule, which separates that choice from replacement itself. Kerb limits of 10 and 7 shuttles at once per station are test values: the real capacity is unknown. Speed stresses scale road times; added shuttle traffic slows nothing, because congestion is not modelled.</p>
+      </div>
+      <div class="table-wrap"><table id="p2-stress"><thead><tr><th>Condition</th></tr></thead><tbody><tr><td>—</td></tr></tbody></table></div>
+      <div class="prose after" id="p2-notes">
+        <h3>What is observed, simulated and assumed</h3>
+        <p class="small"><span class="tag known">observed</span> rides by stop pair and hour (LTA fare-card OD), routes and headways, and all Singapore bus rides, which share Yishun's bus-km between internal and other riders (internal riders account for <span data-v="p2_bus_internal_share">—</span> of in-area bus passenger-km). <span class="tag model">simulated</span> shuttle waits, rides, declines, refusals, vehicle-km and vehicle-hours; bus times modelled. <span class="tag assumed">assumed</span> cost values without published evidence (insurance, software, staffing ratios, permits, control centre), the charging-reserve estimate (not a charging simulation), fixed demand, no congestion feedback.</p>
+        <p class="small">Full method, sources and limits: <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/docs/phase2/report.md">the Phase 2 report</a>, its <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/docs/phase2/review.md">independent review</a>, the <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/data/parameters/cost_register.csv">source register</a> and the <a href="evidence.html">evidence page</a>.</p>
+      </div>
+    </details>
     <div class="p2-tip" id="p2-tip" hidden></div>
   </div>
 </section>
 
-<section class="chapter wrap" id="method">
+<section class="chapter wrap" id="trust" aria-labelledby="trust-h">
   <div class="inner" style="grid-template-columns: minmax(0,1fr);">
     <div class="prose">
-      <div class="kicker">Method</div>
-      <h2>What is observed, what is modelled, what is assumed</h2>
+      <div class="kicker">Evidence</div>
+      <h2 id="trust-h">How far to trust these numbers</h2>
+      <p>Every figure on this page comes from the project's own pipeline, and each was checked. The evidence page has the full scorecard, the charts behind it, the data files and the commands that rebuild them.</p>
     </div>
-    <div class="cols">
-      <div class="card"><h3><span class="tag known">observed</span> Data</h3><ul>
-        <li>Rides between every pair of stops by hour: LTA DataMall fare-card OD, July and August 2026 (September as a check).</li>
-        <li>Bus routes, stop sequences, first and last buses, headway ranges: LTA DataMall.</li>
-        <li>Bus running times and headway regularity: <span data-v="calobs">—</span> matched pairs of LTA's live, GPS-based arrival estimates, 15 Oct 2026, <span data-v="calhours">—</span>.</li>
-        <li>Bus GPS movement: <span data-v="gpsn">—</span> pairs of reported positions of the same bus a few minutes apart. They come from the same feed and day, but are observed positions rather than LTA's estimates.</li>
-        <li>Roads: OpenStreetMap. Land use and boundaries: URA Master Plan 2019. Block storeys: HDB.</li>
-      </ul></div>
-      <div class="card"><h3><span class="tag model">modelled</span> Model</h3><ul>
-        <li>Road travel time = calibrated cruise time + <span data-v="sig">—</span> s per signal-controlled location; bus dwell <span data-v="dwell">—</span> s per stop (+<span data-v="hubx">—</span> s at stations). Same roads and speeds for both modes.</li>
-        <li>Bus wait = <span data-v="kappa">—</span> × combined headway of the lines serving a stop pair (common-lines model).</li>
-        <li>Shuttles: event-driven simulation, immediate insertion dispatch, rides within 1.6× direct + 4 min, promises slip at most 5 min, idle vehicles reposition towards expected demand. A stop takes <span data-v="d0">—</span> s plus 4 s per rider (assumed). Riders who would wait over 45 min are counted as refused.</li>
-      </ul></div>
-      <div class="card"><h3><span class="tag assumed">assumed</span> Not modelled</h3><ul>
-        <li>No change in demand: riders, times and stops are today's. No fares, no mode shift, no induced trips, no merging of two-bus trips into one.</li>
-        <li>No traffic interaction: hundreds of shuttles do not slow each other or the buses. Speeds are calibrated on 10:00–13:00; the morning rush was not observed. In the evening peak, LTA's estimates imply buses <span data-v="pm_eta">—</span>× slower than the midday model, while bus GPS positions show <span data-v="pm_gps">—</span>× (95% interval <span data-v="pm_gps_ci">—</span>). One case in the sensitivity table applies the evening-peak calibration all day.</li>
-        <li>The dispatcher knows travel times exactly. No kerb capacity limit in the base case (a limit is tested separately), no charging, no breakdowns, no safety operators. Bus crowding and denied boarding are not modelled.</li>
-      </ul></div>
-    </div>
-    <div class="chart" style="margin-top:32px"><figure><svg id="ch-cal" viewBox="0 0 640 300" role="img" aria-label="Calibration: modelled against observed bus running times"></svg><figcaption id="cal-cap">Calibration: modelled against observed bus running times for stop sequences of one to six stops.</figcaption></figure></div>
-    <div class="chart" style="margin-top:24px"><figure><svg id="ch-gps" viewBox="0 0 640 260" role="img" aria-label="Observed bus GPS movement against the model, by hour"></svg><figcaption id="gps-cap">Check against observed movement: elapsed time between reported GPS positions of the same bus, divided by the model's time between those positions, pooled by hour (total observed over total modelled; bars: 95% interval over routes). 1 means the model matches what buses did. The positions come from the same live feed and day as the estimates used for fitting (10:00–12:59); later hours are out of sample. No data were collected between 15:00 and 17:30, and 17:00 covers only 17:30–17:59.</figcaption></figure></div>
-    <div class="prose" style="margin-top:28px">
-      <h3>How much the headline moves</h3>
-      <p class="small">Smallest fixed fleet of 10-seat shuttles that keeps up with the bus in every hour on all three demand replicates, when one assumption changes at a time. The middle column says which mode the change favours.</p>
-    </div>
-    <div class="prose"><p class="small" id="sens-note" style="margin: 0 0 6px;"></p><p class="small" id="sens-excl" style="margin: 0 0 12px;"></p></div>
-    <div class="table-wrap"><table id="sens-table"><thead><tr><th>Assumption changed</th><th>Favours</th><th style="text-align:right">Fleet that keeps up all day</th><th style="text-align:right">Bus, day mean</th></tr></thead><tbody><tr><td colspan="4">—</td></tr></tbody></table></div>
-  </div>
-</section>
-
-<section class="chapter wrap" id="data">
-  <div class="inner" style="grid-template-columns: minmax(0,1fr);">
-    <div class="prose">
-      <div class="kicker">Data and reproducibility</div>
-      <h2>Sources and licences</h2>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Dataset</th><th>Provider</th><th>Used for</th><th>Licence</th></tr></thead>
-      <tbody>
-        <tr><td>Passenger Volume by Origin Destination Bus Stops (July, August, September 2026)</td><td>LTA DataMall</td><td>Observed demand</td><td>Singapore Open Data Licence v1.0</td></tr>
-        <tr><td>Bus Stops, Bus Services, Bus Routes; live Bus Arrival (v3)</td><td>LTA DataMall</td><td>Bus network; calibration; GPS check</td><td>Singapore Open Data Licence v1.0</td></tr>
-        <tr><td>HDB Property Information; HDB Existing Building</td><td>HDB via data.gov.sg</td><td>Block heights and footprints</td><td>Singapore Open Data Licence v1.0</td></tr>
-        <tr><td>Master Plan 2019 planning areas, subzones, land use</td><td>URA via data.gov.sg</td><td>Study area; base map</td><td>Singapore Open Data Licence v1.0</td></tr>
-        <tr><td>Census of Population 2020, residents by subzone and age</td><td>SingStat via data.gov.sg</td><td>Age profile</td><td>Singapore Open Data Licence v1.0</td></tr>
-        <tr><td>Roads, signals, buildings, rail</td><td>OpenStreetMap contributors</td><td>Road network; context</td><td>ODbL 1.0</td></tr>
-      </tbody>
-    </table></div>
-    <div class="prose" style="margin-top:20px">
-      <p>The pipeline, simulator, tests and this page are in the project repository. With an LTA DataMall key in <span class="num">LTA_DATAMALL_KEY</span>, these commands rebuild the results. The live calibration data of 15 October 2026 cannot be downloaded again, so the fitted values are committed and used unless you collect your own:</p>
-<pre>make data                    # LTA, data.gov.sg, OpenStreetMap
-make reproduce-core-results  # experiments, sensitivity, page data, tests
-make live calibrate          # optional: collect live bus data, refit
-make web                     # build this page</pre>
-    </div>
+    <dl class="figs trust">
+      <div class="fig"><dt>Road model, held-out services</dt><dd><span data-v="ho_mape">—</span><small>error in bus running time, against <span data-v="ho_dist_mape">—</span> for distance alone (<span data-v="calobs">—</span> live LTA observations)</small></dd></div>
+      <div class="fig"><dt>Observed bus GPS ÷ model</dt><dd><span data-v="gpsratio">—</span><small>at midday; <span data-v="pm_gps">—</span> in the evening peak. The morning peak was not observed</small></dd></div>
+      <div class="fig"><dt>Fleet under other assumptions</dt><dd><span data-v="sens_lo">—</span>–<span data-v="sens_hi">—</span><small>shuttles, across <span data-v="sens_n">—</span> alternatives pushing both ways (base <span data-v="parity">—</span>)</small></dd></div>
+      <div class="fig"><dt>Part 2, independent review</dt><dd>9<small>findings, 3 material: a bus-model error on looping feeder 812, an over-broad comparison and unlike stress tests. All fixed and re-run</small></dd></div>
+    </dl>
+    <p class="cta-row"><a class="play-cta" href="evidence.html">Checks, data and code ↗</a></p>
   </div>
 </section>
 

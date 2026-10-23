@@ -1276,6 +1276,7 @@
     const lo = d3.min(known) - 25, hi = d3.max(known) + 25, at = (v) => (v == null ? 100 : (100 * (v - lo)) / (hi - lo));
     const b0 = base && base.parity_fleet != null ? at(base.parity_fleet) : 50;
     const tb = document.querySelector("#sens-table tbody");
+    if (!tb) return;   // the sensitivity table lives on the evidence page
     tb.innerHTML = S.map((r, i) => {
       const n = r.parity_fleet == null ? "more than 800" : fmtInt(r.parity_fleet);
       const diff = r.parity_fleet != null && base && base.parity_fleet != null && r.id !== "base"
@@ -1374,7 +1375,7 @@
       document.getElementById("who-text").textContent = R.who.text;
       if (R.who.headline) document.getElementById("who-h2").textContent = R.who.headline;
     }
-    if (cal.n_obs_used) {
+    if (cal.n_obs_used && document.getElementById("cal-cap")) {   // the calibration chart lives on the evidence page
       const ho = cal.holdout_services, g = R.gps_check && R.gps_check.by_window && R.gps_check.by_window["10-12"];
       let t = `Calibration on ${fmtInt(cal.n_segments_used)} stop sequences of one to six stops (${fmtInt(cal.n_obs_used)} matched observations): mean absolute error ${Math.round(cal.segment_mae_s)} s`;
       if (cal.in_sample) t += ` (${Math.round(100 * cal.in_sample.mape)}%)`;
