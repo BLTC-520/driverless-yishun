@@ -154,8 +154,9 @@ def provenance(M: Model) -> dict:
     try:
         rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
                              cwd=str(PROCESSED.parent.parent)).stdout.strip()
-        dirty = bool(subprocess.run(["git", "status", "--porcelain", "pipeline"], capture_output=True, text=True,
-                                    cwd=str(PROCESSED.parent.parent)).stdout.strip())
+        # tracked files only: an untracked new module does not change the code a run used
+        dirty = bool(subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "pipeline"],
+                                    capture_output=True, text=True, cwd=str(PROCESSED.parent.parent)).stdout.strip())
     except OSError:
         rev, dirty = "", None
     return {"model_key": M.key, "demand_months": list(M.months), "calibration": cal,
