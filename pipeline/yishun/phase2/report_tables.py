@@ -151,8 +151,9 @@ def build(S: dict) -> str:
 
     # 5 by period
     L += ["## 5. Who gains: passenger-hours saved by period", "",
-          "Sums over the rides requested in each period (not averages of means). Faster/slower: shares of all rides in the "
-          "period that reach their stop sooner or later than the bus model's expected time.", ""]
+          "Sums over the rides requested in each period (not averages of means); mean times use the expected bus time. "
+          "Faster/slower: shares of all rides in the period that reach their stop sooner or later than the same ride by "
+          "bus, with one simulated bus wait per ride (as in Phase 1); rides that stay on the bus are neither.", ""]
     rows = []
     for i in refs:
         for r in S["who"][i]["period"]:
@@ -289,11 +290,32 @@ def build(S: dict) -> str:
     for r in S["service_level"]:
         if r["scenario"] != "base" or r["availability"] != 1.0 or r["berths"] != -1:
             continue
-        rows.append([f"θ {X.theta_txt(r['theta_min'])}" if r["theta_min"] is not None else "B (every ride)", r["capacity"],
-                     r["hours"] or "all day", f"{r['w_max_s'] / 60:g} min", r["fleet_sl"] if r["fleet_sl"] is not None else "none simulated",
+        t = r["theta_min"]
+        hours = "all day"
+        if r["hours"]:
+            a, b = (int(x) for x in str(r["hours"]).split("-"))
+            hours = f"{a % 24:02d}:00–{(b + 1) % 24:02d}:00"
+        rows.append(["every ride" if t is None or t <= X.ALL_RIDES else f"θ {X.theta_txt(t)}", r["capacity"], hours, f"{r['w_max_s'] / 60:g} min", ("none simulated" if r["fleet_sl"] is None else
+                      f"≤ {int(r['fleet_sl'])} (smallest simulated)" if r["fleet_sl"] == min(r["fleets"]) else int(r["fleet_sl"])),
                      ", ".join(str(int(f)) for f in r["fleets"]), "yes" if r["monotone"] else "no"])
     L += [_table(["Coverage", "Seats", "Hours", "Decline limit", "Service-level fleet", "Fleets simulated", "Monotone"], rows,
                  right={1, 4}), ""]
+
+    # 13 every B configuration and the C variants
+    L += ["## 13. B fleets and C variants", "",
+          "Every simulated B fleet and every C variant (other vehicle sizes, the 45-minute decline limit, service after "
+          "20:00 only), base scenario. Added cost and cost per passenger-hour saved: central case, all buses kept, per "
+          "staffing case (" + " / ".join(P["staff_modes"][m]["short"] for m in modes) + ").", ""]
+    rows = []
+    for c in P["configs"]:
+        if c["option"] == "A" or c["kind"] == "C":
+            continue
+        e = [P["costs"][m].get(c["id"]) for m in modes]
+        rows.append([c["label"], "yes" if c["acceptable"] else "no", _h(c["saved_h"]), _h(c["n_declined"]), _h(c["n_refused"]),
+                     " / ".join(X.sgd(x["delta_cost"]["central"]) if x else "—" for x in e),
+                     " / ".join((X.sgd(x["cost_per_hour_saved"]["central"]) or "—") if x else "—" for x in e)])
+    L += [_table(["Configuration", "Acceptable service", "Saved passenger-h", "Declined", "Refused", "Added cost", "Per passenger-h saved"],
+                 rows, right={2, 3, 4}), ""]
     return "\n".join(L) + "\n"
 
 
