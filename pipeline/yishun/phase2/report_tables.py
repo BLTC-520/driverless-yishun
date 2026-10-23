@@ -34,6 +34,14 @@ def _h(x) -> str | None:
     return None if x is None else f"{x:,.0f}"
 
 
+def _n(x) -> str | None:
+    """A mean count of rides: a few rides over several days is "<1", never a misleading 0."""
+    return None if x is None else ("<1" if 0 < x < 0.5 else f"{x:,.0f}")
+
+
+GROUP_NAMES = {"hub": "station or estate", "band": "ride distance", "subzone": "subzone of origin"}
+
+
 def _min(x) -> str | None:
     return None if x is None else f"{x:.1f}"
 
@@ -73,14 +81,15 @@ def build(S: dict) -> str:
     for i in ["A", *refs]:
         c, cs = cfg[i], cfg_s[i]
         if i == "A":
-            rows.append([lab(i), _h(c["n"]), "—", "—", "—", _h(c["pax_h_A"]), "—", _min(c["mean_min_A"]), _min(c["p90_min_A"]),
-                         _min(cs.get("mean_min_A_min")) + "–" + _min(cs.get("mean_min_A_max")) if cs.get("mean_min_A_min") else "—"])
+            rows.append([lab(i), _h(c["n"]), "—", "—", "—", _h(c["pax_h_A"]), _h(cs.get("wait_h_A")), _h(cs.get("ivt_h_A")), "—",
+                         _min(c["mean_min_A"]), _min(c["p90_min_A"]), str(c["n_seeds"])])
             continue
-        rows.append([lab(i), _h(c["n"]), f"{_h(c['n_shuttle'])} ({_pct(c['n_shuttle'] / c['n'])})", _h(c["n_declined"]),
-                     _h(c["n_refused"]), _h(c["pax_h"]), f"{_h(c['saved_h'])} ({_h(c['saved_h_min'])}–{_h(c['saved_h_max'])})",
+        rows.append([lab(i), _h(c["n"]), f"{_h(c['n_shuttle'])} ({_pct(c['n_shuttle'] / c['n'])})", _n(c["n_declined"]),
+                     _n(c["n_refused"]), _h(c["pax_h"]), _h(cs.get("wait_h")), _h(cs.get("ivt_h")),
+                     f"{_h(c['saved_h'])} ({_h(c['saved_h_min'])}–{_h(c['saved_h_max'])})",
                      _min(c["mean_min"]), _min(c["p90_min"]), str(c["n_seeds"])])
-    L += [_table(["Configuration", "Rides", "By shuttle", "Declined", "Refused", "Passenger-h", "Saved passenger-h (days)",
-                  "Mean min", "p90 min", "Days"], rows), ""]
+    L += [_table(["Configuration", "Rides", "By shuttle", "Declined", "Refused", "Passenger-h", "of which waiting",
+                  "in vehicle", "Saved passenger-h (days)", "Mean min", "p90 min", "Days"], rows, right={1, 3, 4, 5, 6, 7, 9, 10, 11}), ""]
 
     # 2 resources
     L += ["## 2. Reference configurations: vehicles and resources", "",
@@ -108,8 +117,10 @@ def build(S: dict) -> str:
     # 3 costs
     L += ["## 3. Daily cost and cost per passenger-hour saved, by staffing case", "",
           "Additional operating cost against Option A with all buses kept; central case and the low-to-high cost cases. "
-          "B (ii) withdraws the services that carry only internal riders (a theoretical bound, not a plan). Time savings "
-          "are not operator revenue.", ""]
+          "B (ii) withdraws the services that carry only internal riders (a theoretical bound, not a plan). Its avoided bus "
+          "cost is shown at the full resource cost per bus-km (operator fee plus LTA's bus and depot capital) and at the "
+          "operator fee only, since the fee includes a lease charge for LTA's assets that may already recover part of that "
+          "capital. Time savings are not operator revenue.", ""]
     for m in modes:
         L += [f"### {P['staff_modes'][m]['label'][:1].upper()}{P['staff_modes'][m]['label'][1:]}", ""]
         rows = []
@@ -122,12 +133,14 @@ def build(S: dict) -> str:
                    X.sgd(r["cost_per_shuttle_ride"]), X.sgd(r["cost_per_shuttle_pax_km"]),
                    f"{_pct(r['share_staff'])} / {_pct(r['share_fixed'])} / {_pct(r['share_distance'])}", e["classification"]["central"]]
             rows.append(row)
-            w = e.get("withdrawn")
-            if w:
-                rows.append([f"{lab(i)}, (ii) internal-only services withdrawn", X.sgd(w["delta_cost"]["central"]),
-                             X.sgd_range(w["delta_cost"]["low"], w["delta_cost"]["high"]), X.sgd(w["cost_per_hour_saved"]["central"]),
-                             X.sgd_range(w["cost_per_hour_saved"]["low"], w["cost_per_hour_saved"]["high"]), None, None, None,
-                             w["classification"]["central"]])
+            for side, what in (("withdrawn", "full bus cost"), ("withdrawn_fee", "operator fee only")):
+                w = e.get(side)
+                if w:
+                    rows.append([f"{lab(i)}, (ii) internal-only services withdrawn, {what} avoided "
+                                 f"({X.sgd(w['avoided_bus_cost']['central'])} a day)", X.sgd(w["delta_cost"]["central"]),
+                                 X.sgd_range(w["delta_cost"]["low"], w["delta_cost"]["high"]), X.sgd(w["cost_per_hour_saved"]["central"]),
+                                 X.sgd_range(w["cost_per_hour_saved"]["low"], w["cost_per_hour_saved"]["high"]), None, None, None,
+                                 w["classification"]["central"]])
         L += [_table(["Configuration", "Added cost (central)", "Added cost (low–high)", "Per passenger-h saved (central)",
                       "Per passenger-h saved (low–high)", "Per shuttle ride", "Per shuttle passenger-km", "Staff / fixed / distance",
                       "Classification (central)"], rows, right={1, 2, 3, 4, 5, 6}), ""]
@@ -144,7 +157,7 @@ def build(S: dict) -> str:
     for i in refs:
         c = cfg[i]
         cr = [_cost_row(S, i, m, "central") for m in modes]
-        rows.append([lab(i), _h(c["n_declined"]), _h(c["n_refused"]), _h(c["saved_h"]), _h(c["saved_h_R2"]), _h(c["saved_h_R3"]),
+        rows.append([lab(i), _n(c["n_declined"]), _n(c["n_refused"]), _h(c["saved_h"]), _h(c["saved_h_R2"]), _h(c["saved_h_R3"]),
                      " / ".join(X.sgd(r["cost_per_hour_saved_R2"]) or "—" for r in cr)])
     L += [_table(["Configuration", "Declined", "Refused", "Saved passenger-h R1", "R2", "R3",
                   "Per passenger-h saved under R2 (" + " / ".join(P["staff_modes"][m]["short"] for m in modes) + ")"], rows), ""]
@@ -167,11 +180,11 @@ def build(S: dict) -> str:
         rows = []
         for i in refs:
             for r in S["who"][i].get(gk, []):
-                rows.append([lab(i), str(r.get(gk, r.get("group", ""))), _h(r["n"]), _h(r["saved_h"]), _pct(r.get("saved_share")),
+                rows.append([lab(i), r.get("label") or str(r.get(gk, r.get("group", ""))), _h(r["n"]), _h(r["saved_h"]), _pct(r.get("saved_share")),
                              f"{_min(r['mean_min_A'])} → {_min(r['mean_min'])}", _pct(r.get("faster_share")), _pct(r.get("slower_share"), 1)])
         if rows:
-            L += [f"By {gk.replace('_', ' ')}:", "",
-                  _table(["Configuration", gk.replace("_", " "), "Rides", "Saved passenger-h", "Saved share", "Mean min (A → option)",
+            L += [f"By {GROUP_NAMES.get(gk, gk.replace('_', ' '))}:", "",
+                  _table(["Configuration", GROUP_NAMES.get(gk, gk.replace("_", " ")).capitalize(), "Rides", "Saved passenger-h", "Saved share", "Mean min (A → option)",
                           "Faster", "Slower"], rows, right={2, 3, 4, 5, 6, 7}), ""]
 
     # 6 budgets

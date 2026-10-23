@@ -52,7 +52,15 @@ def _style() -> None:
     })
 
 
-kfmt = FuncFormatter(lambda v, _: f"{v / 1000:,.0f}k" if abs(v) >= 1000 or v == 0 else f"{v:,.0f}")
+def _k(v: float) -> str:
+    """Thousands as "7.5k", never rounded to "8k"; whole thousands as "8k"."""
+    if abs(v) < 1000:
+        return f"{v:,.0f}"
+    t = v / 1000
+    return f"{t:,.0f}k" if abs(t - round(t)) < 1e-9 else f"{t:,.1f}k"
+
+
+kfmt = FuncFormatter(lambda v, _: _k(v))
 
 
 def _save(fig, out: Path, name: str) -> Path:
@@ -269,24 +277,28 @@ def tornado(P: dict, out: Path) -> Path:
     """Cost per passenger-hour saved as one cost parameter moves to its low or high value, per staffing case."""
     cfg = {c["id"]: c for c in P["configs"]}
     modes = [m for m in P["modes"] if (P["tornado"].get(m) or {}).get("rows")]
-    fig, axes = plt.subplots(len(modes), 1, figsize=(6.4, 2.7 * len(modes)), squeeze=False)
+    # one shared axis, in % of each staffing case's central value, so bar lengths compare across panels
+    fig, axes = plt.subplots(len(modes), 1, figsize=(6.4, 2.7 * len(modes)), sharex=True, squeeze=False)
+    pct = lambda r, c0: 100 * (r["cost_per_hour_saved"] / c0 - 1)
+    span = max(abs(pct(r[side], t["rows"][0]["central_cost_per_hour_saved"]))
+               for t in (P["tornado"][m] for m in modes) for r in t["rows"][:10] for side in ("low", "high"))
     for ax, m in zip(axes[:, 0], modes):
         t = P["tornado"][m]
         rows = t["rows"][:10]
         c0 = rows[0]["central_cost_per_hour_saved"]
         for k, r in enumerate(rows):
-            a, b = sorted([r["low"]["cost_per_hour_saved"], r["high"]["cost_per_hour_saved"]])
+            a, b = sorted([pct(r["low"], c0), pct(r["high"], c0)])
             ax.barh(len(rows) - 1 - k, b - a, left=a, height=0.6, color=COL["C"], zorder=3)
-        lo = min(min(r["low"]["cost_per_hour_saved"], r["high"]["cost_per_hour_saved"]) for r in rows)
-        hi = max(max(r["low"]["cost_per_hour_saved"], r["high"]["cost_per_hour_saved"]) for r in rows)
-        ax.set_xlim(lo - 0.06 * (hi - lo), hi + 0.06 * (hi - lo))
-        ax.axvline(c0, color=INK["text"], lw=1.2, zorder=4)
-        ax.annotate(f"central SGD {c0:.1f}", (c0, len(rows) - 0.4), xytext=(4, 0), textcoords="offset points", fontsize=7.5)
+        ax.set_xlim(-1.08 * span, 1.08 * span)
+        ax.axvline(0, color=INK["text"], lw=1.2, zorder=4)
+        ax.annotate(f"central SGD {c0:.1f} per hour saved", (0, len(rows) - 0.4), xytext=(4, 0),
+                    textcoords="offset points", fontsize=7.5)
         ax.set_yticks(range(len(rows)))
         ax.set_yticklabels([r["label"] for r in reversed(rows)])
         ax.grid(axis="y", visible=False)
         ax.set_title(f"{P['staff_modes'][m]['short']}: C with {cfg[t['id']]['phrase']}")
-        ax.set_xlabel("SGD per passenger-hour saved")
+    axes[-1, 0].xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:+.0f} %" if v else "0"))
+    axes[-1, 0].set_xlabel("change in cost per passenger-hour saved, low to high value of one parameter")
     fig.tight_layout()
     return _save(fig, out, "tornado.png")
 

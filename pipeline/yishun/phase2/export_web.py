@@ -31,6 +31,7 @@ OUT = WEB_DATA / "phase2.json"
 CASES = ("low", "central", "high")
 ALL_RIDES = -1.0          # a C threshold at or below this offers every ride (runs.ALL_RIDES is -5)
 KEPT, WITHDRAWN = "all buses kept", "internal-only services withdrawn"
+WITHDRAWN_FEE = "internal-only services withdrawn, operator fee only"   # review R6: the bus cost without LTA's capital
 # staffing is a structural switch (summary["staff_modes"]); the page lists the modes in this order, the
 # current pilot requirement first, and any other mode after them in the summary's own order
 MODE_ORDER = ("onboard", "remote_with_attendant", "remote")
@@ -263,13 +264,13 @@ def cost_tables(S: dict, ref_ids: set[str]) -> tuple[dict, dict]:
     costs, detail = {}, {}
     for r in S["costs"]:
         m, i, case = r["staff_mode"], r["id"], r["case"]
-        side = "withdrawn" if r["bus_case"] == WITHDRAWN else "kept"
+        side = {WITHDRAWN: "withdrawn", WITHDRAWN_FEE: "withdrawn_fee"}.get(r["bus_case"], "kept")
         e = costs.setdefault(m, {}).setdefault(i, {})
-        tgt = e if side == "kept" else e.setdefault("withdrawn", {})
+        tgt = e if side == "kept" else e.setdefault(side, {})
         tgt.setdefault("delta_cost", {})[case] = _r(r["delta_cost"])
         tgt.setdefault("cost_per_hour_saved", {})[case] = _r(r["cost_per_hour_saved"], 2)
         tgt.setdefault("classification", {})[case] = r["classification"]
-        if side == "withdrawn":
+        if side != "kept":
             tgt.setdefault("avoided_bus_cost", {})[case] = _r(r["avoided_bus_cost"])
             continue
         e.setdefault("shuttle_cost", {})[case] = _r(r["shuttle_cost"])
@@ -441,6 +442,10 @@ def numbers(P: dict) -> dict[str, str]:
             if w:
                 n[f"p2_bw_dcost_{m}"] = sgd(w["delta_cost"]["central"])
                 n[f"p2_bw_dcost_range_{m}"] = sgd_range(w["delta_cost"]["low"], w["delta_cost"]["high"])
+                n[f"p2_bw_cphs_{m}"] = sgd(w["cost_per_hour_saved"]["central"])
+            wf = e.get("withdrawn_fee")
+            if wf:
+                n[f"p2_bwf_cphs_{m}"] = sgd(wf["cost_per_hour_saved"]["central"])
         cc = [by_id[i] for i in cs if i in by_id]
         if cc:
             dc = [e["delta_cost"]["central"] for e in cc]

@@ -175,8 +175,8 @@ def test_cost_rows_cancel_bus_cost_and_subtract_only_avoidable_bus_cost():
     from yishun import costs
     from yishun.phase2.summary import CASES, cost_rows
     p = costs.CostParams.from_dict(FIXTURE)
-    bus = {"cost": {c: {"all": 200_000.0, "allocated_internal": 107_000.0, "avoidable_internal_only": 90_000.0}
-                    for c in CASES}}
+    bus = {"cost": {c: {"all": 200_000.0, "allocated_internal": 107_000.0, "avoidable_internal_only": 90_000.0,
+                        "avoidable_internal_only_fee_only": 70_000.0} for c in CASES}}
     base = {"capacity": 10, "service_hours": 20.0, "veh_km": 20_000.0, "veh_km_empty": 4_000.0, "pax_km_direct": 280_000.0,
             "shuttle_pax_km_direct": 50_000.0, "n": 1000.0, "n_refused": 0.0, "n_declined": 10.0, "pax_h": 900.0,
             "pax_h_A": 1000.0, "saved_h": 100.0, "saved_h_R2": 80.0, "saved_h_R3": 95.0, "w_max_s": 900.0, "hours": ""}
@@ -192,6 +192,8 @@ def test_cost_rows_cancel_bus_cost_and_subtract_only_avoidable_bus_cost():
     kept, cut = b[b.bus_case == "all buses kept"], b[b.bus_case == "internal-only services withdrawn"]
     assert np.allclose(kept.delta_cost, kept.shuttle_cost)
     assert np.allclose(cut.delta_cost.to_numpy(), cut.shuttle_cost.to_numpy() - 90_000.0)
+    fee = b[b.bus_case == "internal-only services withdrawn, operator fee only"]   # review R6: both bases
+    assert len(fee) == len(cut) and np.allclose(fee.delta_cost.to_numpy(), fee.shuttle_cost.to_numpy() - 70_000.0)
     assert np.allclose(cr.cost_per_hour_saved, cr.delta_cost / 100.0)  # only defined because time is saved
 
 

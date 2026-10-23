@@ -83,6 +83,13 @@ def ops_of(row) -> costs.ShuttleOps:
 
 
 # ---------------------------------------------------------------------------- bus side
+# BCM operator fee per scheduled bus-km (low, central, high), the first part of bus_sgd_per_bus_km
+# (cost_cases.json, its note). The full rate adds LTA's bus and depot capital, which the fee's
+# undisclosed lease charge for LTA assets may already recover in part, so B(ii)'s avoidable bus cost is
+# reported on both bases (review R6).
+FEE_ONLY_SGD_PER_BUS_KM = {"low": 4.63, "central": 5.24, "high": 6.05}
+
+
 def bus_side(M, p: costs.CostParams) -> dict:
     """Bus supply inside Yishun, its cost, the share allocated to internal riders (passenger-km key)
     and the cost of the services that carry only internal riders (avoidable only under B(ii))."""
@@ -98,7 +105,9 @@ def bus_side(M, p: costs.CostParams) -> dict:
         avoid = costs.bus_daily_cost(costs.BusOps(sup["bus_km"], sup["bus_hours"], "internal-only services"), p, case)
         out["cost"][case] = {"all": allb["daily_cost"], "allocated_internal": allb["daily_cost"] * share,
                              "allocated_internal_by_rides": allb["daily_cost"] * alloc["ride_share"]["internal"],
-                             "avoidable_internal_only": avoid["daily_cost"], "basis": allb["basis"],
+                             "avoidable_internal_only": avoid["daily_cost"],
+                             "avoidable_internal_only_fee_only": sup["bus_km"] * FEE_ONLY_SGD_PER_BUS_KM[case],
+                             "basis": allb["basis"],
                              "inclusions": allb["inclusions"]}
     return out
 
@@ -118,6 +127,8 @@ def cost_rows(cfg: pd.DataFrame, p: costs.CostParams, bus: dict) -> pd.DataFrame
             bus_cases = [("all buses kept", 0.0)]
             if r["option"] == "B":
                 bus_cases.append(("internal-only services withdrawn", bc["avoidable_internal_only"]))
+                bus_cases.append(("internal-only services withdrawn, operator fee only",
+                                  bc["avoidable_internal_only_fee_only"]))
             for bus_case, avoided in bus_cases:
                 opt = {"daily_cost": bc["all"] - avoided + sc["total"], "passenger_hours": r["pax_h"],
                        "rides_completed": r["n_shuttle"] + r["n_bus"], "rides_refused": r["n_refused"],
