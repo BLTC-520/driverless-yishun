@@ -159,6 +159,11 @@ This document describes how each number on the page is produced. Code references
   - In-vehicle time is the sum of calibrated network running times between consecutive stops
     of the route. It adds the calibrated dwell at the boarding stop and every intermediate
     stop, plus the extra at stations.
+  - Loops revisit the interchange, and figure-of-eight feeders (812) pass it mid-route. A rider
+    boards at whichever visit of the stop gives the shortest ride to the destination
+    (`BusBaseline.ride`). Before the Phase 2 review the model boarded at the first visit, which
+    timed riders for 812's second loop as riding the whole first loop as well; the bus day mean
+    was about 1.6 % too high.
 - **Realised waits (for tails and ride-by-ride comparisons).** Each simulated ride also gets
   one random bus wait. Headways are gamma-distributed with CV² = 2κ − 1, the CV that
   reproduces κ. A rider arriving at random lands in a length-biased headway and waits a
@@ -303,7 +308,7 @@ handled are in [`phase2/limits.md`](phase2/limits.md); the Phase 1 audit is in
     budget table.
 - **Bus cost allocation.** In-area bus passenger-km are split by rider group from LTA's full
   weekday OD (`phase2/bus_allocation.py`), using a frequency-weighted line choice.
-  - Internal riders account for 54 % of in-area bus passenger-km. That share allocates bus cost for
+  - Internal riders account for 53 % of in-area bus passenger-km. That share allocates bus cost for
     context only.
   - Bus cost cancels between A and C, because the bus network is identical.
 - **Costs** (`costs.py`): daily SGD at 2026 prices, excluding GST, by category.
@@ -320,6 +325,10 @@ handled are in [`phase2/limits.md`](phase2/limits.md); the Phase 1 audit is in
   - the three combined.
   - B is sized at its threshold, so it is also stressed with a 10 % fleet margin (500 vehicles)
     for unavailability, the 10-shuttle kerb and the combined case.
+  - B as defined accepts quoted pickups up to 45 minutes and refuses beyond that with no bus; C
+    declines beyond 15 minutes and the rider takes the bus. Every stress also runs B under C's
+    rule (450 shuttles offered every ride), and the base case on the same three days, so the
+    stress table compares like with like.
 - **Outputs.** `phase2/summary.py` writes `summary.json`. `export_web.py`, `charts.py` and
   `report_tables.py` build the page data, the report charts and
   [`phase2/results.md`](phase2/results.md) from it, so the page, the charts and the report quote

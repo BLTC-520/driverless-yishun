@@ -9,13 +9,13 @@ A simulation study of Yishun (221,610 residents, Census 2020). It replays every 
 <!-- FINDINGS -->
 ## Findings
 
-1. **The demand is short, hub-bound feeder riding.** 163,745 rides per average school-term weekday (July–August 2026) start and end inside Yishun. The median is 1.06 km in a straight line, and 66% start or end at an MRT station or the interchange. Today's buses deliver 12.0 min stop to stop on average (3.3 waiting + 8.7 riding).
-2. **There is a sharp capacity threshold.** With 10-seat shuttles, 450 vehicles keep up with the bus in every hour of all three simulated weekdays (6.9 min at 08:00 against the bus's 10.5 min). With 425, the queue left by the 07:00 rush pushes the 08:00 hour to 11.0 min before it clears; with 375, to 39.6 min, and 1.1% of the day's riders are refused. Above the threshold the shuttle is 45 % faster stop to stop over the day (6.6 vs 12.0 min). Bigger vehicles help less than their seats suggest: 700 four-seat, 450 ten-seat or 375 twenty-seat vehicles, because at the threshold a shuttle carries 1.8 riders on average. Matching the bus's 90th-percentile time in every hour instead needs 450 ten-seat shuttles.
-3. **It takes more vehicles than today's buses, and far more driving.** In the model, 450 shuttles is 3.0 times the 152 buses of all services inside Yishun at 07:00 (81 of them feeders). Each bus carries about ten times as many people (about 16,200 places against 4,500 shuttle seats). The fleet drives 160,133 km inside Yishun per weekday, 4.7 times the 33,871 km all buses drive there, carrying 1.8 riders on average against at least 8 per bus-km. Singapore's whole autonomous passenger fleet is 16 vehicles (MOT, Sep 2026).
-4. **Feeder theory points the same way.** In a single feeder zone, demand-responsive service beats fixed routes only below about 10–50 riders per square mile per hour (Li & Quadrifoglio 2010). Averaged over the town, Yishun's internal demand at 07:00 is about 2,000 riders per square mile per hour. If the fleet in service could change every hour, the off-peak would need far fewer vehicles (about 200 at midday): at least 5,225 vehicle-hours in service a day instead of 9,450. The fixed fleet spends about 6,632 of its hours driving, against about 1,463 hours of bus driving inside Yishun.
-5. **The MRT kerb becomes a bottleneck.** Up to 27 shuttles board or alight at once at the Yishun MRT and interchange stops, and 15 at Khatib, before idle vehicles waiting for work.
-6. **Who gains.** With 450 ten-seat shuttles, pooled over 3 simulated weekdays, 92% of rides reach their stop sooner than by bus, comparing each ride with one simulated bus wait (94% beat the bus's average time for that trip). The average saving is 5.4 minutes. Longer rides gain more: 78% of all rides under 0.5 km are faster, against 97% of all rides over 1.5 km, where bus routes loop and stop more often than a direct shuttle. After 20:00, when buses run less often, 98% are faster; in the 07:00–09:00 peak, 78%. The slowest tenth of shuttle rides take more than 10.5 min, against 20.0 min by bus (12.9 against 17.4 min in the 07:00–09:00 peak). Of the rides that are slower by shuttle, 19% are under 0.5 km; in 94% the shuttle wait is longer than the bus wait, and in 18% the shuttle ride is longer than the bus ride.
-7. **Kerb capacity is a hard constraint.** Limiting each station to 14 shuttles boarding at once still keeps up at 07:00 (9.4 min). At 10, kerb queues push the 07:00 hour to 41.6 min and the fleet no longer matches the bus. Adding vehicles makes it worse: 500 shuttles with the same kerb take 42.2 min, because the extra vehicles queue too.
+1. **The demand is short, hub-bound feeder riding.** 163,745 rides per average school-term weekday (July–August 2026) start and end inside Yishun. The median is 1.06 km in a straight line, and 66% start or end at an MRT station or the interchange. Today's buses deliver 11.8 min stop to stop on average (3.3 waiting + 8.5 riding).
+2. **There is a sharp capacity threshold.** With 10-seat shuttles, 450 vehicles keep up with the bus in every hour of all three simulated weekdays (6.9 min at 08:00 against the bus's 10.4 min). With 425, the queue left by the 07:00 rush pushes the 08:00 hour to 12.2 min before it clears; with 375, to 39.1 min, and 1.1% of the day's riders are refused. Above the threshold the shuttle is 44 % faster stop to stop over the day (6.6 vs 11.8 min). Bigger vehicles help less than their seats suggest: 700 four-seat, 450 ten-seat or 375 twenty-seat vehicles, because at the threshold a shuttle carries 1.8 riders on average. Matching the bus's 90th-percentile time in every hour instead needs 450 ten-seat shuttles.
+3. **It takes more vehicles than today's buses, and far more driving.** In the model, 450 shuttles is 3.0 times the 152 buses of all services inside Yishun at 07:00 (81 of them feeders). Each bus carries about ten times as many people (about — places against 4,500 shuttle seats). The fleet drives 159,924 km inside Yishun per weekday, 4.7 times the 33,871 km all buses drive there, carrying 1.8 riders on average against at least 8 per bus-km. Singapore's whole autonomous passenger fleet is 16 vehicles (MOT, Sep 2026).
+4. **Feeder theory points the same way.** In a single feeder zone, demand-responsive service beats fixed routes only below about 10–50 riders per square mile per hour (Li & Quadrifoglio 2010). Averaged over the town, Yishun's internal demand at 07:00 is about 2,000 riders per square mile per hour. If the fleet in service could change every hour, the off-peak would need far fewer vehicles (about 200 at midday): at least 5,250 vehicle-hours in service a day instead of 9,450. The fixed fleet spends about 6,632 of its hours driving, against about 1,463 hours of bus driving inside Yishun.
+5. **The MRT kerb becomes a bottleneck.** Up to 27 shuttles board or alight at once at the Yishun MRT and interchange stops, and 18 at Khatib, before idle vehicles waiting for work.
+6. **Who gains.** With 450 ten-seat shuttles, pooled over 3 simulated weekdays, 92% of rides reach their stop sooner than by bus, comparing each ride with one simulated bus wait (94% beat the bus's average time for that trip). The average saving is 5.2 minutes. Longer rides gain more: 78% of all rides under 0.5 km are faster, against 97% of all rides over 1.5 km, where bus routes loop and stop more often than a direct shuttle. After 20:00, when buses run less often, 98% are faster; in the 07:00–09:00 peak, 78%. The slowest tenth of shuttle rides take more than 10.5 min, against 19.7 min by bus (12.9 against 17.3 min in the 07:00–09:00 peak). Of the rides that are slower by shuttle, 18% are under 0.5 km; in 94% the shuttle wait is longer than the bus wait, and in 18% the shuttle ride is longer than the bus ride.
+7. **Kerb capacity is a hard constraint.** Limiting each station to 14 shuttles boarding at once still keeps up at 07:00 (9.3 min). At 10, kerb queues push the 07:00 hour to 41.4 min and the fleet no longer matches the bus. Adding vehicles makes it worse: 500 shuttles with the same kerb take 41.8 min, because the extra vehicles queue too.
 8. **The dispatcher is a lever as big as the vehicle.** The simple dispatcher used here considers up to 32 shuttles per request. Considering twice or four times as many lowers the threshold from 450 to 400 or 375.
 9. **Sensitivity.** Across 18 alternative assumptions, pushing both ways, the all-day 10-seat fleet ranges 375–550 (base 450). The largest moves: demand +20% (same pattern) (550); demand -20% (same pattern) (375); dispatcher searches four times as many vehicles per request (96 nearest + 32 soonest free) (375).
 
@@ -48,23 +48,28 @@ published routes and headways before the rider travels. All buses are kept. Full
 
 1. **No option tested lowers operating cost.** Every configuration with acceptable service costs more
    than today's buses and saves passenger time.
-2. **With someone on board, C buys time more cheaply than any full replacement.** With a safety operator
-   on board (the current pilot requirement), four C designs (θ 6–14 min, 40–275 shuttles) save
-   2,151–10,602 passenger-hours a weekday, 7–33 % of today's 32,559. They add SGD 56,000–370,000 a day
-   (central case; low to high roughly half to twice), or SGD 26–35 per passenger-hour saved. Full
-   replacement with 450 shuttles saves 14,446 hours for SGD 600,000 a day (SGD 41 an hour).
-3. **Staffing controls the result.** Remote supervision with nobody on board, not permitted today, would
-   bring C to SGD 16–20 an hour. An attendant on board costs about as much as a safety operator.
-4. **A budget choice, not a single answer.** The study shows what each daily budget buys. As a separate
-   social estimate, at SGD 19.7 per hour of in-vehicle time the time saved is worth 57–80 % of the added
-   cost with someone on board, and 99–131 % with remote supervision only. Time savings are not revenue.
-5. **C is robust where B is fragile.** At its threshold size, B loses time against the bus when 15 % of
-   the fleet is unavailable; a 10 % fleet margin absorbs that. With at most 10 shuttles boarding at once
-   per station, B refuses about 30,000 riders a day, with 450 or with 500 vehicles. C keeps most of its
-   saving in every stress tested.
-6. **The bus model matters most where C looks.** If modelled bus times on the rides C selects were 20 %
-   too high, its saving would fall by 35–41 %. Checking those rides' bus times is the first evidence
-   needed.
+2. **With someone on board, an hour of riders' time costs about SGD 33–43.** With a safety operator on
+   board (the current pilot requirement), four C designs (θ 6–14 min, 40–275 shuttles) save
+   1,609–10,111 passenger-hours a weekday, 5–32 % of today's 32,056. They add SGD 56,000–370,000 a day
+   (central case; low to high roughly half to twice), or SGD 33–36 per passenger-hour saved. Full
+   replacement with 450 shuttles saves 13,943 hours for SGD 600,000 a day (SGD 43 an hour) with every
+   bus kept, or SGD 36–37 an hour if the services that carry only internal riders were withdrawn:
+   level with C. Narrower targeting buys fewer hours at about the same price.
+3. **Staffing controls the cost.** Remote supervision with nobody on board, not permitted today, would
+   bring C to SGD 20–21 an hour, and full replacement lower still (SGD 17 with 700 four-seat
+   vehicles, on a weakly evidenced price without COE). An attendant on board costs about as much as
+   a safety operator.
+4. **A budget choice, not a single answer.** As a separate social estimate, at SGD 19.7 per hour of
+   in-vehicle time the time saved is worth SGD 0.61–0.66 per SGD 1 of added cost with someone on
+   board, and SGD 1.01–1.11 with remote supervision only. Time savings are not revenue.
+5. **Full replacement fails at the kerb; C does not.** With at most 10 or 7 shuttles boarding at once
+   per station (test values), full replacement loses time against today's buses whether riders it
+   cannot serve wait or take the bus; the C designs keep 78–100 % of their saving. Under fleet and
+   speed stresses, full replacement holds up once declined riders can take the bus.
+6. **The bus model matters most where C looks.** If modelled bus times on the rides C selects were
+   20 % too high, its saving would fall by 37–42 %. Checking those rides' bus times is the first
+   evidence needed. An independent review found one such error, on the figure-of-eight feeder 812;
+   it is fixed and every simulation re-run ([`docs/phase2/review.md`](docs/phase2/review.md)).
 
 *Costs: SGD per average weekday, 2026 prices, excluding GST, low, central and high cases from a register
 of 247 source rows (`data/parameters/cost_register.csv`). Vehicle prices exclude COE and registration
@@ -113,7 +118,7 @@ make data                     # LTA DataMall, data.gov.sg, OpenStreetMap
 make reproduce-core-results   # experiments -> sensitivity -> page data -> tests
 make web && make serve        # http://localhost:8000 (landing page; the study is /study.html, the game /play.html)
 # Phase 2 (cost and passenger time):
-make phase2-experiments       # options A, B, C: 468 simulated days (about 1.5 h on 4 cores)
+make phase2-experiments       # options A, B, C: 510 simulated days (about 1.5 h on 4 cores)
 make phase2-results           # costs, comparison, thresholds -> summary.json, page data, charts, results tables
 # optional, at the hours you want to calibrate on:
 make live calibrate gps-check calibrate-peak

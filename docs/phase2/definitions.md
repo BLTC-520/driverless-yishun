@@ -9,7 +9,9 @@ acceptable additional operating cost?**
 ## 1. Version and baseline
 
 - Phase 1 is the state of `main` at commit `2f749d8` (results committed in `data/processed/`,
-  computed at `a2ed35a`–`1abb678`; model key `198908c99fd0`). Phase 1 outputs are kept unchanged.
+  computed at `a2ed35a`–`1abb678`; model key `198908c99fd0`). Phase 1 outputs were kept unchanged
+  until the review's bus-model fix (change log, 23 Oct 2026); since then Phase 1's experiments are
+  re-run on the Phase 2 graph and bus model, and both phases share one model.
 - **Audit finding.** Phase 1 built the road graph by taking the *first* value of list-valued OSM
   tags after osmnx merged ways. That order follows Python's per-process string-hash seed, so each
   fresh build gave a different graph: 5,171–5,195 nodes on one extract. Phase 1's committed
@@ -19,8 +21,8 @@ acceptable additional operating cost?**
   edge is drivable only when every merged part is drivable, and its speed class is the slowest
   part's (`network.keep_edge`, `network.road_class`). The OSM extract of 22 Oct 2026 is pinned in
   `data/processed/osm/` (ODbL). The result is 5,171 nodes, 8,482 edges, 158 signal sites and model
-  key `213e91ad1ee8`.
-  - The bus model is unchanged: hourly bus times are identical to Phase 1 to 0.01 min.
+  key `213e91ad1ee8` (before the review's bus-model fix; `0cd6fcca7d4d` after it).
+  - The bus model was unchanged at this point: hourly bus times identical to Phase 1 to 0.01 min.
   - Shuttle results move slightly. The Phase 1 grid is re-run on this graph
     (`data/processed/phase2/recheck_phase1/`).
   - **All three options are evaluated on this one graph, so no Phase 2 comparison mixes Phase 1
@@ -138,9 +140,9 @@ serving fewer people.
 
   | Riders | Share |
   |---|---|
-  | Internal riders (both ends in Yishun) | 53.7 % |
-  | Riders with one end outside | 36.2 % |
-  | Through riders (neither end in Yishun) | 10.1 % |
+  | Internal riders (both ends in Yishun) | 53.4 % |
+  | Riders with one end outside | 36.6 % |
+  | Through riders (neither end in Yishun) | 9.9 % |
 
   - **Bus costs are therefore shared, and are never allocated wholly to internal riders.** The
     central allocation key is in-area passenger-km. The ride-count key is shown alongside.
@@ -302,3 +304,17 @@ Parameter ids (units fixed here):
 - 22 Oct 2026: fifteen internal-only services (117A and 811A added by `phase2/bus_allocation.py`).
 - 23 Oct 2026: three staffing cases (the AV evidence found LTA's stated next phase: remote
   operation with an onboard attendant).
+- 23 Oct 2026: the cost swings also swing the optional staff parameters where they act (the
+  attendant wage, and the monitoring ratio with an operator on board); before, the attendant wage
+  was missing from the sensitivity of the remote-plus-attendant case.
+- 23 Oct 2026, after the independent review (`review.md`):
+  - **Bus model.** A rider boards a looping line at whichever visit of the stop gives the
+    shortest ride, not at its first visit (figure-of-eight feeder 812). The bus model's version
+    enters the model cache key: the model key is now `0cd6fcca7d4d`. Every Phase 2 grid was re-run,
+    and Phase 1's experiments were re-run on the same graph and bus model, so both phases now share
+    one model.
+  - **Stress tests.** B also runs under C's decline rule, and the base case on the stress tests'
+    own three days.
+  - **Bus costs.** B (ii)'s avoided bus cost is reported at the full resource cost and at the
+    operator fee only (section 6).
+  - **Inputs.** LTA's bus stops, services and routes are pinned in `data/processed/lta/`.

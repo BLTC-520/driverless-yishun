@@ -346,3 +346,13 @@ not whole.
   - 62 of 62 acceptable configurations, 468 runs, 36 parameters and 247 register rows.
   - Definitions §2's coarse-analysis figures also check: 29 % of rides, 51 % of the gap, and
     about 4,100 rides in the busiest hour against 16,100.
+
+## Response (23 Oct 2026)
+
+*Added after the review; the review above is unchanged.* R1, R2, R3, R6, R7, R8 and R9 were fixed
+and every grid re-run at commit `42ff8b4` (model key `0cd6fcca7d4d`); R4 and R5 are stated in
+[`limits.md`](limits.md). Phase 1's experiments were re-run with the same bus-model fix. What each
+finding changed in the results is tabulated at the end of [`report.md`](report.md). The re-run
+confirmed the first-order estimates above: C θ 8 saves 6,729 passenger-hours (estimated 6,746), the
+service-level fleets did not change, and C θ 14 lost 25 % of its saving (estimated 23 %).
+
