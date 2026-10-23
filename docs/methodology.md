@@ -318,3 +318,9 @@ handled are in [`phase2/limits.md`](phase2/limits.md); the Phase 1 audit is in
   - 15 % of the fleet unavailable;
   - kerbs of 10 or 7 shuttles per station;
   - the three combined.
+  - B is sized at its threshold, so it is also stressed with a 10 % fleet margin (500 vehicles)
+    for unavailability, the 10-shuttle kerb and the combined case.
+- **Outputs.** `phase2/summary.py` writes `summary.json`. `export_web.py`, `charts.py` and
+  `report_tables.py` build the page data, the report charts and
+  [`phase2/results.md`](phase2/results.md) from it, so the page, the charts and the report quote
+  the same rounded numbers.

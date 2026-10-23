@@ -37,6 +37,40 @@ The starting brief proposed a SUMO microsimulation of 0–80 % *private* autonom
 
 So the project asks: if the on-demand model Punggol is trialling had to serve all of Yishun's internal bus riders, how many vehicles, how much driving and how much kerb would it need? The closest Singapore study, Mo et al. (2021, *TR-C* 127), simulated shared AVs *competing* with buses for first-mile trips in Tampines. This one holds demand fixed at observed rides and asks what replacing every internal bus ride would take.
 
+## Phase 2: cost and passenger time
+
+**Can a combined bus and shuttle service save passenger time at an acceptable additional operating cost?**
+Phase 2 compares today's buses (A), full shuttle replacement (B) and a combined service (C), on the same
+simulated days and the same 163,069 rides, stop to stop. In C, shuttles carry the rides the timetable
+serves worst: those whose expected bus time exceeds a direct drive by at least θ minutes, decided from
+published routes and headways before the rider travels. All buses are kept. Full report:
+[`docs/phase2/report.md`](docs/phase2/report.md); tables: [`docs/phase2/results.md`](docs/phase2/results.md).
+
+1. **No option tested lowers operating cost.** Every configuration with acceptable service costs more
+   than today's buses and saves passenger time.
+2. **With someone on board, C buys time more cheaply than any full replacement.** With a safety operator
+   on board (the current pilot requirement), four C designs (θ 6–14 min, 40–275 shuttles) save
+   2,151–10,602 passenger-hours a weekday, 7–33 % of today's 32,559. They add SGD 56,000–370,000 a day
+   (central case; low to high roughly half to twice), or SGD 26–35 per passenger-hour saved. Full
+   replacement with 450 shuttles saves 14,446 hours for SGD 600,000 a day (SGD 41 an hour).
+3. **Staffing controls the result.** Remote supervision with nobody on board, not permitted today, would
+   bring C to SGD 16–20 an hour. An attendant on board costs about as much as a safety operator.
+4. **A budget choice, not a single answer.** The study shows what each daily budget buys. As a separate
+   social estimate, at SGD 19.7 per hour of in-vehicle time the time saved is worth 57–80 % of the added
+   cost with someone on board, and 99–131 % with remote supervision only. Time savings are not revenue.
+5. **C is robust where B is fragile.** At its threshold size, B loses time against the bus when 15 % of
+   the fleet is unavailable; a 10 % fleet margin absorbs that. With at most 10 shuttles boarding at once
+   per station, B refuses about 30,000 riders a day, with 450 or with 500 vehicles. C keeps most of its
+   saving in every stress tested.
+6. **The bus model matters most where C looks.** If modelled bus times on the rides C selects were 20 %
+   too high, its saving would fall by 35–41 %. Checking those rides' bus times is the first evidence
+   needed.
+
+*Costs: SGD per average weekday, 2026 prices, excluding GST, low, central and high cases from a register
+of 247 source rows (`data/parameters/cost_register.csv`). Vehicle prices exclude COE and registration
+taxes. Fleet reserves for charging and maintenance are estimates, not a charging simulation. No
+congestion feedback.*
+
 ## How it works
 
 ```mermaid
@@ -78,11 +112,14 @@ make setup                    # uv venv + pinned requirements
 make data                     # LTA DataMall, data.gov.sg, OpenStreetMap
 make reproduce-core-results   # experiments -> sensitivity -> page data -> tests
 make web && make serve        # http://localhost:8000 (the game; the study is /study.html)
+# Phase 2 (cost and passenger time):
+make phase2-experiments       # options A, B, C: 468 simulated days (about 1.5 h on 4 cores)
+make phase2-results           # costs, comparison, thresholds -> summary.json, page data, charts, results tables
 # optional, at the hours you want to calibrate on:
 make live calibrate gps-check calibrate-peak
 ```
 
-On 4 cores, the experiments and sensitivity take about two and a half hours. The live logs of 15 Oct 2026 cannot be re-downloaded, and DataMall serves fare-card months for only three months. The derived inputs are therefore committed in `data/processed/`: the Yishun OD table, `calibration.json`, `calibration_pm_peak.json` and `gps_check.json`. Every result file records the calibration, demand months and git revision it came from.
+On 4 cores, the experiments and sensitivity take about two and a half hours. The live logs of 15 Oct 2026 cannot be re-downloaded, and DataMall serves fare-card months for only three months. The derived inputs are therefore committed in `data/processed/`: the Yishun OD table, `calibration.json`, `calibration_pm_peak.json` and `gps_check.json`. Every result file records the calibration, demand months and git revision it came from. Phase 2's grids and summary are committed in `data/processed/phase2/`, each with its commit, input digests and model key; `make phase2-allocation` needs the July and August 2026 full OD files.
 
 ```
 pipeline/yishun/   fetchers, network, routing, calibration, bus model, simulator, experiments, exporters
