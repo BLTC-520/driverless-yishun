@@ -6,6 +6,14 @@ A simulation study of Yishun (221,610 residents, Census 2020). It replays every 
 
 ![Yishun in the morning peak with 10-seat shuttles](docs/img/stage_desktop.png)
 
+**Site:** [yishun.brianhar.site](https://yishun.brianhar.site) · the study, its [evidence page](https://yishun.brianhar.site/evidence.html) (every check, the review, data files, provenance) and a game on the same data.
+
+| | Part 1 · capacity | Part 2 · cost |
+|---|---|---|
+| **Question** | Could shuttles carry every internal bus ride? | Can a bus and shuttle mix save riders' time at an acceptable cost? |
+| **Answer** | Yes in the model: **450** ten-seat shuttles keep up with the bus in every hour (375–550 across 18 alternative assumptions). That is 3.0 times today's buses, driving 4.7 times the kilometres. | No option tested lowers operating cost. With an operator on board, shuttles for the rides the bus serves worst buy riders' time at **SGD 33–36 an hour**; that time is worth SGD 0.61–0.65 per SGD 1 spent. |
+| **Read** | [Findings below](#findings) · [methodology](docs/methodology.md) · [validation](docs/validation.md) | [Phase 2 report](docs/phase2/report.md) · [tables](docs/phase2/results.md) · [independent review](docs/phase2/review.md) |
+
 <!-- FINDINGS -->
 ## Findings
 
