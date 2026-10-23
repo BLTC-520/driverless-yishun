@@ -220,6 +220,28 @@ h3 { font-family: var(--font-display); font-weight: 650; font-size: 1.05rem; mar
 .chart .callout, .chart .lab { paint-order: stroke; stroke: var(--night); stroke-width: 3px; stroke-linejoin: round; }
 .chart-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 
+/* ---- phase 2: options compared on cost and passenger time ---- */
+.p2 { --p2-a: #1f9fb4; --p2-b: #c98500; --p2-c: #d55181; --p2-staff: #3987e5; --p2-fixed: #199e70; --p2-dist: #9085e9; }
+.p2-banner { border: 1px solid var(--bad); color: var(--chalk); padding: 8px 12px; border-radius: 4px; font-size: var(--step--1); }
+.p2-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: baseline; }
+.p2-key.a { background: var(--p2-a); } .p2-key.b { background: var(--p2-b); } .p2-key.c { background: var(--p2-c); }
+.p2-modes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 26px; }
+.p2-modes button { font: inherit; font-family: var(--font-data); font-size: var(--step--1); color: var(--mute); background: transparent;
+  border: 1px solid var(--rule); border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+.p2-modes button[aria-pressed="true"] { color: var(--chalk); border-color: var(--chalk); }
+.p2-modenote { color: var(--mute); font-size: var(--step--1); margin: 8px 0 0; max-width: 70ch; }
+.p2-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; margin-top: 28px; }
+.p2 .chart svg { width: auto; max-width: 100%; }
+.p2 .legend-row i.sw { width: 12px; height: 12px; border-radius: 2px; }
+.p2 .legend-row i.ln { height: 0; border-top: 2px solid; }
+.p2 .legend-row svg { display: inline-block; width: 14px; max-width: none; height: 14px; overflow: visible; }
+#p2-stress th.cfg { text-align: right; text-transform: none; }
+.p2-tip { position: fixed; z-index: 30; pointer-events: none; background: var(--night-2); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 8px 10px; font-family: var(--font-data); font-size: 12px; color: var(--chalk); max-width: 320px; line-height: 1.45; }
+.p2-tip b { font-weight: 600; } .p2-tip .mute { color: var(--mute); }
+#p2-stress td, #p2-budget td { white-space: nowrap; } #p2-stress td:first-child { white-space: normal; min-width: 14em; }
+@media (max-width: 860px) { .p2-grid { grid-template-columns: minmax(0, 1fr); } }
+
 /* ---- method + data ---- */
 .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 32px; }
 .card { border-top: 2px solid var(--rule); padding-top: 12px; min-width: 0; }
@@ -587,6 +609,61 @@ html.still .steps { padding-block: 0; }
   </div>
 </section>
 
+<section class="chapter wrap p2" id="phase2" aria-labelledby="p2-h2">
+  <div class="inner" style="grid-template-columns: minmax(0,1fr);">
+    <div class="prose">
+      <div class="kicker">Phase 2 · cost and passenger time</div>
+      <h2 id="p2-h2">Can a combined bus and shuttle service save time at an acceptable cost?</h2>
+      <p class="p2-banner" id="p2-banner" hidden>Development data: the cost figures in this section are synthetic and are not results.</p>
+      <p id="p2-lead">Phase 2 compares three ways of carrying the <span data-v="p2_rides">—</span> internal rides of an average weekday, on the same simulated days, stop to stop.</p>
+      <p id="p2-answer"></p>
+    </div>
+    <div class="table-wrap"><table id="p2-options"><thead><tr><th>Option</th><th>What runs</th><th>Bus service</th></tr></thead><tbody>
+      <tr><td><span class="p2-key a"></span>A · today's buses</td><td>Published routes and headways (Phase 1 bus model)</td><td>As today</td></tr>
+      <tr><td><span class="p2-key b"></span>B · full replacement</td><td>A fixed fleet of pooled shuttles carries every internal ride (Phase 1's definition)</td><td>Kept; or, as a theoretical bound, the 15 services that carry only internal riders withdrawn</td></tr>
+      <tr><td><span class="p2-key c"></span>C · combined</td><td>Shuttles carry the rides the timetable serves worst: those whose expected bus time exceeds a direct drive by at least θ minutes, decided from published routes and headways before the rider travels. Every other ride stays on the bus</td><td>Kept</td></tr>
+    </tbody></table></div>
+    <div class="p2-modes" role="group" aria-label="Staffing case" id="p2-modes"></div>
+    <p class="small p2-modenote" id="p2-modenote"></p>
+    <div class="chart">
+      <figure><svg id="ch-p2-trade" viewBox="0 0 760 420" role="img" aria-label="Additional cost per day against passenger-hours saved per day, every simulated configuration"></svg>
+      <div class="legend-row" id="p2-trade-legend"></div>
+      <figcaption id="p2-trade-cap">Every simulated configuration: additional operating cost per weekday against Option A (central case, all buses kept) and passenger-hours saved per weekday on the same rides (mean of the simulated days). The line joins the configurations that save more than every cheaper one. Faint rays mark constant cost per passenger-hour saved. Hollow markers: variants (other vehicle sizes, evening only, a 45-minute decline limit). Crossed markers: service not acceptable (more than 1 % of offered rides declined in some hour, or riders refused).</figcaption></figure>
+    </div>
+    <div class="p2-grid">
+      <div class="chart"><figure><svg id="ch-p2-cost" viewBox="0 0 640 300" role="img" aria-label="Daily cost by class for the reference options"></svg>
+        <div class="legend-row" id="p2-cost-legend"></div>
+        <figcaption>Shuttle operating cost per weekday by class, central case, for the selected staffing case; the line spans the low- to high-cost cases. Today's buses inside Yishun cost <span data-v="p2_bus_cost">—</span> a weekday (<span data-v="p2_bus_cost_range">—</span>), shared with riders from outside the town.</figcaption></figure></div>
+      <div class="chart"><figure><svg id="ch-p2-time" viewBox="0 0 640 300" role="img" aria-label="Passenger-hours per weekday by option, waiting and in-vehicle"></svg>
+        <div class="legend-row" id="p2-time-legend"></div>
+        <figcaption>Passenger-hours per weekday on the same rides, stop to stop, split into waiting and in-vehicle time. Bus times are modelled; shuttle times are simulated.</figcaption></figure></div>
+    </div>
+    <div class="p2-grid">
+      <div class="chart"><figure><svg id="ch-p2-period" viewBox="0 0 640 300" role="img" aria-label="Passenger-hours saved by time of day"></svg>
+        <div class="legend-row" id="p2-period-legend"></div>
+        <figcaption>Passenger-hours saved per weekday by the period in which the ride is requested, against Option A on the same rides (sums, not averages of means).</figcaption></figure></div>
+      <div class="chart"><figure><svg id="ch-p2-tornado" viewBox="0 0 640 360" role="img" aria-label="Cost per passenger-hour saved when one cost parameter moves to its low or high value"></svg>
+        <figcaption id="p2-tornado-cap">Cost per passenger-hour saved when one cost parameter at a time moves to its low-cost or high-cost value, the others central, for <span data-v="p2_focus_onboard">—</span>.</figcaption></figure></div>
+    </div>
+    <div class="prose after">
+      <h3>Stress tests</h3>
+      <p class="small">Passenger-hours saved per weekday against Option A in the same conditions (mean of three simulated days). Speed stresses scale road times; added shuttle traffic does not slow anything, because congestion is not modelled.</p>
+    </div>
+    <div class="table-wrap"><table id="p2-stress"><thead><tr><th>Condition</th></tr></thead><tbody><tr><td>—</td></tr></tbody></table></div>
+    <div class="prose after">
+      <h3>What a budget buys</h3>
+      <p class="small">The most passenger-hours saved per weekday by any configuration with acceptable service whose additional cost is within the budget, central case, for the selected staffing case. There is no single acceptable cost; the table shows the trade-off across budgets.</p>
+    </div>
+    <div class="table-wrap"><table id="p2-budget"><thead><tr><th>Budget per weekday</th><th>Configuration</th><th style="text-align:right">Passenger-hours saved</th><th style="text-align:right">Cost per hour saved</th></tr></thead><tbody><tr><td colspan="4">—</td></tr></tbody></table></div>
+    <div class="prose after" id="p2-notes">
+      <h3>What is observed, simulated and assumed</h3>
+      <p class="small"><span class="tag known">observed</span> rides by stop pair and hour (LTA fare-card OD), routes and headways, all Singapore bus rides, which share Yishun's bus-km between internal and other riders (internal riders account for <span data-v="p2_bus_internal_share">—</span> of in-area bus passenger-km). <span class="tag model">simulated</span> shuttle waits, rides, declines, refusals, vehicle-km and vehicle-hours; bus times modelled. <span class="tag assumed">assumed</span> cost values without published evidence (insurance, software, staffing ratios, permits, control centre), the charging-reserve estimate (not a charging simulation), fixed demand, no congestion feedback. Time savings are not operator revenue; their value appears only in a separate social estimate.</p>
+      <p class="small">Full method, sources and limits: <a href="https://github.com/BLTC-520/testing-yishun/blob/main/docs/phase2/report.md">the Phase 2 report</a>, the <a href="https://github.com/BLTC-520/testing-yishun/blob/main/data/parameters/cost_register.csv">source register</a> and the <a href="https://github.com/BLTC-520/testing-yishun/blob/main/docs/phase2/definitions.md">definitions</a>.</p>
+    </div>
+    <div class="p2-tip" id="p2-tip" hidden></div>
+  </div>
+</section>
+
 <section class="chapter wrap" id="method">
   <div class="inner" style="grid-template-columns: minmax(0,1fr);">
     <div class="prose">
@@ -660,3 +737,4 @@ make web                     # build this page</pre>
 <script src="https://unpkg.com/deck.gl@9.1.14/dist.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="app.js"></script>
+<script src="phase2.js"></script>

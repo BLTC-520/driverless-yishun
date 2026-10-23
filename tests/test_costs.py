@@ -599,3 +599,18 @@ def test_swings_are_tidy_and_bracket_central(p):
     q = CostParams.from_dict(broken(lambda d: d["parameters"]["cleaning_sgd_per_vehicle_day"].update(
         low_cost=20, high_cost=10)))
     assert not any(r["direction_ok"] for r in swings(o, q, ["cleaning_sgd_per_vehicle_day"]))
+
+
+def test_swings_include_the_optional_staff_parameters_where_they_act():
+    d = copy.deepcopy(FIXTURE)
+    d["parameters"]["attendant_sgd_per_hour"] = entry("SGD per hour", 15, 18, 22)
+    d["parameters"]["vehicles_per_monitor_onboard_mode"] = entry("vehicles per monitor", 50, 25, 10)
+    q = CostParams.from_dict(d)
+    for mode, acting in (("remote_with_attendant", "attendant_sgd_per_hour"), ("onboard", "vehicles_per_monitor_onboard_mode")):
+        rows = {(r["param_id"], r["side"]): r for r in swings(day(), q.with_switches(staff_mode=mode))}
+        assert len(rows) == 2 * (len(SHUTTLE_IDS) + 2)
+        assert rows[(acting, "low")]["delta"] < 0 < rows[(acting, "high")]["delta"]
+        idle = ({"attendant_sgd_per_hour", "vehicles_per_monitor_onboard_mode"} - {acting}).pop()
+        assert rows[(idle, "low")]["delta"] == rows[(idle, "high")]["delta"] == 0.0   # does not act in this mode
+    att = {r["side"]: r["delta"] for r in swings(day(), q.with_switches(staff_mode="remote_with_attendant"), ["attendant_sgd_per_hour"])}
+    assert att["high"] == pytest.approx(100 * 20 * (22 - 18))   # 2,000 attendant-hours a day

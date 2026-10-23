@@ -2,7 +2,7 @@
 
 * dist/index.html the landing page: the game (Night Shift, play.html + play.js), a standalone page;
                   dist/play.html is the same file, so older links keep working
-* dist/study.html the study, wrapped in a full HTML document, for standalone hosting
+* dist/study.html the study (Phase 1 chapters and the Phase 2 chapter, phase2.js), wrapped in a full HTML document, for standalone hosting
                   (GitHub Pages, `python -m http.server`)
 * dist/page.html  the study as a page fragment with headline numbers pre-filled from the data (what
                   the artifact host publishes; it supplies the document skeleton itself)
@@ -32,9 +32,14 @@ HEAD = """<!doctype html>
 
 
 def numbers() -> dict[str, str]:
-    """The page's quoted numbers, formatted once by the pipeline (results.json "numbers"), so the
-    first frame shows real figures; app.js fills the same values at runtime."""
-    return json.loads((DATA / "results.json").read_text()).get("numbers", {})
+    """The page's quoted numbers, formatted once by the pipeline (results.json "numbers", and the
+    Phase 2 chapter's phase2.json "numbers" when present), so the first frame shows real figures;
+    app.js and phase2.js fill the same values at runtime."""
+    vals = json.loads((DATA / "results.json").read_text()).get("numbers", {})
+    p2 = DATA / "phase2.json"
+    if p2.exists():
+        vals = {**vals, **json.loads(p2.read_text()).get("numbers", {})}
+    return vals
 
 
 def main() -> None:
@@ -54,6 +59,7 @@ def main() -> None:
     cut = page.index("<header")
     (DIST / "study.html").write_text(HEAD + page[:cut] + "</head>\n<body>\n" + page[cut:] + "\n</body>\n</html>\n")
     shutil.copy(SRC / "app.js", DIST / "app.js")
+    shutil.copy(SRC / "phase2.js", DIST / "phase2.js")
     shutil.copy(SRC / "play.js", DIST / "play.js")
     for name in ("index.html", "play.html"):  # the game is the landing page, copied as is
         shutil.copy(SRC / "play.html", DIST / name)

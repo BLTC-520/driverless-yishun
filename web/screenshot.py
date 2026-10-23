@@ -55,7 +55,7 @@ def main() -> None:
                 print(f"{name}: full-page capture skipped ({type(e).__name__})")
                 page.screenshot(path=str(OUT / f"view_{name}.png"))
             # each chapter on its own, for checking charts and tables
-            for sid in ("cliff", "cost", "kerb", "who", "method"):
+            for sid in ("cliff", "cost", "kerb", "who", "phase2", "method"):
                 try:
                     el = page.locator(f"#{sid}")
                     el.scroll_into_view_if_needed(timeout=10_000)

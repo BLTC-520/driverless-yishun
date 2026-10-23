@@ -750,10 +750,11 @@ def swings(ops: ShuttleOps, p: CostParams, param_ids: Iterable[str] | None = Non
     """One-at-a-time swings for a tornado chart: each parameter at its low_cost and at its high_cost
     value, every other parameter at central. Tidy rows, one per parameter and side, largest range
     first. direction_ok is False where the low_cost value raises the metric or the high_cost value
-    lowers it (a sign of swapped columns). Parameters that do not act under the current switches
-    (the lease charge of a purchased fleet, say) show no swing."""
+    lowers it (a sign of swapped columns). The optional parameters (the attendant wage, the monitoring
+    ratio while a safety operator rides) are swung too when the register has them. Parameters that do
+    not act under the current switches (the lease charge of a purchased fleet, say) show no swing."""
     base = shuttle_daily_cost(ops, p, "central", charging_offpeak)[metric]
-    ids = list(param_ids) if param_ids is not None else [k for k in SHUTTLE_IDS if k in p.parameters]
+    ids = list(param_ids) if param_ids is not None else [k for k in SHUTTLE_IDS + OPTIONAL_IDS if k in p.parameters]
     eps = 1e-9 * max(1.0, abs(base))
     rows = []
     for k in ids:

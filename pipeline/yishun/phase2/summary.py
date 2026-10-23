@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -302,6 +303,7 @@ def stress_table(p: costs.CostParams) -> list[dict]:
                     "availability": _f(r["availability"], 2), "berths": int(r["berths"]),
                     "saved_h": _f(r["saved_h"], 0), "saved_h_min": _f(r["saved_h_min"], 0),
                     "saved_h_max": _f(r["saved_h_max"], 0),
+                    "saved_h_R2": _f(r["saved_h_R2"], 0), "saved_h_R3": _f(r["saved_h_R3"], 0),
                     "declined": _f(r["n_declined"], 0), "refused": _f(r["n_refused"], 0),
                     "offered": _f(r["n_offered"], 0), "mean_min": _f(r["mean_min"], 2), "mean_min_A": _f(r["mean_min_A"], 2),
                     "p90_min": _f(r["p90_min"], 2), "p90_min_A": _f(r["p90_min_A"], 2),
@@ -320,6 +322,35 @@ def _ref_mask(cfg: pd.DataFrame) -> pd.Series:
         mm &= cfg.theta_min.isna() if s.theta_min is None else (cfg.theta_min == s.theta_min)
         m |= mm & (cfg.availability == 1.0) & (cfg.berths == -1)
     return m
+
+
+def grid_provenance(names: list[str]) -> dict:
+    """Each grid's own record (commit, modified tracked pipeline files, model key, runs): the summary's
+    provenance says how the summary was built, these say how the runs were."""
+    out = {}
+    for n in names:
+        f = OUT / n / "config.json"
+        if f.exists():
+            pv = json.loads(f.read_text()).get("provenance", {})
+            runs = OUT / n / "runs.parquet"
+            out[n] = {**{k: pv.get(k) for k in ("git", "pipeline_modified", "model_key")},
+                      "runs": int(len(pd.read_parquet(runs, columns=["run_id"]))) if runs.exists() else 0}
+    return out
+
+
+def _rel(path) -> str:
+    try:
+        return str(Path(path).resolve().relative_to(PROCESSED.parent.parent))
+    except ValueError:
+        return str(path)
+
+
+def _sha256(path) -> str | None:
+    import hashlib
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return None
 
 
 def run() -> dict:
@@ -351,7 +382,8 @@ def run() -> dict:
     modes = active_modes(p)
     fr = {m: {case: frontier(cr, case, main_ids, m) for case in CASES} for m in modes}
     out = {
-        "provenance": {**provenance(M), "grids": MAIN_GRIDS + ["stress"], "cost_parameters": p.source,
+        "provenance": {**provenance(M), "grids": MAIN_GRIDS + ["stress"], "grid_runs": grid_provenance(MAIN_GRIDS + ["stress"]),
+                       "cost_parameters": _rel(p.source), "cost_parameters_sha256": _sha256(p.source),
                        "seeds": sorted(runs.seed.unique().tolist())},
         "units": "SGD per average weekday, 2026 prices, excluding GST; passenger-hours per weekday; stop to stop",
         "bus": bus,

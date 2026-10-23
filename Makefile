@@ -76,8 +76,11 @@ phase2-experiments: ## options A, B, C on shared demand days, coarse search to s
 	$(RUN) yishun.phase2.experiments stress 4
 	$(RUN) yishun.phase2.experiments replicates 4
 
-phase2-results:   ## costs, comparison, thresholds, sensitivity, charts and page data
+phase2-results:   ## costs, comparison, thresholds, sensitivity; page data, report charts and results tables
 	$(RUN) yishun.phase2.summary
+	$(RUN) yishun.phase2.export_web
+	$(RUN) yishun.phase2.charts
+	$(RUN) yishun.phase2.report_tables
 
 reproduce-phase2: phase2-experiments phase2-results test
 
