@@ -489,6 +489,14 @@ def run() -> dict:
                                                               "n_obs_used", "hours_sgt", "holdout_hours")}
     demand = json.loads((WEB_DATA / "demand.json").read_text())
     out["numbers"] = numbers(out, base, demand, cal, gps, pm)
+    # what the page's numbers were computed from, per experiment grid (commit, model key, clean tree),
+    # so the evidence page can say so
+    out["provenance"] = {}
+    for g in ("frontier", "ext", "kerb"):
+        cfg = PROCESSED / "experiments" / g / "config.json"
+        if cfg.exists():
+            pv = json.loads(cfg.read_text()).get("provenance") or {}
+            out["provenance"][g] = {k: pv.get(k) for k in ("git", "pipeline_modified", "model_key", "demand_months")}
     (WEB_DATA / "results.json").write_text(json.dumps(out, separators=(",", ":")))
     (WEB_DATA / "calibration_points.json").write_text(json.dumps(calibration_points(M), separators=(",", ":")))
     print(json.dumps({k: out[k] for k in ("all_day_parity", "parity_below", "frontier_peak", "cliff_gap", "anim",
