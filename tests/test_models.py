@@ -37,6 +37,47 @@ def test_common_lines_combines_frequencies():
     assert set(e["lines"]) == {"1", "2"}
 
 
+def test_figure_of_eight_boards_at_the_nearest_visit():
+    # Service 812 runs a figure of eight through the interchange H: H a H b H. A rider from H to b
+    # boards for the second loop, not a whole loop earlier; a rider from a to b rides through H.
+    hw = {b: 10.0 for b in ("AM_Peak_Freq", "AM_Offpeak_Freq", "PM_Peak_Freq", "PM_Offpeak_Freq")}
+    fl = {c: (0, 1439) for c in "Hab"}
+    codes = ["H", "a", "b"]
+    T = np.array([[0, 300, 120], [300, 0, 400], [120, 400, 0]], float)
+    ln = Line("812", 1, ["H", "a", "H", "b", "H"], [0, 1, 2, 3, 4], hw, fl)
+    bb = BusBaseline(codes, T, [ln], BaselineParams(kappa=0.5, dwell_s=20.0))
+    assert bb.expected("H", "b", 12 * 60)["ivt_s"] == pytest.approx(120 + 20)
+    assert bb.expected("H", "a", 12 * 60)["ivt_s"] == pytest.approx(300 + 20)
+    assert bb.expected("a", "b", 12 * 60)["ivt_s"] == pytest.approx(300 + 20 + 120 + 20)
+    assert bb.expected("b", "a", 12 * 60) is None   # a does not follow b on the run
+    assert [l.service for l in bb._serving("H", "b")] == ["812"]
+
+
+def test_real_loop_lines_board_at_the_nearest_visit(real_model):
+    # Every pair on every line that revisits a stop (812 at Yishun Int 59009; 861, 883 and 883M at
+    # 58621) is timed from the visit that gives the shortest ride, checked against brute force.
+    M = real_model
+    seen = set()
+    for ln, pos, cum in M.baseline.segments:
+        if len(set(ln.stops)) == len(ln.stops):
+            continue
+        seen.add(ln.service)
+        for o in set(ln.stops):
+            for d in set(ln.stops) - {o}:
+                brute = [cum[j] - cum[i] for i, a in enumerate(ln.stops) for j, b in enumerate(ln.stops)
+                         if a == o and b == d and j > i]
+                ij = BusBaseline.ride(pos, cum, o, d)
+                if not brute:
+                    assert ij is None
+                elif np.isfinite(min(brute)):
+                    assert cum[ij[1]] - cum[ij[0]] == pytest.approx(min(brute))
+    assert {"812", "861", "883", "883M"} <= seen
+    # Yishun Int -> Blk 121: the second loop of 812, not the whole first loop as well
+    ivt = [cum[j] - cum[i] for ln, pos, cum in M.baseline.segments if ln.service == "812"
+           for i, j in [BusBaseline.ride(pos, cum, "59009", "59121") or (0, 0)]]
+    assert 0 < max(ivt) < 15 * 60
+
+
 def test_calibration_estimator_recovers_known_parameters():
     """Software check of the estimator (not a validation of the model): data generated from the
     model's own form with known parameters must be recovered, with intervals covering them."""

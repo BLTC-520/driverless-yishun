@@ -28,6 +28,11 @@ import pandas as pd
 
 from .paths import RAW
 
+# Changes to how the bus model times a ride; part of the model cache key, so a cached model built by
+# older code is never reused. 2: board at whichever visit of a stop gives the shortest ride (812).
+BUS_MODEL_VERSION = 2
+
+
 # LTA DataMall BusServices time bands (minutes after midnight, inclusive start).
 # AM_Peak 06:30-08:30, AM_Offpeak 08:31-16:59, PM_Peak 17:00-19:00, PM_Offpeak after 19:00.
 # Before 06:30 no band is published; we use PM_Offpeak (late-evening headways) - an assumption.
@@ -131,16 +136,29 @@ class BusBaseline:
                     dwell = params.dwell_s + (params.hub_extra_s if a in hub_codes else 0.0)
                     t += run + dwell
                     cum.append(t)
-                pos.setdefault(c, k)  # first visit (loops revisit the interchange at the end)
+                # every visit: loops revisit the interchange at the end, and figure-of-eight
+                # feeders (812) pass it in the middle as well
+                pos.setdefault(c, []).append(k)
             self.segments.append((ln, pos, np.array(cum)))
+
+    @staticmethod
+    def ride(pos: dict[str, list[int]], cum: np.ndarray, o: str, d: str) -> tuple[int, int] | None:
+        """(i, j): board at visit i of o and alight at the first later visit j of d, choosing the
+        boarding visit that gives the shortest ride (a rider for the second loop of a figure of
+        eight boards there, not a loop earlier). None when d never follows o on the run."""
+        best = None
+        for j in pos.get(d, ()):
+            i = max((k for k in pos.get(o, ()) if k < j), default=None)
+            if i is not None and (best is None or cum[j] - cum[i] < cum[best[1]] - cum[best[0]]):
+                best = (i, j)
+        return best
 
     def _serving(self, o: str, d: str) -> list[Line]:
         """Lines that visit o and later d on the same run (any time of day)."""
         key = (o, d)
         cache = self.__dict__.setdefault("_serving_cache", {})
         if key not in cache:
-            cache[key] = [ln for ln, pos, cum in self.segments
-                          if o in pos and any(c == d and k > pos[o] for k, c in enumerate(ln.stops))]
+            cache[key] = [ln for ln, pos, cum in self.segments if self.ride(pos, cum, o, d) is not None]
         return cache[key]
 
     def service_window(self, o: str, d: str, hour: int) -> tuple[float, float] | None:
@@ -160,15 +178,11 @@ class BusBaseline:
         band = band_for_minute(minute % 1440)
         out = []
         for ln, pos, cum in self.segments:
-            if o not in pos or d not in ln.stops:
-                continue
-            i = pos[o]
             # destination must come later on the same run
-            later = [k for k, c in enumerate(ln.stops) if c == d and k > i]
-            if not later:
+            ij = self.ride(pos, cum, o, d)
+            if ij is None:
                 continue
-            j = later[0]
-            ivt = cum[j] - cum[i]
+            ivt = cum[ij[1]] - cum[ij[0]]
             hw = ln.headways.get(band)
             f, l = ln.first_last.get(o, (None, None))
             if hw is None or not np.isfinite(ivt) or not _in_service(f, l, minute % 1440):

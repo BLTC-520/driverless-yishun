@@ -14,25 +14,25 @@
   "inbound": 48899,
   "internal": 163326,
   "outbound": 48326,
-  "through": 15076
+  "through": 14822
  },
  "pax_km_in_area": {
   "inbound": 107987,
-  "internal": 334079,
+  "internal": 328230,
   "outbound": 117211,
-  "through": 62963
+  "through": 61160
  },
  "pax_km_share": {
-  "inbound": 0.1735,
-  "internal": 0.5369,
-  "outbound": 0.1884,
-  "through": 0.1012
+  "inbound": 0.1757,
+  "internal": 0.5341,
+  "outbound": 0.1907,
+  "through": 0.0995
  },
  "ride_share": {
-  "inbound": 0.1774,
-  "internal": 0.5926,
-  "outbound": 0.1753,
-  "through": 0.0547
+  "inbound": 0.1776,
+  "internal": 0.5931,
+  "outbound": 0.1755,
+  "through": 0.0538
  },
  "internal_only_services": [
   "117A",
@@ -549,11 +549,11 @@
   {
    "service": "812",
    "direction": 1,
-   "internal": 26141.6111,
+   "internal": 20292.1593,
    "outbound": 0.0,
    "inbound": 0.0,
    "through": 0.0,
-   "total": 26141.6111,
+   "total": 20292.1593,
    "internal_share": 1.0,
    "category": "FEEDER",
    "km_in": 12.8,
@@ -942,9 +942,9 @@
    "internal": 17258.787,
    "outbound": 6552.9831,
    "inbound": 5959.297,
-   "through": 1081.3772,
-   "total": 30852.4444,
-   "internal_share": 0.5594,
+   "through": 60.2206,
+   "total": 29831.2878,
+   "internal_share": 0.5785,
    "category": "TRUNK",
    "km_in": 14.2,
    "km_route": 21.8
@@ -994,9 +994,9 @@
    "internal": 1182.0667,
    "outbound": 2482.1333,
    "inbound": 1897.778,
-   "through": 725.6642,
-   "total": 6287.6422,
-   "internal_share": 0.188,
+   "through": 62.2578,
+   "total": 5624.2357,
+   "internal_share": 0.2102,
    "category": "TRUNK",
    "km_in": 4.4,
    "km_route": 12.7
@@ -1020,9 +1020,9 @@
    "internal": 234.8653,
    "outbound": 101.2318,
    "inbound": 79.7715,
-   "through": 127.984,
-   "total": 543.8525,
-   "internal_share": 0.4319,
+   "through": 8.8164,
+   "total": 424.6849,
+   "internal_share": 0.553,
    "category": "TRUNK",
    "km_in": 3.8,
    "km_route": 12.1

@@ -193,3 +193,14 @@ def test_cost_rows_cancel_bus_cost_and_subtract_only_avoidable_bus_cost():
     assert np.allclose(kept.delta_cost, kept.shuttle_cost)
     assert np.allclose(cut.delta_cost.to_numpy(), cut.shuttle_cost.to_numpy() - 90_000.0)
     assert np.allclose(cr.cost_per_hour_saved, cr.delta_cost / 100.0)  # only defined because time is saved
+
+
+def test_bus_allocation_boards_at_the_nearest_visit():
+    from yishun.phase2.bus_allocation import shortest_rides
+    # figure of eight H a H b H, 1 km per segment
+    km = shortest_rides(["H", "a", "H", "b", "H"], np.arange(5.0))
+    assert km[("H", "b")] == 1.0          # second loop only
+    assert km[("H", "a")] == 1.0
+    assert km[("a", "b")] == 2.0          # rides through H
+    assert ("b", "a") not in km
+    assert ("H", "H") not in km

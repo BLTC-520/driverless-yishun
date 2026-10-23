@@ -48,19 +48,23 @@ def line_pairs(study: set[str]) -> tuple[dict, pd.DataFrame]:
         f = {b: 1.0 / parse_headway(row[b]) if parse_headway(row[b]) else 0.0 for b in BANDS}
         lines.append({"service": sno, "direction": int(d), "category": row.Category, "km_in": float(sum(seg)),
                       "km_route": float(km[-1] - km[0])})
-        first = {}
-        for k, s in enumerate(c):
-            first.setdefault(s, k)
-        for i, s in enumerate(c):
-            if first[s] != i:   # loops revisit the interchange: board at the first visit
-                continue
-            for j in range(i + 1, len(c)):
-                if c[j] == s:
-                    continue
-                lst = pairs.setdefault((s, c[j]), [])
-                if not any(x[0] == sno and x[1] == int(d) for x in lst):
-                    lst.append((sno, int(d), float(cum[j] - cum[i]), f))
+        for pair, km_in in shortest_rides(c, cum).items():
+            pairs.setdefault(pair, []).append((sno, int(d), km_in, f))
     return pairs, pd.DataFrame(lines)
+
+
+def shortest_rides(stops: list[str], cum) -> dict[tuple[str, str], float]:
+    """(o, d) -> in-area km of the shortest ride from o to d along one run. Loops revisit the
+    interchange, and figure-of-eight feeders (812) pass it mid-route, so a rider boards at whichever
+    visit gives the shortest ride (as busnet.BusBaseline.ride)."""
+    best: dict = {}
+    for i, s in enumerate(stops):
+        for j in range(i + 1, len(stops)):
+            if stops[j] == s:
+                break   # from here on, boarding at this later visit is never longer
+            if (s, stops[j]) not in best or cum[j] - cum[i] < best[(s, stops[j])]:
+                best[(s, stops[j])] = float(cum[j] - cum[i])
+    return best
 
 
 def full_od(months=BASE_MONTHS) -> pd.DataFrame:

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from .busnet import BaselineParams, BusBaseline, load_lines
+from .busnet import BUS_MODEL_VERSION, BaselineParams, BusBaseline, load_lines
 from .demand import internal_od
 from .network import DEFAULT_KMH, stop_network
 from .paths import INTERIM
@@ -69,8 +69,10 @@ def build_model(kmh: dict | None = None, baseline_params: BaselineParams | None 
     if baseline_params is None:
         baseline_params = default_baseline_params()
     months = tuple(months or BASE_MONTHS)
-    sig = _json.dumps([sorted(kmh.items()), cal, baseline_params.__dict__, months, input_digests()],
-                      sort_keys=True, default=str)
+    sig = [sorted(kmh.items()), cal, baseline_params.__dict__, months, input_digests()]
+    if BUS_MODEL_VERSION > 1:   # version 1 keys (results built before the boarding fix) had no entry
+        sig.append({"bus_model": BUS_MODEL_VERSION})
+    sig = _json.dumps(sig, sort_keys=True, default=str)
     digest = hashlib.sha1(sig.encode()).hexdigest()[:12]
     key = INTERIM / f"model_{digest}.pkl"
     if cache and key.exists():
