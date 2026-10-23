@@ -4,7 +4,7 @@ PY ?= python
 RUN = cd pipeline && $(PY) -m
 
 .PHONY: setup data osm-latest live calibrate gps-check calibrate-peak experiments sensitivity results web test models \
-        reproduce-core-results phase2-allocation phase2-experiments phase2-results reproduce-phase2 serve clean-cache
+        reproduce-core-results phase2-allocation phase2-experiments phase2-results reproduce-phase2 serve clean-cache loop
 
 setup:            ## create the environment
 	uv venv .venv --python 3.12 && . .venv/bin/activate && uv pip install -r requirements.txt
@@ -83,6 +83,11 @@ phase2-results:   ## costs, comparison, thresholds, sensitivity; page data, repo
 	$(RUN) yishun.phase2.report_tables
 
 reproduce-phase2: phase2-experiments phase2-results test
+
+# The landing page's background: a night drive recorded in the game (headless Chromium, software WebGPU;
+# about an hour on 4 cores). Needs Playwright, Pillow and ffmpeg.
+loop:
+	$(PY) web/build.py && $(PY) web/record_loop.py
 
 serve:
 	cd web/dist && $(PY) -m http.server 8000

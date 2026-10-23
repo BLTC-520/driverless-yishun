@@ -65,6 +65,7 @@ a:hover { color: var(--chalk); }
   letter-spacing: 0.02em; text-transform: uppercase; font-size: 0.95rem;
 }
 .wordmark span { color: var(--sodium); }
+a.wordmark { color: var(--chalk); text-decoration: none; }
 .mast nav { display: flex; gap: 18px; flex-wrap: wrap; font-family: var(--font-data); font-size: var(--step--1); }
 .mast nav a { color: var(--mute); text-decoration: none; }
 .mast nav a:hover { color: var(--chalk); }
@@ -358,9 +359,9 @@ html.still .steps { padding-block: 0; }
 
 <header class="mast wrap">
   <div class="inner">
-    <div class="wordmark">Driverless <span>Yishun</span></div>
+    <a class="wordmark" href="./" title="Home">Driverless <span>Yishun</span></a>
     <nav aria-label="Sections">
-      <a href="./" class="play-link">Play ▸</a><a href="#explore">Explore</a><a href="#trips">Trips</a><a href="#cliff">Fleet</a><a href="#cost">Vehicles</a><a href="#kerb">Kerb</a><a href="#who">Who gains</a><a href="#method">Method</a><a href="#data">Data</a>
+      <a href="play.html" class="play-link">Play ▸</a><a href="#explore">Explore</a><a href="#trips">Trips</a><a href="#cliff">Fleet</a><a href="#cost">Vehicles</a><a href="#kerb">Kerb</a><a href="#who">Who gains</a><a href="#method">Method</a><a href="#data">Data</a>
     </nav>
   </div>
 </header>
@@ -375,7 +376,7 @@ html.still .steps { padding-block: 0; }
         <p class="small">Singapore is starting driverless shuttles inside new towns. This study asks what it would take in a <em>mature</em> one. It sends a simulated weekday of Yishun's internal bus rides, drawn from LTA fare-card counts between every pair of stops, through an on-demand shuttle fleet and compares every ride with today's buses. Road times are calibrated to LTA's live bus data and checked against bus GPS movement.</p>
         <p class="small">Four-seat vehicles would need <span data-v="par4">—</span>, twenty-seat ones <span data-v="par20">—</span>. The dispatcher matters as much as the vehicles: one that considers four times as many shuttles per request needs only <span data-v="disp4">—</span>. Across <span data-v="sens_n">—</span> alternative assumptions the ten-seat fleet ranges <span data-v="sens_lo">—</span>–<span data-v="sens_hi">—</span>. Several assumptions favour the shuttles: unlimited kerb space, no traffic added by the fleet itself, no charging, travel times known exactly, and road speeds measured outside the morning rush. Two favour the bus: crowding is ignored, and the dispatcher is a simple one.</p>
       </div></details>
-      <div class="cta-row"><button class="show ride-cta" type="button" data-show="ride">Ride along with a shuttle ▸</button><a class="ride-cta play-cta" href="./">Play Night Shift: drive Yishun yourself ▸</a></div>
+      <div class="cta-row"><button class="show ride-cta" type="button" data-show="ride">Ride along with a shuttle ▸</button><a class="ride-cta play-cta" href="play.html">Play Night Shift: drive Yishun yourself ▸</a></div>
     </div>
     <dl class="figs" id="figs">
       <div class="fig"><dt>Bus rides inside Yishun</dt><dd><span data-v="rides">—</span><small>per weekday; both ends in the town</small></dd></div>
