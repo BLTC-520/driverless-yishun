@@ -6,16 +6,11 @@
   const CSS = getComputedStyle(document.documentElement);
   const tok = (n) => CSS.getPropertyValue(n).trim();
   const hexRgb = (h) => { h = h.replace("#", ""); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
-  const C = {
-    sodium: hexRgb(tok("--sodium")), sodiumDim: hexRgb(tok("--sodium-dim")), bus: hexRgb(tok("--bus")),
-    nsl: hexRgb(tok("--nsl")), rider: hexRgb(tok("--rider")), chalk: hexRgb(tok("--chalk")), mute: hexRgb(tok("--mute")),
-    ion: hexRgb(tok("--ion")),
-  };
   const fmtInt = d3.format(",.0f");
   const pad = (n) => String(n).padStart(2, "0");
   const clockOf = (min) => { const m = Math.floor(min) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const still = location.hash === "#still"; // no autoplay (thumbnails, screenshots)
+  const still = /(^#|&)still(&|$)/.test(location.hash); // no autoplay (thumbnails, screenshots)
 
   const state = {
     t: 7.5 * 60, playing: false, speed: 120, scenario: null,
@@ -23,6 +18,7 @@
     view: null,          // last view state, for zoom-dependent model scale
     orbit: false,        // slow attract-mode orbit until the visitor touches the map
     follow: null,        // ride-along camera: { veh, bearing, lost }
+    mapStyle: "street",  // "street" (after busrouter.sg) or "toon" (flat isometric illustration)
   };
   // Vehicle models built in Blender by tools/blender/build_models.py (metres, facing +x).
   const MODELS = { robovan: "models/robovan.glb", robotaxi: "models/robotaxi.glb", bus: "models/bus.glb", skytruck: "models/skytruck.glb" };
@@ -215,18 +211,68 @@
   const skyMoves = !reduceMotion && !still;  // frozen for reduced motion and screenshots
   const skyClock = () => (skyMoves ? performance.now() / 1000 : 20);
 
-  // ------------------------------------------------------------------ map layers
-  function vehColor(occ, alpha) {
-    if (occ === -2) return [...C.bus, alpha];
-    if (occ <= 0) return [...C.sodiumDim, Math.round(alpha * 0.8)];
-    return [...C.sodium, alpha];
+  // ------------------------------------------------------------------ map styles
+  // The colours live in index.html as tokens on .stage[data-map=...], so the layers, HUD and legend
+  // switch together; this holds what CSS cannot: camera lens, lighting, material, building fill.
+  const TOON_BLOCKS = ["#60c8e2", "#fad75a", "#f7a05f", "#b496e1", "#78cdb4", "#f8bace", "#8cbef0", "#f5ebc8"].map(hexRgb);
+  const MAP_STYLES = {
+    street: {
+      fovy: 50, ambient: 1.0, sun: 1.4, outline: false,
+      material: { ambient: 0.35, diffuse: 0.6, shininess: 12, specularColor: [40, 40, 40] },
+      block: (b) => {
+        if (b.k !== "hdb") return M.bld.map((c) => Math.round(c * 0.8));
+        const u = (Math.max(1975, Math.min(2025, b.y || 1985)) - 1975) / 50; // old blocks a touch warmer, newer cooler
+        return [M.bld[0] + Math.round(14 - 10 * u), M.bld[1] + Math.round(10 - 2 * u), M.bld[2] + Math.round(4 + 12 * u)];
+      },
+    },
+    toon: {
+      fovy: 25, ambient: 1.25, sun: 0.9, outline: true, pitch: 45, bearing: -45,
+      material: { ambient: 0.85, diffuse: 0.35, shininess: 0, specularColor: [0, 0, 0] },
+      block: (b) => TOON_BLOCKS[Math.abs(Math.round(b.p[0][0] * 91e4 + b.p[0][1] * 37e4)) % TOON_BLOCKS.length],
+    },
+  };
+  let M = {};  // the current style's colours, read from the stage
+  function readMapTokens() {
+    const cs = getComputedStyle(document.getElementById("stage"));
+    const t = (n) => { const v = cs.getPropertyValue(n).trim(); return v.startsWith("#") ? hexRgb(v) : null; };
+    M = {
+      sodium: t("--sodium"), sodiumDim: t("--sodium-dim"), bus: t("--bus"), nsl: t("--nsl"), rider: t("--rider"), ion: t("--ion"),
+      earth: t("--m-earth"), water: t("--m-water"), green: t("--m-green"), road: t("--m-road"), bld: t("--m-bld"),
+      line: t("--m-line"), rail: t("--m-rail"), stop: t("--m-stop"), boundary: t("--m-boundary"),
+    };
+  }
+  const mapStyle = () => MAP_STYLES[state.mapStyle];
+  const homeView = () => { const s = mapStyle(); return { ...HOME, ...(s.pitch != null && { pitch: s.pitch, bearing: s.bearing }) }; };
+  function mapView() { return new deck.MapView({ repeat: false, fovy: mapStyle().fovy }); }
+  function mapEffects() {
+    const s = mapStyle();
+    return [new deck.LightingEffect({
+      ambient: new deck.AmbientLight({ color: [255, 255, 255], intensity: s.ambient }),
+      moon: new deck.DirectionalLight({ color: [255, 236, 214], intensity: s.sun, direction: [-1.2, -2, -3] }),
+    })];
+  }
+  function setMapStyle(name, { save = true, turn = true } = {}) {
+    if (!MAP_STYLES[name]) return;
+    state.mapStyle = name;
+    document.getElementById("stage").dataset.map = name;
+    for (const b of document.querySelectorAll("#mapstyle button")) b.setAttribute("aria-pressed", String(b.dataset.map === name));
+    readMapTokens();
+    if (save) { try { localStorage.setItem("yishun-map-style", name); } catch (e) { /* private mode: not remembered */ } }
+    if (!deckgl) return;
+    deckgl.setProps({ views: mapView(), effects: mapEffects() });
+    // the cartoon reads as an illustration from the classic isometric corner; ease there, keeping place and zoom
+    if (turn && !state.follow) {
+      const v = state.view || HOME, h = homeView();
+      deckgl.setProps({ initialViewState: { ...v, pitch: h.pitch, bearing: h.bearing, nonce: ++flyCount, transitionDuration: reduceMotion ? 0 : 900 } });
+    }
+    redraw();
   }
 
-  function hdbColor(b) {
-    if (b.k !== "hdb") return [58, 64, 76];
-    const y = Math.max(1975, Math.min(2025, b.y || 1985));
-    const u = (y - 1975) / 50; // old blocks warm concrete, newer cooler
-    return [Math.round(150 - 28 * u), Math.round(144 - 10 * u), Math.round(134 + 14 * u)];
+  // ------------------------------------------------------------------ map layers
+  function vehColor(occ, alpha) {
+    if (occ === -2) return [...M.bus, alpha];
+    if (occ <= 0) return [...M.sodiumDim, Math.round(alpha * 0.8)];
+    return [...M.sodium, alpha];
   }
 
   function stopsPos() {
@@ -241,10 +287,16 @@
     if (!D.town) return [];
     const tSec = state.t * 60;
     const hourIdx = Math.max(0, Math.min(D.stops.hours.length - 1, Math.floor(state.t / 60) - 5));
-    const L = [];
-    L.push(new deck.SolidPolygonLayer({ id: "water", data: D.town.water, getPolygon: (d) => d, getFillColor: [18, 38, 58], pickable: false }));
-    L.push(new deck.SolidPolygonLayer({ id: "green", data: D.town.green, getPolygon: (d) => d, getFillColor: [22, 36, 32], pickable: false }));
-    L.push(new deck.SolidPolygonLayer({ id: "roads", data: D.town.roads, getPolygon: (d) => d, getFillColor: [34, 42, 58], pickable: false }));
+    const L = [], S = mapStyle(), ink = S.outline && M.line;
+    const z = (state.view || HOME).zoom, inkA = z >= 13.5 ? 255 : 120;  // lighter ink at town scale, none on phones, or the blocks turn to soot
+    L.push(new deck.SolidPolygonLayer({ id: "earth", data: D.town.boundary, getPolygon: (d) => d, getFillColor: M.earth, pickable: false }));
+    L.push(new deck.SolidPolygonLayer({ id: "water", data: D.town.water, getPolygon: (d) => d, getFillColor: M.water, pickable: false }));
+    L.push(new deck.SolidPolygonLayer({ id: "green", data: D.town.green, getPolygon: (d) => d, getFillColor: M.green, pickable: false }));
+    L.push(new deck.SolidPolygonLayer({ id: "roads", data: D.town.roads, getPolygon: (d) => d, getFillColor: M.road, pickable: false }));
+    if (ink) {  // cartoon: ink edges along kerbs and shorelines
+      L.push(new deck.PathLayer({ id: "road-ink", data: D.town.roads, getPath: (d) => d, getColor: [...ink, 120], widthMinPixels: 1, pickable: false }));
+      L.push(new deck.PathLayer({ id: "water-ink", data: D.town.water, getPath: (d) => d, getColor: [...ink, 170], widthMinPixels: 1.2, pickable: false }));
+    }
     if (state.showAge) {
       const ext = d3.extent(D.town.subzones, (s) => s.share65 || 0);
       L.push(new deck.SolidPolygonLayer({
@@ -253,14 +305,16 @@
         pickable: true, updateTriggers: { getFillColor: ext },
       }));
     }
-    L.push(new deck.PathLayer({ id: "boundary", data: D.town.boundary, getPath: (d) => d, getColor: [143, 153, 171, 110], widthMinPixels: 1.2, pickable: false }));
-    L.push(new deck.PathLayer({ id: "rail", data: D.town.rail, getPath: (d) => d, getColor: [...C.nsl, 200], widthMinPixels: 2, pickable: false }));
+    L.push(new deck.PathLayer({ id: "boundary", data: D.town.boundary, getPath: (d) => d, getColor: [...M.boundary, ink ? 200 : 110], widthMinPixels: ink ? 1.6 : 1.2, pickable: false }));
+    L.push(new deck.PathLayer({ id: "rail", data: D.town.rail, getPath: (d) => d, getColor: [...M.rail, ink ? 255 : 200], widthMinPixels: ink ? 4 : 2, pickable: false }));
     L.push(new deck.SolidPolygonLayer({
       id: "buildings", data: D.buildings.buildings, getPolygon: (d) => d.p, extruded: true, getElevation: (d) => d.h,
       // see-through while riding, so blocks between the chase camera and the vehicle don't hide it
       // (and not writing depth, or they would still hide the vehicles drawn after them)
-      getFillColor: hdbColor, opacity: state.follow ? 0.42 : 0.9, pickable: !state.follow,
-      parameters: state.follow ? { depthWriteEnabled: false } : {}, material: { ambient: 0.35, diffuse: 0.6, shininess: 12, specularColor: [40, 40, 40] },
+      getFillColor: S.block, opacity: state.follow ? 0.42 : ink ? 1 : 0.9, pickable: !state.follow,
+      wireframe: !!ink && !state.follow && z >= 13, getLineColor: ink ? [...ink, inkA] : [0, 0, 0],
+      parameters: state.follow ? { depthWriteEnabled: false } : {}, material: S.material,
+      updateTriggers: { getFillColor: state.mapStyle, getLineColor: [state.mapStyle, inkA] },
     }));
     const sc = state.scenario && anim[state.scenario.id];
     const stopIdx = stopsPos();
@@ -278,20 +332,21 @@
       L.push(new deck.ScatterplotLayer({
         id: "waiting", data, getPosition: (d) => [d.s.x, d.s.y], getRadius: (d) => 12 * Math.sqrt(d.w), radiusUnits: "meters",
         radiusMinPixels: 1, stroked: true, lineWidthMinPixels: 1,
-        getFillColor: [...C.rider, state.follow ? 40 : 110], getLineColor: [...C.rider, state.follow ? 120 : 230], pickable: true,
-        updateTriggers: { getRadius: [state.t, state.scenario && state.scenario.id], getFillColor: !!state.follow, getLineColor: !!state.follow },
+        getFillColor: [...M.rider, state.follow ? 40 : 110], getLineColor: [...M.rider, state.follow ? 120 : 230], pickable: true,
+        updateTriggers: { getRadius: [state.t, state.scenario && state.scenario.id], getFillColor: [!!state.follow, state.mapStyle], getLineColor: [!!state.follow, state.mapStyle] },
       }));
     }
     L.push(new deck.ScatterplotLayer({
       id: "stops", data: D.stops.stops, getPosition: (d) => [d.x, d.y], getRadius: (d) => (d.hub ? 22 : 10), radiusMinPixels: 1.5,
-      radiusMaxPixels: 16, getFillColor: (d) => (d.hub ? [...C.nsl, 230] : [200, 205, 215, 150]), pickable: true,
+      radiusMaxPixels: 16, getFillColor: (d) => (d.hub ? [...M.nsl, 230] : [...M.stop, ink ? 255 : 150]), pickable: true,
+      stroked: !!ink, getLineColor: ink || [0, 0, 0], lineWidthMinPixels: 1.2, updateTriggers: { getFillColor: state.mapStyle },
     }));
     if (state.showFlows) {
       const flows = D.demand.top_flows[hourIdx] || [];
       L.push(new deck.ArcLayer({
         id: "flows", data: flows.filter((f) => stopIdx[f[0]] && stopIdx[f[1]]),
         getSourcePosition: (f) => [stopIdx[f[0]].x, stopIdx[f[0]].y], getTargetPosition: (f) => [stopIdx[f[1]].x, stopIdx[f[1]].y],
-        getWidth: (f) => Math.max(0.6, f[2] / 25), getHeight: 0.6, getSourceColor: [...C.rider, 60], getTargetColor: [...C.rider, 220], greatCircle: false,
+        getWidth: (f) => Math.max(0.6, f[2] / 25), getHeight: 0.6, getSourceColor: [...M.rider, 60], getTargetColor: [...M.rider, 220], greatCircle: false,
       }));
     }
     if (sc) {
@@ -299,7 +354,7 @@
       L.push(new deck.TripsLayer({
         id: "trails", data: tripCache.trips, getPath: (d) => d.path, getTimestamps: (d) => d.timestamps,
         getColor: (d) => vehColor(d.occ, 210), widthMinPixels: 2.2, trailLength: TRAIL, currentTime: tSec - BASE,
-        fadeTrail: true, capRounded: true, jointRounded: true, updateTriggers: { getColor: state.scenario.id },
+        fadeTrail: true, capRounded: true, jointRounded: true, updateTriggers: { getColor: [state.scenario.id, state.mapStyle] },
       }));
       const act = activeVehicles(state.scenario.id, tSec);
       state._active = act.vehicles;
@@ -317,6 +372,7 @@
       L.push(new deck.ScatterplotLayer({
         id: "heads", data: act.heads, getPosition: (d) => d.p, getRadius: 9, radiusMinPixels: 1.6, radiusMaxPixels: 4,
         getFillColor: (d) => vehColor(d.occ, 255), pickable: true, visible: !models,
+        stroked: !!ink, getLineColor: ink || [0, 0, 0], lineWidthMinPixels: 1, updateTriggers: { getFillColor: state.mapStyle },
       }));
       // the vehicles themselves: Blender models heading along their routes, drawn larger than
       // life when zoomed out so they stay legible (sizeScale), true-ish size when riding along
@@ -332,7 +388,7 @@
         const pulse = 0.75 + 0.25 * Math.sin(performance.now() / 260);
         L.push(new deck.ScatterplotLayer({
           id: "ride-ring", data: [state.follow.pose], getPosition: (d) => [d.p[0], d.p[1], 0.05], getRadius: 7 * pulse,
-          radiusUnits: "meters", stroked: true, filled: true, getFillColor: [...C.sodium, 40], getLineColor: [...C.sodium, 230],
+          radiusUnits: "meters", stroked: true, filled: true, getFillColor: [...M.sodium, 40], getLineColor: [...M.sodium, 230],
           getLineWidth: 0.5, lineWidthUnits: "meters", updateTriggers: { getRadius: pulse },
         }));
       }
@@ -341,7 +397,7 @@
       const now = skyClock();
       L.push(new deck.TripsLayer({
         id: "sky-trails", data: SKY.flights, getPath: (d) => d.path, getTimestamps: (d) => d.timestamps,
-        getColor: [...C.ion, 210], widthMinPixels: 2.5, trailLength: 10, fadeTrail: true, capRounded: true,
+        getColor: [...M.ion, 210], widthMinPixels: 2.5, trailLength: 10, fadeTrail: true, capRounded: true,
         currentTime: (now % SKY.lap) + SKY.lap,
       }));
       L.push(new deck.ScenegraphLayer({
@@ -585,7 +641,7 @@
     };
     document.addEventListener("keydown", (e) => {
       const k = FLY_CODES[e.code];
-      if (e.code === "KeyH" && !e.ctrlKey && !e.metaKey && !e.altKey && !typing() && stageVisible()) { held.clear(); flyTo(HOME); return; }
+      if (e.code === "KeyH" && !e.ctrlKey && !e.metaKey && !e.altKey && !typing() && stageVisible()) { held.clear(); flyTo(homeView()); return; }
       if (!k || e.ctrlKey || e.metaKey || e.altKey || typing()) return;
       if (k !== "shift") { if (!stageVisible()) return; e.preventDefault(); }
       held.add(k);
@@ -609,10 +665,10 @@
       else startRide();
     } else if (what === "flows") {
       state.t = 7.5 * 60; state.showFlows = true; document.getElementById("t-flows").checked = true;
-      selectScenario(byId("bus") || D.anim_index.scenarios[0]); flyTo(HOME);
+      selectScenario(byId("bus") || D.anim_index.scenarios[0]); flyTo(homeView());
     } else if (what === "cliff") {
       state.t = 6.75 * 60; setPlaying(true);
-      selectScenario(byId(R.anim.undersized) || D.anim_index.scenarios[1]); flyTo(HOME);
+      selectScenario(byId(R.anim.undersized) || D.anim_index.scenarios[1]); flyTo(homeView());
     } else if (what === "kerb") {
       state.t = 7.75 * 60; selectScenario(byId(R.anim.reference) || D.anim_index.scenarios[1]);
       flyTo({ longitude: 103.8355, latitude: 1.4295, zoom: 16.4, pitch: 58, bearing: -35 });
@@ -765,7 +821,7 @@
     const cells = svg.append("g").attr("transform", "translate(2,8)").selectAll("rect").data(d3.range(100)).join("rect")
       .attr("x", (i) => (i % cols) * cell).attr("y", (i) => Math.floor(i / cols) * cell)
       .attr("width", cell - 3).attr("height", cell - 3).attr("rx", 2)
-      .attr("fill", (i) => (i < on ? tok(onVar) : tok("--night-3"))).attr("stroke", (i) => (i < on ? "none" : tok("--rule")))
+      .attr("fill", (i) => (i < on ? tok(onVar) : tok("--bg-3"))).attr("stroke", (i) => (i < on ? "none" : tok("--rule")))
       .attr("opacity", 0);
     const tx = narrow ? 2 : cols * cell + 28, ty = narrow ? rows * cell + 52 : 70;
     const t = svg.append("g").attr("transform", `translate(${tx},${ty})`).attr("opacity", 0);
@@ -775,7 +831,7 @@
       lines.forEach((l, i) => t.append("text").attr("class", "lab").attr("x", 18).attr("y", y0 + i * 16).text(l));
     };
     key(narrow ? 18 : 36, tok(onVar), "none", onLines(on));
-    key(narrow ? 18 + 18 * onLines(on).length : 44 + 18 * onLines(on).length, tok("--night-3"), tok("--rule"), offLines(100 - on));
+    key(narrow ? 18 + 18 * onLines(on).length : 44 + 18 * onLines(on).length, tok("--bg-3"), tok("--rule"), offLines(100 - on));
     describe(svg, `Waffle chart: ${on} of every 100 rides ${onLines(on).join(" ")}.`);
     return (s, dur) => {
       tr(cells, dur / 3).delay((i) => (s >= 0 ? (i * dur) / 80 : 0)).attr("opacity", s >= 0 ? 1 : 0);
@@ -818,7 +874,7 @@
         .attr("stroke", hue[k]).attr("stroke-width", 1).attr("stroke-dasharray", "2 2");
       // filled = no refused riders; open = the fleet also refused riders (waits over 45 min)
       g.append("g").selectAll("circle").data(pts).join("circle").attr("cx", (p) => x(p.f)).attr("cy", (p) => yc(p.m))
-        .attr("r", k === 10 ? 3.4 : 2.6).attr("fill", (p) => (p.ref > 0 ? tok("--night") : hue[k]))
+        .attr("r", k === 10 ? 3.4 : 2.6).attr("fill", (p) => (p.ref > 0 ? tok("--bg") : hue[k]))
         .attr("stroke", hue[k]).attr("stroke-width", 1.4)
         .append("title").text((p) => `${k} seats, ${p.f} vehicles: ${p.m.toFixed(1)} min${p.ref > 0 ? `, ${(100 * p.ref).toFixed(1)}% refused` + (p.lb != null ? ` (at least ${p.lb.toFixed(1)} min counting them)` : "") : ""}`);
       wipes[k] = wipe(svg, g, m.l, W - m.r, true);
@@ -900,7 +956,7 @@
       const first = prev < 0 && s >= 0, firstBus = prev < 1 && s >= 1; prev = s;
       tr(sh, dur / 2).delay((i) => (first ? (i * dur * 1.4) / n : 0))
         .attr("opacity", (i) => (s < 0 ? 0 : s >= 2 && i >= AV_FLEET ? 0.2 : 1))
-        .attr("fill", (i) => (s >= 2 && i < AV_FLEET ? tok("--chalk") : tok("--sodium")))
+        .attr("fill", (i) => (s >= 2 && i < AV_FLEET ? tok("--fg") : tok("--sodium")))
         .attr("r", (i) => (s >= 2 && i < AV_FLEET ? r * 1.25 : r));
       tr(bu, dur / 2).delay((i) => (firstBus ? (i * dur) / nb : 0)).attr("opacity", s >= 1 ? 1 : 0);
       vis(lSh, s >= 0, dur); vis(lBu, s >= 1, dur, dur * 0.5); vis(lAv, s >= 2, dur, dur * 0.3);
@@ -1014,9 +1070,9 @@
     for (const s of st) {
       const d = hrs.map((h) => ({ h, v: R.kerb[s][D.results.hours.indexOf(h)] }));
       const g = svg.append("g");
-      g.append("path").datum(d).attr("fill", "none").attr("stroke", colors[s] || tok("--chalk")).attr("stroke-width", s === "Yishun" ? 2.4 : 1.6)
+      g.append("path").datum(d).attr("fill", "none").attr("stroke", colors[s] || tok("--fg")).attr("stroke-width", s === "Yishun" ? 2.4 : 1.6)
         .attr("d", d3.line().x((p) => x(p.h) + x.bandwidth() / 2).y((p) => y(p.v || 0)));
-      g.append("text").attr("class", "lab").style("fill", colors[s] || tok("--chalk")).attr("x", W - m.r + 6).attr("y", labY[s]).text(W < 500 ? s : `${s} MRT`);
+      g.append("text").attr("class", "lab").style("fill", colors[s] || tok("--fg")).attr("x", W - m.r + 6).attr("y", labY[s]).text(W < 500 ? s : `${s} MRT`);
       G[s] = wipe(svg, g, m.l, W, false);
     }
     const ys = R.kerb.Yishun || R.kerb[st[0]], yi = d3.maxIndex(ys);
@@ -1056,7 +1112,7 @@
       // values sit inside the bar where it is wide enough, above it on phones
       const val = svg.append("text").attr("x", x0 + bw / 2).attr("y", narrow ? y(0) - h - 5 : y(0) - h + 15).attr("text-anchor", "middle").attr("opacity", 0)
         .attr("class", narrow ? "callout" : null).style("font-size", narrow ? "11px" : "12px")
-        .style("fill", narrow ? null : tok("--night")).style("font-family", "var(--font-data)").style("font-weight", narrow ? null : 600)
+        .style("fill", narrow ? null : tok("--bg")).style("font-family", "var(--font-data)").style("font-weight", narrow ? null : 600)
         .text(r.h7_total_min > ymax ? `${Math.round(r.h7_total_min)}↑` : r.h7_total_min.toFixed(1));
       const o = more.get(r.berths);
       let ghost = null;
@@ -1465,23 +1521,25 @@
       b.title = sc.label; b.onclick = () => selectScenario(sc); el.appendChild(b);
     }
     buildSky();
-    state.view = HOME;
+    // map style: a #style=toon link wins, then the visitor's last choice, then Streetmap
+    let saved = null; try { saved = localStorage.getItem("yishun-map-style"); } catch (e) { /* storage blocked */ }
+    const linked = (location.hash.match(/(?:^#|&)style=(street|toon)\b/) || [])[1];
+    setMapStyle(linked || (MAP_STYLES[saved] ? saved : "street"), { save: false, turn: false });
+    state.view = homeView();
     deckgl = new deck.Deck({
-      parent: document.getElementById("map"), initialViewState: HOME, controller: CONTROLLER,
-      views: new deck.MapView({ repeat: false }), layers: [], onHover,
+      parent: document.getElementById("map"), initialViewState: homeView(), controller: CONTROLLER,
+      views: mapView(), layers: [], onHover,
       onClick: (info) => { if (info.object && /^(models|heads)/.test(info.layer.id)) startRide(info.object.veh); },
       onViewStateChange: ({ viewState }) => {
         view = state.view = viewState; updateAway(viewState);
         if (!state.playing && !state.showSky) redraw();
       },
-      effects: [new deck.LightingEffect({
-        ambient: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.0 }),
-        moon: new deck.DirectionalLight({ color: [255, 236, 214], intensity: 1.4, direction: [-1.2, -2, -3] }),
-      })],
+      effects: mapEffects(),
       parameters: { clearColor: [0, 0, 0, 0] },
     });
-    view = HOME; flyKeys();
-    document.getElementById("home").onclick = () => { held.clear(); flyTo(HOME); };
+    view = state.view; flyKeys();
+    document.getElementById("home").onclick = () => { held.clear(); flyTo(homeView()); };
+    for (const b of document.querySelectorAll("#mapstyle button")) b.onclick = () => setMapStyle(b.dataset.map);
     document.getElementById("play").onclick = () => setPlaying(!state.playing);
     document.getElementById("time").oninput = (e) => { state.t = +e.target.value; redraw(); };
     document.getElementById("speed").onchange = (e) => { state.speed = +e.target.value; };
@@ -1509,6 +1567,7 @@
       state.orbit = false;
       if (e.key === " ") { e.preventDefault(); setPlaying(!state.playing); }
       else if (e.key === "g" || e.key === "G") { if (state.follow) stopRide(); else startRide(); }
+      else if ((e.key === "m" || e.key === "M") && !e.metaKey && !e.ctrlKey) setMapStyle(state.mapStyle === "toon" ? "street" : "toon");
       else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
         e.preventDefault(); state.t = Math.max(300, Math.min(1559, state.t + (e.key === "ArrowRight" ? 5 : -5))); redraw();
       }
