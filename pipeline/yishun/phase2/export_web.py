@@ -535,6 +535,18 @@ def numbers(P: dict) -> dict[str, str]:
     ws = {v["central"]["wait_weight"] for v in soc.values() if v and v.get("central") and v["central"].get("wait_weight")}
     if len(ws) == 1:
         n["p2_wait_weight"] = f"{ws.pop():g}"
+    # the social estimate in plain words: what the riders' time saved is worth per SGD 1 of added cost
+    # (central value of time), for full replacement and across the C reference designs, per staffing case
+    def per1(r):
+        return None if r is None else f"SGD {r:.2f}"
+    for m in P["modes"]:
+        bcr = lambda i: (((soc.get(i) or {}).get("central") or {}).get(f"benefit_cost_ratio_{m}"))
+        if b:
+            n[f"p2_b_per1_{m}"] = per1(bcr(b))
+        rs = [bcr(i) for i in cs if bcr(i) is not None]
+        if rs:
+            lo, hi = f"{min(rs):.2f}", f"{max(rs):.2f}"
+            n[f"p2_c_per1_range_{m}"] = f"SGD {lo}" if lo == hi else f"SGD {lo}–{hi}"
     be = P.get("bus_error", [])
     tid = next((P["tornado"][m]["id"] for m in P["modes"] if (P["tornado"].get(m) or {}).get("id")), None)
     row = next((r for r in be if r["id"] == tid), None)
