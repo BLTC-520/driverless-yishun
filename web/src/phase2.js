@@ -176,7 +176,7 @@
     const key = `benefit_cost_ratio_${mode}`;
     const ids = refIds().filter((i) => ((P.social[i] || {}).central || {})[key] != null);
     const W = widthOf("ch-p2-worth", 1040), narrow = W < 560;
-    const m = { l: narrow ? 8 : 150, r: 70, t: 30, b: 42 }, rowH = narrow ? 50 : 40;
+    const m = { l: narrow ? 18 : 150, r: 24, t: 30, b: 42 }, rowH = narrow ? 56 : 44;
     const H = m.t + m.b + rowH * Math.max(1, ids.length);
     const { g, w, h } = svgFrame("ch-p2-worth", W, H, m);
     if (!ids.length) return;
@@ -190,16 +190,18 @@
     g.append("text").attr("class", "lab").attr("x", w).attr("y", h + 36).attr("text-anchor", "end")
       .text(narrow ? "SGD of time saved per SGD 1 spent" : "value of riders' time saved per SGD 1 of added cost (SGD)");
     g.append("line").attr("x1", x(1)).attr("x2", x(1)).attr("y1", -8).attr("y2", h).attr("stroke", COL.ink).attr("stroke-dasharray", "4 4");
-    g.append("text").attr("class", "lab").attr("x", x(1) + 6).attr("y", -12).text("worth what it costs");
+    // the break-even label sits left of its line when the line is near the right edge (phones)
+    const late = x(1) > w - 140;
+    g.append("text").attr("class", "lab").attr("x", x(1) + (late ? -6 : 6)).attr("y", -12).attr("text-anchor", late ? "end" : "start").text("worth what it costs");
     for (const i of ids) {
-      const c = cfg[i], col = familyColor(c), cy = y(i) + (narrow ? rowH - 14 : rowH / 2);
+      const c = cfg[i], col = familyColor(c), cy = y(i) + (narrow ? rowH - 12 : rowH / 2 + 6);
       const lo = val(i, "low"), mid = val(i, "central"), up = val(i, "high");
       if (lo != null && up != null) g.append("line").attr("x1", x(lo)).attr("x2", x(up)).attr("y1", cy).attr("y2", cy).attr("stroke", col).attr("stroke-width", 2).attr("stroke-linecap", "round");
       g.append("circle").attr("cx", x(mid)).attr("cy", cy).attr("r", 6).attr("fill", col).attr("stroke", COL.surface).attr("stroke-width", 2);
       const name = c.option === "B" ? "B: full replacement" : `C: θ ${c.theta} min, ${c.fleet}`;
-      if (narrow) g.append("text").attr("class", "lab").attr("x", 0).attr("y", cy - 13).text(name);
+      if (narrow) g.append("text").attr("class", "lab").attr("x", -m.l + 2).attr("y", cy - 28).text(name);
       else g.append("text").attr("class", "lab").attr("x", -12).attr("y", cy + 4).attr("text-anchor", "end").text(name);
-      g.append("text").attr("class", "lab callout").attr("x", x(Math.max(mid, up ?? mid)) + 10).attr("y", cy + 4).text(money(mid));
+      g.append("text").attr("class", "lab callout").attr("x", x(mid)).attr("y", cy - 11).attr("text-anchor", "middle").text(money(mid));
       g.append("rect").attr("x", -m.l).attr("y", y(i)).attr("width", w + m.l + m.r).attr("height", rowH).attr("fill", "transparent")
         .on("mousemove", (evt) => showTip(evt, `<b>${c.label}</b><br>riders' time saved worth ${money(mid)} per SGD 1 of added cost` +
           `<br><span class="mute">low value of time ${lo != null ? money(lo) : "—"} · high ${up != null ? money(up) : "—"}</span>` +
