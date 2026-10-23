@@ -230,23 +230,28 @@ def build(S: dict) -> str:
 
     # 8 stress
     L += ["## 8. Stress tests", "",
-          "Passenger-hours saved against Option A in the same conditions (mean of the simulated days), declined and refused "
-          "rides. Speed stresses scale road times for buses and shuttles alike; added shuttle traffic slows nothing, because "
-          "congestion is not modelled.", ""]
+          "Passenger-hours saved against Option A in the same conditions, mean of the same three simulated days in every "
+          "row, with declined and refused rides. B accepts quoted pickups up to 45 minutes and refuses beyond that with no "
+          "bus; C declines beyond 15 minutes and the rider takes the bus; \"B, C's rule\" is 450 shuttles offered every "
+          "ride under C's rule. Kerb limits of 10 and 7 shuttles at once per station are test values. Speed stresses scale "
+          "road times for buses and shuttles alike; added shuttle traffic slows nothing, because congestion is not modelled.", ""]
     st = P["stress"]
+    base_tag = "base case (same three days)"   # the stress grid's own base runs (phase2/experiments.py)
     ids = list(dict.fromkeys([*refs, *[r["id"] for r in st]]))
-    rows = [["Base case", *[_h(cfg[i]["saved_h"]) if i in cfg else "—" for i in ids]]]
-    for k in P["stress_labels"]:
-        cells = [k]
-        for i in ids:
-            r = next((x for x in st if x["stress"] == k and x["id"] == i), None)
-            if not r:
-                cells.append("—")
-                continue
-            note = f" ({_h(r['refused'])} refused)" if r["refused"] else (f" ({_h(r['declined'])} declined)" if r["declined"] else "")
-            cells.append(f"{_h(r['saved_h'])}{note}")
-        rows.append(cells)
-    L += [_table(["Condition", *[cfg[i]["short"] if i in cfg else i for i in ids]], rows), ""]
+    head = lambda i: cfg[i]["short"] if i in cfg else ("B, C's rule" if i.endswith("-all") else i)
+
+    def cell(r):
+        if not r:
+            return "—"
+        notes = [f"{_n(r['declined'])} declined" if r["declined"] else "", f"{_n(r['refused'])} refused" if r["refused"] else ""]
+        notes = [x for x in notes if x]
+        return f"{_h(r['saved_h'])}" + (f" ({', '.join(notes)})" if notes else "")
+    labels = ([base_tag] if any(x["stress"] == base_tag for x in st) else []) + list(P["stress_labels"])
+    rows = [] if labels and labels[0] == base_tag else [["Base case (all simulated days)", *[_h(cfg[i]["saved_h"]) if i in cfg else "—" for i in ids]]]
+    for k in labels:
+        rows.append(["Base case" if k == base_tag else k,
+                     *[cell(next((x for x in st if x["stress"] == k and x["id"] == i), None)) for i in ids]])
+    L += [_table(["Condition", *[head(i) for i in ids]], rows), ""]
     if any(r.get("saved_h_R2") is not None for r in st):
         rows = []
         for k in P["stress_labels"]:
@@ -257,7 +262,7 @@ def build(S: dict) -> str:
                              f"{_h(r['saved_h_R2'])} / {_h(r['saved_h_R3'])}" if r["declined"] or r["refused"] else "as R1")
             rows.append(cells)
         L += ["The same stresses under the other treatments of declined and refused rides (R2 / R3):", "",
-              _table(["Condition", *[cfg[i]["short"] if i in cfg else i for i in ids]], rows), ""]
+              _table(["Condition", *[head(i) for i in ids]], rows), ""]
 
     # 9 bus model error
     L += ["## 9. If the bus model overstates bus times on the rides the shuttle takes", "",

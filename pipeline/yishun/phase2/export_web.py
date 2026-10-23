@@ -531,7 +531,7 @@ def numbers(P: dict) -> dict[str, str]:
     soc = P.get("social", {})
     vots = {v["central"]["vot"] for v in soc.values() if v and v.get("central") and v["central"].get("vot") is not None}
     if len(vots) == 1:
-        n["p2_vot"] = sgd(vots.pop())
+        n["p2_vot"] = sgd(vots.pop(), 3)   # SGD 19.7, not rounded to 20
     ws = {v["central"]["wait_weight"] for v in soc.values() if v and v.get("central") and v["central"].get("wait_weight")}
     if len(ws) == 1:
         n["p2_wait_weight"] = f"{ws.pop():g}"
