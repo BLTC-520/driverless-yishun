@@ -226,10 +226,19 @@ B_MARGIN_STRESSES = {"15 % of the fleet unavailable", "kerb: 10 shuttles at once
                      "combined: slower roads, 15 % unavailable, kerb 7"}
 
 
+# B and C differ in how they treat a long quoted pickup: B accepts it (up to 45 min, then refuses with
+# no bus), C declines beyond 15 min and the rider takes the bus. Full replacement under C's rule (every
+# ride offered, 450 shuttles, decline to the bus) separates that design choice from replacement itself.
+B_FALLBACK = OptionSpec("C", fleet=450, theta_min=ALL_RIDES)
+BASE_TAG = "base case (same three days)"
+
+
 def grid_stress() -> list[dict]:
     jobs = [job(OptionSpec("A"), s, sc) for sc in ("slow_roads", "pm_peak") for s in SEEDS]
+    # the base case on the stress tests' own days, so every row of the stress table averages seeds 1-3
+    jobs += [job(spec, s, "base", tag=BASE_TAG) for spec in REFERENCE + [B_MARGIN, B_FALLBACK] for s in SEEDS]
     for label, sc, av, b in STRESSES:
-        specs = REFERENCE + ([B_MARGIN] if label in B_MARGIN_STRESSES else [])
+        specs = REFERENCE + [B_FALLBACK] + ([B_MARGIN] if label in B_MARGIN_STRESSES else [])
         for spec in specs:
             jobs += [job(replace(spec, availability=av, berths=b), s, sc, tag=label) for s in SEEDS]
     return jobs
