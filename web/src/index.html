@@ -260,14 +260,16 @@ button.show:not(.ride-cta):hover { background: var(--fg); color: var(--bg); }
 .chart-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 
 /* ---- phase 2: options compared on cost and passenger time ---- */
-.p2 { --p2-a: #1f9fb4; --p2-b: #c98500; --p2-c: #d55181; --p2-staff: #3987e5; --p2-fixed: #199e70; --p2-dist: #9085e9; }
-.p2-banner { border: 1px solid var(--bad); color: var(--chalk); padding: 8px 12px; border-radius: 4px; font-size: var(--step--1); }
+/* Phase 2 series on the paper design: A bus teal, B the shuttle amber, C violet; cost classes blue, aqua, indigo
+   (checked for colour-vision separation on this paper) */
+.p2 { --p2-a: #0089a8; --p2-b: #c96a0a; --p2-c: #a33b9a; --p2-staff: #2a78d6; --p2-fixed: #1baf7a; --p2-dist: #6250d6; }
+.p2-banner { border: 1px solid var(--bad); color: var(--fg); padding: 8px 12px; border-radius: 4px; font-size: var(--step--1); }
 .p2-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: baseline; }
 .p2-key.a { background: var(--p2-a); } .p2-key.b { background: var(--p2-b); } .p2-key.c { background: var(--p2-c); }
 .p2-modes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 26px; }
 .p2-modes button { font: inherit; font-family: var(--font-data); font-size: var(--step--1); color: var(--mute); background: transparent;
   border: 1px solid var(--rule); border-radius: 4px; padding: 6px 10px; cursor: pointer; }
-.p2-modes button[aria-pressed="true"] { color: var(--chalk); border-color: var(--chalk); }
+.p2-modes button[aria-pressed="true"] { color: var(--fg); border-color: var(--fg); background: var(--bg-2); }
 .p2-modenote { color: var(--mute); font-size: var(--step--1); margin: 8px 0 0; max-width: 70ch; }
 .p2-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; margin-top: 28px; }
 .p2 .chart svg { width: auto; max-width: 100%; }
@@ -275,8 +277,8 @@ button.show:not(.ride-cta):hover { background: var(--fg); color: var(--bg); }
 .p2 .legend-row i.ln { height: 0; border-top: 2px solid; }
 .p2 .legend-row svg { display: inline-block; width: 14px; max-width: none; height: 14px; overflow: visible; }
 #p2-stress th.cfg { text-align: right; text-transform: none; }
-.p2-tip { position: fixed; z-index: 30; pointer-events: none; background: var(--night-2); border: 1px solid var(--rule); border-radius: 4px;
-  padding: 8px 10px; font-family: var(--font-data); font-size: 12px; color: var(--chalk); max-width: 320px; line-height: 1.45; }
+.p2-tip { position: fixed; z-index: 30; pointer-events: none; background: var(--bg-2); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 8px 10px; font-family: var(--font-data); font-size: 12px; color: var(--fg); max-width: 320px; line-height: 1.45; }
 .p2-tip b { font-weight: 600; } .p2-tip .mute { color: var(--mute); }
 #p2-stress td, #p2-budget td { white-space: nowrap; } #p2-stress td:first-child { white-space: normal; min-width: 14em; }
 @media (max-width: 860px) { .p2-grid { grid-template-columns: minmax(0, 1fr); } }

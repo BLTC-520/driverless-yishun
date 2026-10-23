@@ -10,7 +10,7 @@
   const css = getComputedStyle(root);
   const tok = (n) => css.getPropertyValue(n).trim();
   const COL = { A: tok("--p2-a"), B: tok("--p2-b"), C: tok("--p2-c"), staff: tok("--p2-staff"), fixed: tok("--p2-fixed"),
-                distance: tok("--p2-dist"), surface: tok("--night-3") || "#1a2333", rule: tok("--rule"), chalk: tok("--chalk"),
+                distance: tok("--p2-dist"), surface: tok("--bg-2") || "#fff", rule: tok("--rule"), chalk: tok("--fg"),
                 mute: tok("--mute") };
   const CLASS_ORDER = [["staff", "Staff"], ["fixed", "Fixed (vehicles, depot, software, insurance…)"], ["distance", "Distance (energy, per-km maintenance)"]];
   const fmt = d3.format(",.0f");
@@ -244,7 +244,7 @@
     g.append("g").attr("class", "axis").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x).tickFormat((p) => (narrow ? PERIOD_SHORT[p] : (P.period_names || {})[p]) || p));
     g.append("g").attr("class", "axis").call(d3.axisLeft(y).ticks(5).tickFormat((v) => (Math.abs(v) >= 1000 ? `${fmt(v / 1000)}k` : fmt(v))));
     const cIds = ids.filter((i) => cfg[i].option === "C");
-    const ramp = (k) => (cIds.length > 1 ? d3.interpolateRgb("#f2a9c6", "#a33461")(k / (cIds.length - 1)) : COL.C);
+    const ramp = (k) => (cIds.length > 1 ? d3.interpolateRgb("#d9a3d2", "#6b2163")(k / (cIds.length - 1)) : COL.C);
     const colorOf = (i) => (cfg[i].option === "B" ? COL.B : ramp(cIds.indexOf(i)));
     const items = [], ends = [];
     for (const i of ids) {
