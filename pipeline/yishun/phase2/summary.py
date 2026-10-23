@@ -48,7 +48,7 @@ MODE_LABELS = {"onboard": "safety operator on board (current pilot requirement)"
 def active_modes(p: costs.CostParams) -> tuple[str, ...]:
     """The staff modes the parameter file can price (the attendant case needs its wage)."""
     return tuple(m for m in MODES if m != "remote_with_attendant" or p.has("attendant_sgd_per_hour"))
-BUDGETS = [10_000, 20_000, 30_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000]
+BUDGETS = [10_000, 20_000, 30_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 600_000, 800_000]
 BUS_ERROR = (0.1, 0.2, 0.3)
 
 

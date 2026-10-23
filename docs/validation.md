@@ -167,3 +167,22 @@ project; what they found and what was done about it is listed at the end.
     the threshold from 450 to 400 or 375. A batch optimiser could lower it further.
   - 450 is what this simple dispatcher needs, not a floor.
 - **Stages, not trips.** Two-bus trips inside Yishun stay two requests.
+
+## Phase 2 checks
+
+What was checked for the cost and passenger-time comparison
+([`phase2/definitions.md`](phase2/definitions.md)), and what it showed.
+
+| Check | Result |
+|---|---|
+| **Phase 1 baseline re-derived** (fresh LTA files, raw OD) | Internal OD identical; bus baseline identical to 0.01 min per hour; 413 tests pass ([`phase2/audit.md`](phase2/audit.md)) |
+| **Road graph determinism** | Phase 1's graph depended on Python's hash seed (5,171–5,195 nodes on one extract). Fixed and tested: two hash seeds give identical edges (`tests/test_network.py`) |
+| **Phase 1 headline on the fixed graph** | Parity fleets unchanged (700 / 450 / 375 for 4 / 10 / 20 seats, mean and p90 rules); day means within 1 s at and above parity |
+| **Same rides in every option** | Within each scenario and seed, every option has the same ride count and identical Option A passenger-hours (all runs) |
+| **One mode per ride** | bus + shuttle + declined + refused = rides in every run; offered = shuttle + declined; saved hours = A − option (all runs; `tests/test_phase2.py`) |
+| **Rule C-θ uses published information only** | Eligibility is computed from expected bus times; changing the simulated bus waits leaves it unchanged (test) |
+| **Declined and refused rides** | Declined rides keep the bus time (R1), or are penalised (R2: 45 min + direct ride; R3: +5 min); refused B rides are counted at 45 min + direct; all are reported separately (tests) |
+| **Bus cost** | Cancels between A and C; B(ii) subtracts only the internal-only services' bus cost (test) |
+| **Cost formulas** | Hand-computed annuities, conversions, availability reserves, hourly staffing, lease/purchase exclusivity, class sums, thresholds and swings (60 tests on a synthetic fixture; 22 deliberate formula breaks all caught) |
+| **Rebuild from recorded inputs** | Re-running a grid from its recorded jobs and seeds gives the same results to floating-point precision (28 configurations compared) |
+| **Evidence register** | Every parameter's sources resolve to register rows; the schema is validated on load (`costs.load_cases`) |
