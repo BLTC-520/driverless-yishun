@@ -100,7 +100,13 @@ data/processed/    calibration and experiment outputs (raw data is never committ
 The explorer draws each simulated vehicle as a 3D model heading along its route: a robovan for the 10-seat
 shuttles, a robotaxi coupe for the 4-seat fleet, and a feeder bus for today's buses. Click a vehicle (or press
 **R**) to ride along behind it. The flying trucks circling above the town are decoration and play no part in
-the simulation. The models are built from code by [`tools/blender/build_models.py`](tools/blender/build_models.py)
+the simulation. Press **M** (or use the pill in the top-right corner) to switch the map between two
+styles: **Streetmap**, a dark street map after [busrouter.sg](https://busrouter.sg/visualization/), and **Cartoon**, a flat
+pastel illustration with ink outlines; the choice is remembered, and `#style=toon` links straight to it.
+
+![The explorer in the Cartoon style](docs/img/stage_desktop_cartoon.png)
+
+The models are built from code by [`tools/blender/build_models.py`](tools/blender/build_models.py)
 and committed as `web/public/models/*.glb`. To rebuild or restyle them:
 
 ```bash
