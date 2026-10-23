@@ -1,0 +1,8 @@
+{
+ "share": {
+  "SD": 0.521,
+  "DD": 0.438,
+  "BD": 0.041
+ },
+ "source": "LTA Bus Arrival v3 live log of 15 Oct 2026, GPS-monitored buses at Yishun stops; recovered from web/public/data/baseline.json at commit 42ff8b4, where it was computed with the log present"
+}

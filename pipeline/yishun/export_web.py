@@ -196,19 +196,27 @@ def export_stops_and_demand(M) -> None:
 DECK_PLACES = {"SD": 90, "DD": 125, "BD": 120}  # approx. riders incl. standing; secondary sources, see docs/data.md
 
 
+DECK_MIX = PROCESSED / "deck_mix.json"   # committed: the live log of 15 Oct 2026 cannot be downloaded again
+
+
 def deck_mix(study: set[str]) -> dict | None:
     """Share of single-deck / double-deck / bendy buses among GPS-monitored buses observed at
-    Yishun stops in the live log (each bus counted once per poll)."""
+    Yishun stops in the live log (each bus counted once per poll). Written to deck_mix.json when
+    the live log is present, and read from it when it is not, so a clean checkout rebuilds the
+    same page data."""
     import glob
     files = sorted(glob.glob(str(RAW / "lta" / "live" / "bus_arrival_*.csv")))
     if not files:
-        return None
+        return json.loads(DECK_MIX.read_text())["share"] if DECK_MIX.exists() else None
     d = pd.concat([pd.read_csv(f, usecols=["poll_ts", "stop", "service", "monitored", "lat", "lon", "type"],
                                dtype={"stop": str, "service": str}) for f in files], ignore_index=True)
     d = d[(d.monitored == 1) & d.stop.isin(study) & d.type.isin(list(DECK_PLACES))]
     d = d.drop_duplicates(["poll_ts", "service", "lat", "lon"])
     share = d.type.value_counts(normalize=True)
-    return {k: round(float(share.get(k, 0.0)), 3) for k in DECK_PLACES}
+    mix = {k: round(float(share.get(k, 0.0)), 3) for k in DECK_PLACES}
+    DECK_MIX.write_text(json.dumps({"share": mix, "source": "LTA Bus Arrival v3 live log, GPS-monitored buses at "
+                                    "Yishun stops", "files": [f.split("/")[-1] for f in files]}, indent=1))
+    return mix
 
 
 def export_baseline(M, req: pd.DataFrame) -> None:
