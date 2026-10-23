@@ -1736,7 +1736,7 @@
    "run_id": "base|C:C10:N50:th16|av1|bNone|w900|{}|s3"
   }
  ],
- "elapsed_s": 697.0936913490295,
+ "elapsed_s": 441.12411999702454,
  "seeds": [
   1,
   2,
@@ -1744,8 +1744,8 @@
  ],
  "scenarios": {
   "base": {
-   "model_key": "213e91ad1ee8",
-   "shuttle_model_key": "213e91ad1ee8",
+   "model_key": "0cd6fcca7d4d",
+   "shuttle_model_key": "0cd6fcca7d4d",
    "inputs": {
     "files": {
      "osm/highways.osm": "335973d6e1c4",
@@ -1761,7 +1761,7 @@
   }
  },
  "provenance": {
-  "model_key": "213e91ad1ee8",
+  "model_key": "0cd6fcca7d4d",
   "demand_months": [
    "202607",
    "202608"
@@ -1793,7 +1793,7 @@
    "graph_nodes": 5171,
    "graph_edges": 8482
   },
-  "git": "6e0c8ab",
+  "git": "42ff8b4",
   "pipeline_modified": false
  }
 }
