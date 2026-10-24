@@ -3,8 +3,8 @@
 PY ?= python
 RUN = cd pipeline && $(PY) -m
 
-.PHONY: setup data live calibrate gps-check calibrate-peak experiments sensitivity results web test models \
-        reproduce-core-results serve clean-cache loop
+.PHONY: setup data osm-latest live calibrate gps-check calibrate-peak experiments sensitivity results web test models \
+        reproduce-core-results phase2-allocation phase2-experiments phase2-results reproduce-phase2 serve clean-cache loop
 
 setup:            ## create the environment
 	uv venv .venv --python 3.12 && . .venv/bin/activate && uv pip install -r requirements.txt
@@ -14,7 +14,11 @@ data:             ## download raw inputs (LTA DataMall, data.gov.sg, OpenStreetM
 	$(RUN) yishun.fetch_lta pv-od 202607
 	$(RUN) yishun.fetch_lta pv-od 202608
 	$(RUN) yishun.fetch_datagov
-	$(RUN) yishun.fetch_osm
+	$(RUN) yishun.fetch_osm pinned
+	$(RUN) yishun.fetch_lta pinned   # the stops, services and routes the results were computed from
+
+osm-latest:       ## today's OSM extract instead of the pinned one of 22 Oct 2026 (results will differ slightly)
+	$(RUN) yishun.fetch_osm latest
 
 live:             ## collect 2 hours of live bus arrivals + speed bands (run at the hours you want)
 	$(RUN) yishun.collect_live --minutes 118 --interval 90 & pid=$$!; \
@@ -59,6 +63,27 @@ models:
 # downloaded again, so this uses the committed data/processed/calibration.json, gps_check.json
 # and calibration_pm_peak.json; run `make live calibrate gps-check calibrate-peak` to refit.
 reproduce-core-results: experiments sensitivity results test
+
+# Phase 2: cost and passenger time of bus (A), full shuttle replacement (B) and combined (C) options.
+phase2-allocation: ## who uses Yishun's bus-km (needs the July + August 2026 full OD files; DataMall keeps 3 months)
+	$(RUN) yishun.phase2.bus_allocation
+
+phase2-experiments: ## options A, B, C on shared demand days, coarse search to stress tests (about 1.5 h on 4 cores)
+	$(RUN) yishun.phase2.experiments coarse 4
+	$(RUN) yishun.phase2.experiments refine 4
+	$(RUN) yishun.phase2.experiments capacity 4
+	$(RUN) yishun.phase2.experiments wmax 4
+	$(RUN) yishun.phase2.experiments window 4
+	$(RUN) yishun.phase2.experiments stress 4
+	$(RUN) yishun.phase2.experiments replicates 4
+
+phase2-results:   ## costs, comparison, thresholds, sensitivity; page data, report charts and results tables
+	$(RUN) yishun.phase2.summary
+	$(RUN) yishun.phase2.export_web
+	$(RUN) yishun.phase2.charts
+	$(RUN) yishun.phase2.report_tables
+
+reproduce-phase2: phase2-experiments phase2-results test
 
 # The landing page's background: a night drive recorded in the game (headless Chromium, software WebGPU;
 # about an hour on 4 cores). Needs Playwright, Pillow and ffmpeg.

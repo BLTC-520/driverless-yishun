@@ -1,0 +1,26 @@
+{
+  "licence": "Singapore Open Data Licence v1.0; contains information from LTA DataMall",
+  "files": {
+    "bus_stops.json": {
+      "endpoint": "BusStops",
+      "sha256": "5ce22e57f743b844c082d23d6442610fd4540160a98578c52fefddc054e3e5f7",
+      "bytes": 769137,
+      "records": 5209,
+      "retrieved_utc": "2026-10-23T14:46:13+00:00"
+    },
+    "bus_services.json": {
+      "endpoint": "BusServices",
+      "sha256": "3f221e73cc55d50b72340665d0f83e9de186c5166b40a3b93d8340add88ac184",
+      "bytes": 201474,
+      "records": 800,
+      "retrieved_utc": "2026-10-23T14:46:15+00:00"
+    },
+    "bus_routes.json": {
+      "endpoint": "BusRoutes",
+      "sha256": "e5746a2c772fe6032300d0c44771b5e8f721d656b5339ac3e5c0a89014a46194",
+      "bytes": 6845552,
+      "records": 26833,
+      "retrieved_utc": "2026-10-23T14:47:08+00:00"
+    }
+  }
+}

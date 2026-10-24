@@ -1,0 +1,2867 @@
+{
+ "grid": "stress",
+ "jobs": [
+  {
+   "spec": {
+    "option": "A",
+    "fleet": 0,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "",
+   "run_id": "slow_roads|A|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "A",
+    "fleet": 0,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "",
+   "run_id": "slow_roads|A|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "A",
+    "fleet": 0,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "",
+   "run_id": "slow_roads|A|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "A",
+    "fleet": 0,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "pm_peak",
+   "tag": "",
+   "run_id": "pm_peak|A|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "A",
+    "fleet": 0,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "pm_peak",
+   "tag": "",
+   "run_id": "pm_peak|A|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "A",
+    "fleet": 0,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "pm_peak",
+   "tag": "",
+   "run_id": "pm_peak|A|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|B:C10:N450|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|B:C10:N450|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|B:C10:N450|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N275:th6|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N275:th6|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N275:th6|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N175:th8|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N175:th8|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N175:th8|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N100:th10|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N100:th10|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N100:th10|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N40:th14|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N40:th14|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N40:th14|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|B:C10:N500|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|B:C10:N500|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|B:C10:N500|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N450:all|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N450:all|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "base case (same three days)",
+   "run_id": "base|C:C10:N450:all|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|B:C10:N450|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|B:C10:N450|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|B:C10:N450|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N275:th6|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N275:th6|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N275:th6|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N175:th8|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N175:th8|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N175:th8|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N100:th10|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N100:th10|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N100:th10|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N40:th14|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N40:th14|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N40:th14|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N450:all|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N450:all|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "slower roads and buses",
+   "run_id": "slow_roads|C:C10:N450:all|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|B:C10:N450|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|B:C10:N450|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|B:C10:N450|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N275:th6|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N275:th6|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N275:th6|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N175:th8|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N175:th8|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N175:th8|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N100:th10|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N100:th10|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N100:th10|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N40:th14|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N40:th14|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N40:th14|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N450:all|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N450:all|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "pm_peak",
+   "tag": "evening-peak roads and buses all day",
+   "run_id": "pm_peak|C:C10:N450:all|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|B:C10:N450|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|B:C10:N450|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|B:C10:N450|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N275:th6|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N275:th6|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N275:th6|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N175:th8|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N175:th8|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N175:th8|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N100:th10|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N100:th10|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N100:th10|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N40:th14|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N40:th14|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N40:th14|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N450:all|av1|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N450:all|av1|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "shuttle_slow",
+   "tag": "shuttles 25 % slower",
+   "run_id": "shuttle_slow|C:C10:N450:all|av1|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|B:C10:N450|av0.85|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|B:C10:N450|av0.85|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|B:C10:N450|av0.85|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N275:th6|av0.85|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N275:th6|av0.85|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N275:th6|av0.85|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N175:th8|av0.85|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N175:th8|av0.85|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N175:th8|av0.85|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N100:th10|av0.85|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N100:th10|av0.85|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N100:th10|av0.85|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N40:th14|av0.85|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N40:th14|av0.85|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N40:th14|av0.85|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N450:all|av0.85|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N450:all|av0.85|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|C:C10:N450:all|av0.85|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|B:C10:N500|av0.85|bNone|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|B:C10:N500|av0.85|bNone|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": null,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "15 % of the fleet unavailable",
+   "run_id": "base|B:C10:N500|av0.85|bNone|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|B:C10:N450|av1|b10|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|B:C10:N450|av1|b10|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|B:C10:N450|av1|b10|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N275:th6|av1|b10|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N275:th6|av1|b10|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N275:th6|av1|b10|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N175:th8|av1|b10|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N175:th8|av1|b10|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N175:th8|av1|b10|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N100:th10|av1|b10|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N100:th10|av1|b10|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N100:th10|av1|b10|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N40:th14|av1|b10|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N40:th14|av1|b10|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N40:th14|av1|b10|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N450:all|av1|b10|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N450:all|av1|b10|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|C:C10:N450:all|av1|b10|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|B:C10:N500|av1|b10|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|B:C10:N500|av1|b10|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 10,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 10 shuttles at once per station",
+   "run_id": "base|B:C10:N500|av1|b10|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|B:C10:N450|av1|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|B:C10:N450|av1|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|B:C10:N450|av1|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N275:th6|av1|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N275:th6|av1|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N275:th6|av1|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N175:th8|av1|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N175:th8|av1|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N175:th8|av1|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N100:th10|av1|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N100:th10|av1|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N100:th10|av1|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N40:th14|av1|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N40:th14|av1|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N40:th14|av1|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N450:all|av1|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N450:all|av1|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 1.0,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "base",
+   "tag": "kerb: 7 shuttles at once per station",
+   "run_id": "base|C:C10:N450:all|av1|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|B:C10:N450|av0.85|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|B:C10:N450|av0.85|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|B:C10:N450|av0.85|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N275:th6|av0.85|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N275:th6|av0.85|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 275,
+    "capacity": 10,
+    "theta_min": 6,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N275:th6|av0.85|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N175:th8|av0.85|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N175:th8|av0.85|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 175,
+    "capacity": 10,
+    "theta_min": 8,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N175:th8|av0.85|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N100:th10|av0.85|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N100:th10|av0.85|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 100,
+    "capacity": 10,
+    "theta_min": 10,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N100:th10|av0.85|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N40:th14|av0.85|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N40:th14|av0.85|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 40,
+    "capacity": 10,
+    "theta_min": 14,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N40:th14|av0.85|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N450:all|av0.85|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N450:all|av0.85|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "C",
+    "fleet": 450,
+    "capacity": 10,
+    "theta_min": -5.0,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|C:C10:N450:all|av0.85|b7|w900|{}|s3"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 1,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|B:C10:N500|av0.85|b7|w900|{}|s1"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 2,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|B:C10:N500|av0.85|b7|w900|{}|s2"
+  },
+  {
+   "spec": {
+    "option": "B",
+    "fleet": 500,
+    "capacity": 10,
+    "theta_min": null,
+    "hours": "",
+    "w_max_s": 900.0,
+    "availability": 0.85,
+    "berths": 7,
+    "sim": {}
+   },
+   "seed": 3,
+   "scenario": "slow_roads",
+   "tag": "combined: slower roads, 15 % unavailable, kerb 7",
+   "run_id": "slow_roads|B:C10:N500|av0.85|b7|w900|{}|s3"
+  }
+ ],
+ "elapsed_s": 949.5234620571136,
+ "seeds": [
+  1,
+  2,
+  3
+ ],
+ "scenarios": {
+  "base": {
+   "model_key": "0cd6fcca7d4d",
+   "shuttle_model_key": "0cd6fcca7d4d",
+   "inputs": {
+    "files": {
+     "osm/highways.osm": "335973d6e1c4",
+     "osm/context.json": "c1cffe36d2c7",
+     "lta/bus_stops.json": "5ce22e57f743",
+     "lta/bus_routes.json": "e5746a2c772f",
+     "lta/bus_services.json": "3f221e73cc55"
+    },
+    "graph_nodes": 5171,
+    "graph_edges": 8482
+   },
+   "label": "Calibrated base case"
+  },
+  "pm_peak": {
+   "model_key": "7d012d6650e7",
+   "shuttle_model_key": "7d012d6650e7",
+   "inputs": {
+    "files": {
+     "osm/highways.osm": "335973d6e1c4",
+     "osm/context.json": "c1cffe36d2c7",
+     "lta/bus_stops.json": "5ce22e57f743",
+     "lta/bus_routes.json": "e5746a2c772f",
+     "lta/bus_services.json": "3f221e73cc55"
+    },
+    "graph_nodes": 5171,
+    "graph_edges": 8482
+   },
+   "label": "Evening-peak calibration all day (cruise x1.00, 15 s per signal, bus dwell 46 s, wait factor 0.62)"
+  },
+  "shuttle_slow": {
+   "model_key": "0cd6fcca7d4d",
+   "shuttle_model_key": "8d6705d3fbdb",
+   "inputs": {
+    "files": {
+     "osm/highways.osm": "335973d6e1c4",
+     "osm/context.json": "c1cffe36d2c7",
+     "lta/bus_stops.json": "5ce22e57f743",
+     "lta/bus_routes.json": "e5746a2c772f",
+     "lta/bus_services.json": "3f221e73cc55"
+    },
+    "graph_nodes": 5171,
+    "graph_edges": 8482
+   },
+   "label": "Shuttles 25 % slower than buses on every road (cruise time x1.25, same signal delay); buses and demand as in the base case. Assumption standing in for cautious automated driving"
+  },
+  "slow_roads": {
+   "model_key": "3a9a4da124e9",
+   "shuttle_model_key": "3a9a4da124e9",
+   "inputs": {
+    "files": {
+     "osm/highways.osm": "335973d6e1c4",
+     "osm/context.json": "c1cffe36d2c7",
+     "lta/bus_stops.json": "5ce22e57f743",
+     "lta/bus_routes.json": "e5746a2c772f",
+     "lta/bus_services.json": "3f221e73cc55"
+    },
+    "graph_nodes": 5171,
+    "graph_edges": 8482
+   },
+   "label": "Slower roads and buses: calibration draw at the 97.5th percentile of road time (cruise x0.82, 19 s per signal, bus dwell 37 s; draws with bus dwell 35-44 s, as measured from bus GPS)"
+  }
+ },
+ "provenance": {
+  "model_key": "0cd6fcca7d4d",
+  "demand_months": [
+   "202607",
+   "202608"
+  ],
+  "calibration": {
+   "mult": 0.8766247115736897,
+   "sig_s": 15.094177741558301,
+   "dwell_s": 40.55909238948731,
+   "hub_extra_s": 25.30150290068473,
+   "kappa": 0.5680649049241908,
+   "hours_sgt": [
+    10,
+    11,
+    12
+   ],
+   "n_obs_used": 171838
+  },
+  "bus_kappa": 0.5680649049241908,
+  "bus_dwell_s": 40.55909238948731,
+  "bus_hub_extra_s": 25.30150290068473,
+  "inputs": {
+   "files": {
+    "osm/highways.osm": "335973d6e1c4",
+    "osm/context.json": "c1cffe36d2c7",
+    "lta/bus_stops.json": "5ce22e57f743",
+    "lta/bus_routes.json": "e5746a2c772f",
+    "lta/bus_services.json": "3f221e73cc55"
+   },
+   "graph_nodes": 5171,
+   "graph_edges": 8482
+  },
+  "git": "42ff8b4",
+  "pipeline_modified": false
+ }
+}

@@ -1,0 +1,496 @@
+{
+  "currency": "SGD",
+  "price_year": 2026,
+  "days_per_year": 365,
+  "gst": "excluded",
+  "status": "PROPOSAL by AV evidence research (22 Oct 2026); lead approves. Source ids resolve to data/parameters/register_av.csv",
+  "parameters": {
+    "vehicles_per_remote_operator": {
+      "unit": "vehicles per remote operator (in service, per hour)",
+      "low_cost": 40,
+      "central": 10,
+      "high_cost": 3,
+      "basis": "assumption",
+      "sources": [
+        "A06",
+        "A10",
+        "A12",
+        "A13",
+        "A14",
+        "A15",
+        "A16",
+        "A17",
+        "A73",
+        "A76"
+      ],
+      "note": "Remote mode only (future arrangement; not permitted on Singapore public roads today except after DRA, A06/A10). No Singapore ratio is published. high_cost 3 = China MoT floor for driverless taxis and the Eiheiji Level 4 service (continuous monitoring); central 10 = WeRide China 2024; low_cost 40 = WeRide China 2025 / Waymo ~43 (event-driven assistance)."
+    },
+    "min_remote_operators": {
+      "unit": "persons on duty per service hour",
+      "low_cost": 1,
+      "central": 2,
+      "high_cost": 3,
+      "basis": "assumption",
+      "sources": [
+        "A06",
+        "A12",
+        "A77"
+      ],
+      "note": "Floor for a staffed safety function: one person handles an incident while another keeps monitoring. Applies in remote mode; in onboard mode see proposed id vehicles_per_monitor_onboard_mode."
+    },
+    "vehicles_per_field_staff": {
+      "unit": "vehicles in service per field technician/rescue driver",
+      "low_cost": 40,
+      "central": 20,
+      "high_cost": 10,
+      "basis": "assumption",
+      "sources": [
+        "A09",
+        "A12",
+        "A78"
+      ],
+      "note": "No published ratio. Roles named by MOT (technicians, engineers). Suggest also a floor of 2 on duty per service hour for a 21 km2 town (no schema id)."
+    },
+    "vehicles_per_monitor_onboard_mode": {
+      "unit": "vehicles in service per control-room monitor (onboard mode)",
+      "low_cost": 50,
+      "central": 20,
+      "high_cost": 10,
+      "basis": "assumption",
+      "sources": [
+        "A08",
+        "A79"
+      ],
+      "note": "PROPOSED NEW ID (not in definitions.md §8). LTA: all Punggol shuttles are monitored in real time while a safety operator is on board (A08). With an operator on board the control room is fleet supervision, not safety-critical, so a looser ratio than remote mode. If not adopted, use min_remote_operators only in onboard mode."
+    },
+    "veh_price": {
+      "unit": "SGD per vehicle (excl. GST, COE/registration taxes, import duty, site set-up)",
+      "by_capacity": {
+        "4": {
+          "low_cost": 60000,
+          "central": 150000,
+          "high_cost": 270000
+        },
+        "10": {
+          "low_cost": 300000,
+          "central": 540000,
+          "high_cost": 800000
+        },
+        "20": {
+          "low_cost": 400000,
+          "central": 750000,
+          "high_cost": 1000000
+        }
+      },
+      "basis": "contract",
+      "sources": [
+        "A18",
+        "A19",
+        "A22",
+        "A23",
+        "A26",
+        "A27",
+        "A28",
+        "A29",
+        "A30",
+        "A32",
+        "A33",
+        "A34",
+        "A35",
+        "A36",
+        "A65",
+        "A72",
+        "A89"
+      ],
+      "note": "10-seat central = median of six market observations (490k-754k, A18/A19/A22/A23/A26/A29); high = Japan imported shuttle / WeRide 2022; low = derived volume-production price (Ongel bottom-up, WeRide and Pony kit-cost falls), an assumption. 20-seat anchored on Japan small AV bus (A27) and Holon (A26), capped by MOF average (A28); Karsan e-ATAK base EV ~S$553k before the AV kit (A65). Cross-check: LTA PT832 paid ~S$1.38m per 16-seat bus for vehicle + 3 years of systems, chargers, maintenance and support (A72, bundled, not a price). 4-seat weakly evidenced (RT6 Chinese domestic price, Waymo third-party estimates). A separate software/support fee applies (A20)."
+    },
+    "veh_life_years": {
+      "unit": "years",
+      "low_cost": 7,
+      "central": 5,
+      "high_cost": 4,
+      "basis": "supplier",
+      "sources": [
+        "A21",
+        "A31",
+        "A49",
+        "A93"
+      ],
+      "note": "WeRide depreciates vehicles over 5 years; Baidu claims 5 years; Pony Gen-7 kit 600,000 km = 4.6-6 years at Yishun duty. low_cost 7 assumes a mid-life sensor refresh inside maintenance."
+    },
+    "veh_residual_share": {
+      "unit": "fraction of purchase price at end of life",
+      "low_cost": 0.1,
+      "central": 0.05,
+      "high_cost": 0.0,
+      "basis": "assumption",
+      "sources": [
+        "A21",
+        "A80"
+      ],
+      "note": "No AV resale evidence; rapid technical obsolescence. WeRide writes vehicles off to residual \"if any\"."
+    },
+    "lease_sgd_per_vehicle_year": {
+      "unit": "SGD per vehicle-year (vehicle only)",
+      "by_capacity": {
+        "4": {
+          "low_cost": 10500,
+          "central": 37100,
+          "high_cost": 85500
+        },
+        "10": {
+          "low_cost": 52500,
+          "central": 133400,
+          "high_cost": 284000
+        },
+        "20": {
+          "low_cost": 70000,
+          "central": 185300,
+          "high_cost": 316800
+        }
+      },
+      "basis": "derived",
+      "sources": [
+        "A24",
+        "A25",
+        "A19",
+        "A26"
+      ],
+      "note": "No vehicle-only lease found: A25 bundles O&M, A24 inclusions unstated (short-term rental, used as the 10-seat high value). Derived as price x CRF(4% real lessor cost of capital, life) x (1 + lessor margin 5/10/15%), using the veh_price and veh_life_years cases. lease_includes = [] (maintenance, insurance and software stay on)."
+    },
+    "energy_kwh_per_km": {
+      "unit": "kWh per vehicle-km at the battery (traction + HVAC + AV compute)",
+      "by_capacity": {
+        "4": {
+          "low_cost": 0.22,
+          "central": 0.3,
+          "high_cost": 0.4
+        },
+        "10": {
+          "low_cost": 0.35,
+          "central": 0.5,
+          "high_cost": 0.65
+        },
+        "20": {
+          "low_cost": 0.55,
+          "central": 0.7,
+          "high_cost": 0.95
+        }
+      },
+      "basis": "derived",
+      "sources": [
+        "A40",
+        "A41",
+        "A44",
+        "A61",
+        "A64",
+        "A90"
+      ],
+      "note": "4: EPA I-Pace city 0.24 kWh/km at battery (A64) + AV compute and tropical HVAC ~1.5-3 kW at ~18 km/h average. 10: WeRide Robobus 69.2 kWh / 120-200 km = 0.35-0.58 (A41); Navya measured ~6 kW auxiliary load (A40). 20: Ongel 0.62 (A44, Singapore duty, modelled), Karsan 220 kWh / 300 km = 0.73 (A61). Range-based supplier figures are best cases; Yishun duty (~18 km/h incl. idle, air-conditioning all day) raises the auxiliary share."
+    },
+    "battery_usable_kwh": {
+      "unit": "kWh usable (life-average, after state-of-health loss)",
+      "by_capacity": {
+        "4": {
+          "low_cost": 85,
+          "central": 70,
+          "high_cost": 55
+        },
+        "10": {
+          "low_cost": 66,
+          "central": 58,
+          "high_cost": 50
+        },
+        "20": {
+          "low_cost": 200,
+          "central": 180,
+          "high_cost": 120
+        }
+      },
+      "basis": "supplier",
+      "sources": [
+        "A42",
+        "A45",
+        "A62",
+        "A88"
+      ],
+      "note": "10: WeRide Robobus 69.2 kWh gross (A42): 66 = 95% window, new; 58 = 90% window x ~93% average health; 50 = late-life. 20: Karsan e-ATAK 220 kWh (A62); Ongel 120 kWh for a 6 m vehicle (A45). 4: no supplier figure collected for the robotaxis used in Singapore; 55-85 kWh brackets typical robotaxi base vehicles (assumption)."
+    },
+    "charging_efficiency": {
+      "unit": "fraction (battery kWh / grid kWh)",
+      "low_cost": 0.95,
+      "central": 0.92,
+      "high_cost": 0.88,
+      "basis": "assumption",
+      "sources": [
+        "A46",
+        "A47",
+        "A92"
+      ],
+      "note": "Ongel et al. assume 95% charging-station efficiency (A46); ORNL assumed 90% for AC on-board charging (A47). Central 0.92 for depot DC charging."
+    },
+    "charger_power_kw": {
+      "unit": "kW average charging power accepted",
+      "by_capacity": {
+        "4": {
+          "low_cost": 100,
+          "central": 60,
+          "high_cost": 40
+        },
+        "10": {
+          "low_cost": 80,
+          "central": 60,
+          "high_cost": 40
+        },
+        "20": {
+          "low_cost": 150,
+          "central": 80,
+          "high_cost": 60
+        }
+      },
+      "basis": "supplier",
+      "sources": [
+        "A43",
+        "A63"
+      ],
+      "note": "WeRide Robobus full DC charge in ~1 h (~60-70 kW, A43); Karsan e-ATAK DC 80 kW (A63). Higher power = fewer reserve vehicles, so it is the low-cost value. 4-seat: robotaxi base vehicles usually accept 50-150 kW DC (assumption)."
+    },
+    "maint_sgd_per_km": {
+      "unit": "SGD per vehicle-km (workshop maintenance, repairs, tyres)",
+      "by_capacity": {
+        "4": {
+          "low_cost": 0.06,
+          "central": 0.09,
+          "high_cost": 0.15
+        },
+        "10": {
+          "low_cost": 0.1,
+          "central": 0.15,
+          "high_cost": 0.25
+        },
+        "20": {
+          "low_cost": 0.13,
+          "central": 0.2,
+          "high_cost": 0.35
+        }
+      },
+      "basis": "derived",
+      "sources": [
+        "A37",
+        "A38",
+        "A39",
+        "A50",
+        "A51",
+        "A52"
+      ],
+      "note": "Bösch et al. (Swiss fleet EV, excl. VAT, no AV change): 0.07-0.12 (4), 0.12-0.21 (10), 0.12-0.22 (20) SGD/km, high values incl. battery replacement (A37-A39). Measured 12 m US battery buses 0.48-0.58 SGD/km (A50-A52, secondary) bound the 20-seat high case. Singapore labour is cheaper than Swiss/US; AV vehicles are low-volume with costlier parts. Excludes AV sensor upkeep (maint_fixed)."
+    },
+    "maint_fixed_sgd_per_vehicle_year": {
+      "unit": "SGD per vehicle-year (AV sensor cleaning, calibration, inspections, sensor repair)",
+      "low_cost": 3000,
+      "central": 8000,
+      "high_cost": 20000,
+      "basis": "assumption",
+      "sources": [
+        "A20",
+        "A81"
+      ],
+      "note": "No public figure. Central ~1.5% of the 10-seat vehicle price a year (calibrations, lidar/camera repairs, statutory inspections, software-required checks); low 0.5%, high ~4%. If an annual supplier support fee that includes maintenance and repair is bought (A20, A66), set this and maint_sgd_per_km to zero for the bundled part."
+    },
+    "cleaning_sgd_per_vehicle_day": {
+      "unit": "SGD per vehicle-day (interior cleaning labour + consumables)",
+      "by_capacity": {
+        "4": {
+          "low_cost": 4.25,
+          "central": 10.5,
+          "high_cost": 25.0
+        },
+        "10": {
+          "low_cost": 4.25,
+          "central": 11.9,
+          "high_cost": 25.0
+        },
+        "20": {
+          "low_cost": 5.33,
+          "central": 14.75,
+          "high_cost": 30.5
+        }
+      },
+      "basis": "derived",
+      "sources": [
+        "A48",
+        "A54",
+        "A91"
+      ],
+      "note": "Time x loaded cleaner cost + consumables. Time: Ongel uses 15 min/day for a 12 m bus, scaled by floor area (A48); an unattended on-demand vehicle needs extra in-day checks: low 15 / central 30-45 / high 60-75 min. Rate: PWM general cleaner S$2,080/month from Jul 2026 (A54) x 1.30 on-costs / 190.7 h x 1.2 contractor margin = ~S$17/h (low S$13 in-house basic+CPF; high S$22 outdoor/restroom rate). Reconcile the rate with the wage researcher. NOTE: the Singapore researcher also proposes this id (proposed_sg.json, G37-G52: 10-seat 3.5 / 6.3 / 17.4) and the lead keeps theirs; this entry is retained for comparison only (sources_av.md section 7)."
+    },
+    "insurance_sgd_per_vehicle_year": {
+      "unit": "SGD per vehicle-year (third-party liability incl. passengers; own damage)",
+      "by_capacity": {
+        "4": {
+          "low_cost": 3000,
+          "central": 6000,
+          "high_cost": 15000
+        },
+        "10": {
+          "low_cost": 4000,
+          "central": 8000,
+          "high_cost": 20000
+        },
+        "20": {
+          "low_cost": 5000,
+          "central": 10000,
+          "high_cost": 25000
+        }
+      },
+      "basis": "assumption",
+      "sources": [
+        "A03",
+        "A04",
+        "A07",
+        "A09",
+        "A53",
+        "A82"
+      ],
+      "note": "Mandatory in Singapore (A03, A09); no AV premium published. Anchor: Hong Kong taxi comprehensive premium S$7.2k (third party S$5.6k) per year, 2026 SGD (A53). MOT expects AV risk to raise premiums (A07); Pony.ai reports falling insurance cost with experience. Alternative: S$1.5m security deposit per authorisation (A04) at its opportunity cost."
+    },
+    "permit_fixed_sgd_per_year": {
+      "unit": "SGD per year for the programme",
+      "low_cost": 30000,
+      "central": 150000,
+      "high_cost": 400000,
+      "basis": "assumption",
+      "sources": [
+        "A02",
+        "A04",
+        "A69",
+        "A70",
+        "A83"
+      ],
+      "note": "LTA authorisation fee is only S$27 per vehicle (A02). Programme costs dominate: Japan reports ~JPY 100m per deployment for tuning and permits (A69, ~S$0.89m) and JPY 10-20m per site for maps (A70); annualised over 5 years ~S$180k-210k. Central S$150k/yr covers assessment, safety case, audits and compliance reporting; low S$30k; high S$400k (repeat assessments as the service area grows)."
+    },
+    "software_sgd_per_vehicle_month": {
+      "unit": "SGD per vehicle-month (AV driving-software licence and fleet platform)",
+      "low_cost": 300,
+      "central": 1000,
+      "high_cost": 3000,
+      "basis": "assumption",
+      "sources": [
+        "A20",
+        "A66",
+        "A67",
+        "A68",
+        "A84"
+      ],
+      "note": "Licence prices are not published. WeRide bills an annual fee for upgrades, maintenance and repair, fleet management and remote assistance (A20); its support revenue per AV in its whole fleet is S$1.2k-1.6k per vehicle-month (A66-A67), a lower bound per customer vehicle that also covers maintenance and remote assistance. Software alone: central S$1,000, low S$300, high S$3,000. Do not combine a bundled supplier fee with separately costed maintenance or remote staff."
+    },
+    "comms_sgd_per_vehicle_month": {
+      "unit": "SGD per vehicle-month (mobile data, redundancy, data retention)",
+      "low_cost": 60,
+      "central": 150,
+      "high_cost": 400,
+      "basis": "assumption",
+      "sources": [
+        "A05",
+        "A55",
+        "A85"
+      ],
+      "note": "Two carrier SIMs with unlimited data at S$44-64 each (A55, secondary) plus cloud storage for the 3-year data-recorder retention (A05) and video uplink for remote monitoring. Enterprise APN or network-slicing prices are unpublished."
+    },
+    "control_centre_fixed_sgd_per_year": {
+      "unit": "SGD per year",
+      "low_cost": 300000,
+      "central": 750000,
+      "high_cost": 2000000,
+      "basis": "assumption",
+      "sources": [
+        "A06",
+        "A12",
+        "A71",
+        "A86"
+      ],
+      "note": "Facility, IT, redundancy (second site), cybersecurity monitoring and 24/7 supervision not counted in remote-operator hours (about 5 supervisor FTE). Japanese projects spend ~JPY 23m per bus on system equipment (A71). No Singapore figure. Wage part to reconcile with the wage researcher."
+    },
+    "charger_sgd_each": {
+      "unit": "SGD per DC charger incl. installation",
+      "low_cost": 40000,
+      "central": 80000,
+      "high_cost": 160000,
+      "basis": "statistic",
+      "sources": [
+        "A56",
+        "A57"
+      ],
+      "note": "ICCT 2019 (US): 50 kW hardware US$28.4k + installation US$17.7k at 6+ chargers per site = S$75k (2026); 150 kW = S$152k (A56-A57). Central S$80k for a ~60 kW depot charger. Low S$40k reflects lower Asian hardware prices since 2019 (assumption). Excludes grid connection upgrades, which are site-specific."
+    },
+    "charger_life_years": {
+      "unit": "years",
+      "low_cost": 12,
+      "central": 10,
+      "high_cost": 8,
+      "basis": "assumption",
+      "sources": [
+        "A75"
+      ],
+      "note": "Assumption stated in A75: 10 years (8-12), the usual planning range for DC power electronics; no collected source states a charger life."
+    },
+    "vehicles_per_charger": {
+      "unit": "vehicles per charger",
+      "low_cost": 3,
+      "central": 2,
+      "high_cost": 1,
+      "basis": "assumption",
+      "sources": [
+        "A41",
+        "A61",
+        "A87"
+      ],
+      "note": "Depends on daily energy and the charging window: a 10-seat shuttle doing ~350 km uses ~175 kWh/day; a 60 kW charger delivers ~240 kWh in a 4 h night window, so overnight sequential charging cannot serve two vehicles without daytime top-ups."
+    },
+    "depot_m2_per_vehicle": {
+      "unit": "m2 of depot per vehicle",
+      "by_capacity": {
+        "4": {
+          "low_cost": 19,
+          "central": 24,
+          "high_cost": 30
+        },
+        "10": {
+          "low_cost": 36,
+          "central": 45,
+          "high_cost": 54
+        },
+        "20": {
+          "low_cost": 58,
+          "central": 72,
+          "high_cost": 87
+        }
+      },
+      "basis": "statistic",
+      "sources": [
+        "A60"
+      ],
+      "note": "HELPER (not a schema id): space for the other researcher to price depot_sgd_per_vehicle_year. LTA minimum lot + half aisle: 18.7 / 36 / 57.8 m2 (A60); central +25%, high +50% for charging, cleaning and maintenance bays and circulation."
+    },
+    "maintenance_spare_ratio": {
+      "unit": "spare vehicles / vehicles in service",
+      "low_cost": 0.1,
+      "central": 0.15,
+      "high_cost": 0.25,
+      "basis": "statistic",
+      "sources": [
+        "A58",
+        "A59"
+      ],
+      "note": "FTA caps spare buses at 20% of peak vehicles for mature bus fleets (A59). The Treasure Island AV shuttle delivered 78-79% of planned service (6-12% unavailability in settled months) (A58). Central 0.15; low 0.10 (mature, bus-like reliability); high 0.25 (early AV reliability)."
+    }
+  },
+  "switches": {
+    "acquisition": "purchase",
+    "staff_mode": "onboard",
+    "lease_includes": []
+  },
+  "switch_notes": {
+    "staff_mode": "Three staff cases, reported separately and never mixed. (1) onboard = CURRENT Singapore pilot requirement: one safety operator on every vehicle in service at all times, plus real-time monitoring (LTA A08, A73; MOT A06, A09). (2) remote_with_attendant = LTA's stated next phase for its autonomous public-bus pilot: a remote operator monitors continuously and a customer service officer rides on board instead of the safety operator (A73); model as remote operators at vehicles_per_remote_operator plus one onboard person per vehicle at a customer-service wage (needs a wage from the other researcher; not a current switch value). (3) remote = possible future unattended operation after LTA assessment (A06, A10: RWS Robobus precedent on a private estate loop). Default for the current-requirement case: onboard."
+  }
+}

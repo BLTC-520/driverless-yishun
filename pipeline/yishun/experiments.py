@@ -154,13 +154,15 @@ def provenance(M: Model) -> dict:
     try:
         rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
                              cwd=str(PROCESSED.parent.parent)).stdout.strip()
-        dirty = bool(subprocess.run(["git", "status", "--porcelain", "pipeline"], capture_output=True, text=True,
-                                    cwd=str(PROCESSED.parent.parent)).stdout.strip())
+        # tracked files only: an untracked new module does not change the code a run used
+        dirty = bool(subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "pipeline"],
+                                    capture_output=True, text=True, cwd=str(PROCESSED.parent.parent)).stdout.strip())
     except OSError:
         rev, dirty = "", None
     return {"model_key": M.key, "demand_months": list(M.months), "calibration": cal,
             "bus_kappa": M.baseline.p.kappa, "bus_dwell_s": M.baseline.p.dwell_s,
-            "bus_hub_extra_s": M.baseline.p.hub_extra_s, "git": rev, "pipeline_modified": dirty}
+            "bus_hub_extra_s": M.baseline.p.hub_extra_s, "inputs": getattr(M, "inputs", None),
+            "git": rev, "pipeline_modified": dirty}
 
 
 def run_one(job: dict) -> dict:
@@ -197,10 +199,10 @@ def run_one(job: dict) -> dict:
     return {"summary": summary, "hourly": hourly}
 
 
-def run_grid(name: str, jobs: list[dict], workers: int = 4) -> tuple[pd.DataFrame, pd.DataFrame]:
+def run_grid(name: str, jobs: list[dict], workers: int = 4, out_dir=None) -> tuple[pd.DataFrame, pd.DataFrame]:
     global _M
     _M = build_model()  # load before forking so workers share it copy-on-write
-    out_dir = PROCESSED / "experiments" / name
+    out_dir = out_dir or PROCESSED / "experiments" / name
     out_dir.mkdir(parents=True, exist_ok=True)
     t = time.time()
     ctx = mp.get_context("fork")

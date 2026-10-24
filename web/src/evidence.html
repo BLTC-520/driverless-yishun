@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Driverless Yishun · Evidence</title>
+<meta name="description" content="How the Driverless Yishun numbers were made and checked: the validation scorecard, the independent review, the data files and the commands that rebuild them.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230c111b'/%3E%3Ccircle cx='8' cy='8' r='4' fill='%23f2a53a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+/* The evidence page: the study's paper, type and top bar, for readers who want to check the work.
+   A scorecard first (one line per check, its status in words and a mark), then the charts behind
+   the checks, then the data files and the commands that rebuild every number. */
+:root {
+  --bg: #f4f4f4; --bg-2: #ffffff; --bg-3: #ebebeb; --rule: #dcdcdc;
+  --fg: #0e0e0e; --mute: #5a5a5a; --faint: #8c8c8c;
+  --sodium: #c96a0a; --bus: #1d8296; --good: #2f8f4e; --warn: #a86b00; --bad: #cc4b33;
+  --p2-a: #0089a8; --p2-b: #c96a0a; --p2-c: #a33b9a;
+  --font: "Geist", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-data: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --step--1: 0.8125rem; --step-0: 1.0625rem; --step-2: clamp(1.75rem, 3vw, 2.4rem); --step-3: clamp(2.6rem, 5.4vw, 4.75rem);
+  --gutter: 32px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); }
+body { color: var(--fg); font-family: var(--font); font-size: var(--step-0); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+a:hover { color: var(--mute); }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.wrap { padding-left: max(var(--gutter), env(safe-area-inset-left, 0px)); padding-right: max(var(--gutter), env(safe-area-inset-right, 0px)); }
+@media (max-width: 767px) { :root { --gutter: 16px; } }
+.inner { max-width: 1240px; margin-inline: auto; }
+
+.mast { height: 64px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; font-size: 1rem; }
+.mast a { text-decoration: none; }
+.mast .back { justify-self: start; display: inline-flex; align-items: center; gap: 8px; }
+.mast .me { justify-self: center; }
+.mast .touch { justify-self: end; }
+
+.opening { padding-block: 48px 8px; }
+.eyebrow { color: var(--mute); }
+h1 { font-weight: 500; font-size: var(--step-3); line-height: 0.98; letter-spacing: -0.05em; margin: 18px 0 20px; }
+.dek { font-size: clamp(1.25rem, 2vw, 1.6rem); line-height: 1.3; letter-spacing: -0.015em; max-width: 40ch; margin: 0; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 36px 0 0; padding-top: 14px; border-top: 1px solid var(--rule);
+  font-family: var(--font-data); font-size: 0.8rem; color: var(--mute); }
+.toc a { text-decoration: none; } .toc a:hover { color: var(--fg); }
+
+section.chapter { padding-block: clamp(56px, 8vw, 104px) 8px; }
+section.chapter + section.chapter { border-top: 1px solid var(--rule); }
+.kicker { color: var(--mute); }
+.kicker::before { content: "[ "; } .kicker::after { content: " ]"; }
+h2 { font-weight: 500; font-size: var(--step-2); line-height: 1.08; letter-spacing: -0.035em; margin: 14px 0 18px; max-width: 30ch; text-wrap: balance; }
+h3 { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; margin: 30px 0 8px; }
+p { max-width: 68ch; }
+.small { font-size: var(--step--1); color: var(--mute); }
+.num { font-family: var(--font-data); font-size: 0.92em; font-variant-numeric: tabular-nums; }
+
+/* scorecard: the status is a word and a mark, never colour alone */
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--bg-2); }
+table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-family: var(--font-data); font-weight: 500; font-size: 0.72rem; color: var(--mute); letter-spacing: 0.04em; text-transform: uppercase; }
+td.n { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+caption { caption-side: top; text-align: left; padding: 10px 12px 4px; color: var(--mute); font-size: var(--step--1); }
+.st { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.04em;
+  text-transform: uppercase; white-space: nowrap; }
+.st::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid currentColor; }
+.st.pass { color: var(--good); } .st.pass::before { background: currentColor; }
+.st.fixed { color: var(--good); } .st.fixed::before { background: linear-gradient(135deg, currentColor 50%, transparent 50%); }
+.st.bounded { color: var(--warn); } .st.bounded::before { border-style: dashed; }
+.st.stated { color: var(--mute); }
+.st.open { color: var(--bad); } .st.open::before { border-radius: 2px; }
+.legend-st { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 12px 0 0; font-size: var(--step--1); color: var(--mute); }
+.legend-st span { display: inline-flex; gap: 8px; align-items: center; }
+.tally { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; margin: 24px 0 28px; }
+.tally div { border-top: 1px solid var(--rule); padding-top: 10px; }
+.tally b { display: block; font-weight: 500; font-size: clamp(1.8rem, 3vw, 2.4rem); line-height: 1.05; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.tally > div > span { display: grid; gap: 2px; font-size: var(--step--1); color: var(--mute); }
+@media (max-width: 760px) { .tally { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 32px; }
+.cols .card { border-top: 2px solid var(--rule); padding-top: 12px; min-width: 0; }
+.cols .card h3 { margin-top: 0; }
+.cols .card li { font-size: var(--step--1); }
+.cols .card ul { padding-left: 18px; margin: 0; display: grid; gap: 6px; }
+.tag { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+.tag.known { color: var(--good); } .tag.model { color: var(--sodium); } .tag.assumed { color: var(--bad); }
+@media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 48px; margin-top: 24px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.chart { min-width: 0; }
+.chart figure { margin: 0; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart figcaption { font-size: var(--step--1); color: var(--mute); margin-top: 8px; max-width: 70ch; }
+.chart .axis text, .chart .lab { fill: var(--mute); font-family: var(--font-data); font-size: 12px; }
+.chart .axis path, .chart .axis line { stroke: var(--rule); }
+.chart .grid line { stroke: var(--rule); stroke-opacity: 0.7; }
+.chart .grid path { display: none; }
+.chart .callout { fill: var(--fg); font-family: var(--font-data); font-size: 12px; }
+.chart .callout, .chart .lab { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+.tip { position: fixed; z-index: 30; pointer-events: none; background: var(--bg-2); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 8px 10px; font-family: var(--font-data); font-size: 12px; max-width: 320px; line-height: 1.45; box-shadow: 0 4px 16px rgb(0 0 0 / .08); }
+.tip .mute { color: var(--mute); }
+
+pre { background: var(--bg-3); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; overflow-x: auto;
+  font-family: var(--font-data); font-size: 0.78rem; line-height: 1.55; }
+code { font-family: var(--font-data); font-size: 0.88em; }
+.prov { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; margin-top: 16px; }
+.prov div { border-top: 1px solid var(--rule); padding-top: 10px; font-size: var(--step--1); }
+.prov b { display: block; font-weight: 500; }
+@media (max-width: 760px) { .prov { grid-template-columns: minmax(0, 1fr); } }
+footer { padding-block: 40px 56px; border-top: 1px solid var(--rule); margin-top: 56px; font-size: var(--step--1); color: var(--mute); }
+footer .inner { display: grid; gap: 10px; }
+@media (max-width: 640px) { th, td { padding: 8px 8px; } }
+</style>
+</head>
+<body>
+<header class="mast wrap">
+  <a class="back" href="study.html"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3m4-4L3 8l4 4" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>The study</a>
+  <a class="me" href="https://brianhar.site">©Brian Har</a>
+  <a class="touch" href="mailto:szehaohar2@gmail.com">Get in touch</a>
+</header>
+
+<section class="opening wrap">
+  <div class="inner">
+    <div class="eyebrow">[ Driverless Yishun · evidence ]</div>
+    <h1>How far to trust the numbers</h1>
+    <p class="dek">What was checked and how it came out, what was found wrong and fixed, and the files and commands that rebuild every figure.</p>
+    <nav class="toc" aria-label="Sections">
+      <a href="#checks">Scorecard</a><a href="#method">Observed, modelled, assumed</a><a href="#model">The road and bus model</a><a href="#sensitivity">What moves the answers</a><a href="#review">Part 2 review</a><a href="#limits">Limits</a><a href="#data">Data files</a><a href="#reproduce">Reproduce</a>
+    </nav>
+  </div>
+</section>
+
+<section class="chapter wrap" id="checks" aria-labelledby="checks-h">
+  <div class="inner">
+    <div class="kicker">Scorecard</div>
+    <h2 id="checks-h">Every check, with its result</h2>
+    <p>"Pass" means the check ran and met its stated criterion. "Bounded" means the question stays open but a test brackets how much it can move the answer. "Stated" means a limit is named and not tested. "Open" means the evidence disagrees or is missing.</p>
+    <div class="tally" id="tally" aria-live="polite"></div>
+    <div class="table-wrap"><table id="scorecard">
+      <thead><tr><th>Status</th><th>Check</th><th>Result</th><th>Part</th></tr></thead>
+      <tbody>
+        <tr data-part="1"><td><span class="st pass">pass</span></td><td>Road model on bus services it was not fitted to</td><td>Whole services held out, five folds: <span class="num" data-v="ho_mape">—</span> error in running time, against <span class="num" data-v="ho_dist_mape">—</span> for a distance-only model fitted the same way (<span class="num" data-v="calobs">—</span> live LTA arrival estimates, <span data-v="calhours">—</span>)</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st pass">pass</span></td><td>Road model at other hours</td><td>Scored without refitting on 13:00–14:59: observed ÷ predicted 1.00</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st pass">pass</span></td><td>Observed bus GPS movement</td><td>Chained positions of the same bus, about 5 minutes apart: observed ÷ modelled time <span class="num" data-v="gpsratio">—</span> at midday (<span class="num" data-v="gpsn">—</span> pairs). Same feed and day as the fit, but observed positions, not LTA's estimates</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st open">open</span></td><td>Evening peak road speeds</td><td>The measures disagree: LTA's estimates imply buses <span class="num" data-v="pm_eta">—</span>× slower than the midday model, bus GPS shows <span class="num" data-v="pm_gps">—</span>× (95 % interval <span class="num" data-v="pm_gps_ci">—</span>). A sensitivity case applies the evening calibration all day</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st open">open</span></td><td>Morning peak road speeds</td><td>Not observed: live data were collected 10:00–15:00 and 17:30–19:30. The capacity threshold is set in the morning rush</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st pass">pass</span></td><td>Road network against LTA's route distances</td><td>268 consecutive stop pairs: routed ÷ published distance has a median of 1.02 (IQR 0.95–1.09); segments off by more than 40 % are left out of the calibration</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st pass">pass</span></td><td>Demand months agree</td><td>July and August 2026 within 0.1 % per weekday; September 3.5 % lower, as its school-holiday week predicts</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st pass">pass</span></td><td>Dispatch kernel against brute force</td><td>Same optimal cost as an explicit enumeration of every insertion on 400 random schedules</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st pass">pass</span></td><td>Simulator invariants</td><td>Exact times on a grid, capacity never exceeded, continuous legs, kilometres that add up, berth limits held; randomized fleets, capacities and demand (<code>tests/test_sim.py</code>)</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st pass">pass</span></td><td>Fleet search assumptions</td><td>The bisection assumes more vehicles never hurt: <span class="num" data-v="audit_checked">—</span> evaluated fleets checked, <span class="num" data-v="audit_viol">—</span> violations</td><td>1</td></tr>
+        <tr data-part="1"><td><span class="st bounded">bounded</span></td><td>Assumptions behind the fleet</td><td>Across <span class="num" data-v="sens_n">—</span> alternative assumptions, pushing both ways, the all-day 10-seat fleet ranges <span class="num" data-v="sens_lo">—</span>–<span class="num" data-v="sens_hi">—</span> (base <span class="num" data-v="parity">—</span>). See the chart below</td><td>1</td></tr>
+        <tr data-part="2"><td><span class="st pass">pass</span></td><td>Same riders in every option</td><td>Ride counts, rides without a bus option and today's passenger-hours are identical across options on every simulated day</td><td>2</td></tr>
+        <tr data-part="2"><td><span class="st pass">pass</span></td><td>Rule C uses only what is known in advance</td><td>Eligibility comes from the published timetable before anyone travels; tripling the simulated bus waits leaves the set of offered rides unchanged (<code>tests/test_phase2.py</code>)</td><td>2</td></tr>
+        <tr data-part="2"><td><span class="st pass">pass</span></td><td>Results rebuild from the committed runs</td><td>The summary, the page data and the results tables equal a fresh build from the run files (<code>tests/test_phase2_outputs.py</code>); every grid ran on a clean, committed tree</td><td>2</td></tr>
+        <tr data-part="2"><td><span class="st bounded">bounded</span></td><td>Bus times on the rides C selects</td><td>C targets exactly the pairs where the modelled bus is slow, so model error there is selected for. If bus times on those rides were 20 % too high, the saving of C (<span data-v="p2_focus">—</span>) would fall from <span class="num" data-v="p2_focus_saved">—</span> to <span class="num" data-v="p2_focus_buserr20">—</span> passenger-hours a day. Checking those rides against GPS or tap-out times is the most important missing evidence</td><td>2</td></tr>
+        <tr data-part="2"><td><span class="st bounded">bounded</span></td><td>Cost inputs</td><td>Every one of 36 cost parameters has a low, central and high value from a register of 247 sourced rows; one-at-a-time swings and joint low and high cases are reported (chart below)</td><td>2</td></tr>
+      </tbody>
+    </table></div>
+    <div class="legend-st"><span><span class="st pass">pass</span> met its criterion</span><span><span class="st fixed">fixed</span> found wrong, corrected and re-run</span><span><span class="st bounded">bounded</span> open, with a test of its size</span><span><span class="st stated">stated</span> named, not tested</span><span><span class="st open">open</span> disagreeing or missing evidence</span></div>
+  </div>
+</section>
+
+<section class="chapter wrap" id="method" aria-labelledby="method-h">
+  <div class="inner">
+    <div class="kicker">Method</div>
+    <h2 id="method-h">What is observed, what is modelled, what is assumed</h2>
+    <div class="cols">
+      <div class="card"><h3><span class="tag known">observed</span> Data</h3><ul>
+        <li>Rides between every pair of stops by hour: LTA DataMall fare-card OD, July and August 2026 (September as a check).</li>
+        <li>Bus routes, stop sequences, first and last buses, headway ranges: LTA DataMall (pinned copies in the repository).</li>
+        <li>Bus running times and headway regularity: <span data-v="calobs">—</span> matched pairs of LTA's live, GPS-based arrival estimates, 15 Oct 2026, <span data-v="calhours">—</span>.</li>
+        <li>Bus GPS movement: <span data-v="gpsn">—</span> pairs of reported positions of the same bus a few minutes apart.</li>
+        <li>Every Singapore bus ride (fare-card OD), to share Yishun's bus-km between internal and other riders (Part 2).</li>
+        <li>Roads: OpenStreetMap, pinned extract of 22 Oct 2026. Land use and boundaries: URA Master Plan 2019. Block storeys: HDB.</li>
+      </ul></div>
+      <div class="card"><h3><span class="tag model">modelled</span> Model</h3><ul>
+        <li>Road travel time = calibrated cruise time + <span data-v="sig">—</span> s per signal-controlled location; bus dwell <span data-v="dwell">—</span> s per stop (+<span data-v="hubx">—</span> s at stations). Same roads and speeds for both modes.</li>
+        <li>Bus wait = <span data-v="kappa">—</span> × the combined headway of the lines serving a stop pair (common lines). A rider boards a looping line at whichever visit of the stop gives the shortest ride.</li>
+        <li>Shuttles: event-driven simulation, immediate insertion dispatch, rides within 1.6× direct + 4 min, idle vehicles reposition towards expected demand. A stop takes <span data-v="d0">—</span> s plus 4 s per rider (assumed).</li>
+        <li>Costs (Part 2): low, central and high values per parameter, from published contracts, prices and wages; vehicles bought or leased, never both.</li>
+      </ul></div>
+      <div class="card"><h3><span class="tag assumed">assumed</span> Not modelled</h3><ul>
+        <li>Demand held fixed: today's riders, times and stops; no fares, mode shift or induced trips.</li>
+        <li>No congestion feedback: hundreds of shuttles do not slow each other or the buses.</li>
+        <li>Bus crowding and denied boarding; riders timing their arrival with live bus information.</li>
+        <li>Charging (Part 2 estimates reserves, it does not simulate charging), breakdowns, staff relief, COE and registration taxes on vehicles.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter wrap" id="model" aria-labelledby="model-h">
+  <div class="inner">
+    <div class="kicker">The road and bus model</div>
+    <h2 id="model-h">Fitted on live bus data, checked against bus GPS</h2>
+    <div class="grid2">
+      <div class="chart"><figure><svg id="ev-cal" viewBox="0 0 560 320" role="img" aria-label="Modelled against observed bus running times"></svg>
+        <figcaption>Calibration: modelled against observed median running time for stop sequences of one to six stops (circle area: observations). The dashed line is a perfect fit.</figcaption></figure></div>
+      <div class="chart"><figure><svg id="ev-gps" viewBox="0 0 560 320" role="img" aria-label="Observed bus GPS movement against the model, by hour"></svg>
+        <figcaption>Elapsed time between GPS positions of the same bus, divided by the model's time between those positions, pooled by hour (bars: 95 % interval over routes). 1 means the model matches what buses did. The shaded hours were used for fitting; later hours are out of sample. Nothing was collected between 15:00 and 17:30.</figcaption></figure></div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter wrap" id="sensitivity" aria-labelledby="sens-h">
+  <div class="inner">
+    <div class="kicker">What moves the answers</div>
+    <h2 id="sens-h">One assumption at a time</h2>
+    <h3>Part 1: the fleet that keeps up with the bus all day</h3>
+    <p class="small">Smallest fixed fleet of 10-seat shuttles that keeps up with the bus in every hour on all three simulated days, when one assumption changes. The base case is the vertical line; fleets are searched on a 25-vehicle grid.</p>
+    <div class="chart"><figure><svg id="ev-sens" viewBox="0 0 900 600" role="img" aria-label="Fleet needed under each alternative assumption"></svg>
+      <figcaption id="ev-sens-cap"></figcaption></figure></div>
+    <h3>Part 2: the cost of an hour of riders' time saved</h3>
+    <p class="small">Cost per passenger-hour saved when one cost parameter moves to its low or high value, the others central, for each staffing case, as a change from that case's central value. One axis for all three, so bar lengths compare.</p>
+    <div class="chart"><figure><svg id="ev-tornado" viewBox="0 0 900 700" role="img" aria-label="Cost swings by parameter and staffing case"></svg>
+      <figcaption id="ev-tornado-cap"></figcaption></figure></div>
+  </div>
+</section>
+
+<section class="chapter wrap" id="review" aria-labelledby="review-h">
+  <div class="inner">
+    <div class="kicker">Part 2 · independent review</div>
+    <h2 id="review-h">Nine findings, and what was done about each</h2>
+    <p>Part 2 was reviewed by a reviewer who had not built it, who read the code and outputs, recomputed costs by hand, rebuilt the summary and re-ran a recorded simulation. Every result on the study page comes from the runs made after these fixes.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Status</th><th>Finding</th><th>What was done</th></tr></thead>
+      <tbody>
+        <tr><td><span class="st fixed">fixed</span></td><td><b>R1 · material.</b> The bus model boarded riders at the first visit of a stop on a line. Feeder 812 is a figure of eight through Yishun Interchange, so a rider for its second loop was timed riding the first loop as well: today's bus times were too long on exactly the rides the combined service selects.</td><td>Riders board at whichever visit gives the shortest ride, tested on a figure-of-eight line and checked against brute force on every real line that revisits a stop. Model, both parts' experiments and every table re-run.</td></tr>
+        <tr><td><span class="st fixed">fixed</span></td><td><b>R2 · material.</b> "The combined service buys time more cheaply than any full replacement" holds only with every bus kept.</td><td>The claim is qualified, and full replacement with the internal-only services withdrawn is reported with its cost per hour saved.</td></tr>
+        <tr><td><span class="st fixed">fixed</span></td><td><b>R3 · material.</b> The stress tests compared two service designs: full replacement accepted 45-minute pickups with no bus to fall back on, the combined service declined after 15 minutes and the rider took the bus.</td><td>Every stress now also runs full replacement under the combined service's rule; the base row uses the same three days as the stress rows; "realistic kerb limits" became test values.</td></tr>
+        <tr><td><span class="st stated">stated</span></td><td><b>R4.</b> No rider times their arrival with live bus information.</td><td>Added to the limits; the reviewer's first-order estimate is that savings fall by about a fifth if only bus riders did.</td></tr>
+        <tr><td><span class="st stated">stated</span></td><td><b>R5.</b> No relief or spare staff; unlimited kerb in the base case.</td><td>Added to the limits; a 10–15 % relief factor would add about 4–7 % to on-board costs without changing the ranking.</td></tr>
+        <tr><td><span class="st fixed">fixed</span></td><td><b>R6.</b> The full bus cost per bus-km may count LTA's assets twice.</td><td>Avoidable bus cost reported at the full cost and at the operator fee only.</td></tr>
+        <tr><td><span class="st fixed">fixed</span></td><td><b>R7.</b> LTA's route, service and stop files were not pinned.</td><td>Committed with checksums; <code>make data</code> restores them.</td></tr>
+        <tr><td><span class="st fixed">fixed</span></td><td><b>R8.</b> Report statements stronger than the outputs, one of them wrong (4-seat vehicles are also cheaper per hour with an operator on board).</td><td>Report rewritten from the re-run results.</td></tr>
+        <tr><td><span class="st fixed">fixed</span></td><td><b>R9.</b> Defects in generated tables and charts (blank subzone names, an axis showing 7,500 as "8k").</td><td>Fixed in the generators.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small" style="margin-top:12px">The review in full: <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/docs/phase2/review.md">docs/phase2/review.md</a>. Part 1's own red-team reviews and their fixes: <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/docs/validation.md">docs/validation.md</a>.</p>
+  </div>
+</section>
+
+<section class="chapter wrap" id="limits" aria-labelledby="limits-h">
+  <div class="inner">
+    <div class="kicker">Limits</div>
+    <h2 id="limits-h">What the model leaves out, and whom that flatters</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Limit</th><th>Flatters</th><th>How it is handled</th></tr></thead>
+      <tbody>
+        <tr><td>Morning-peak road speeds not observed</td><td>uncertain</td><td>Evening-peak calibration all day as a sensitivity case</td></tr>
+        <tr><td>No congestion feedback: added shuttles slow nothing</td><td>shuttles</td><td>Speed stresses (slower roads; shuttles 25 % slower) bound it; not a congestion model</td></tr>
+        <tr><td>Unlimited kerb space in the base case</td><td>shuttles, most of all full replacement</td><td>Kerb limits of 10 and 7 shuttles per station tested (test values)</td></tr>
+        <tr><td>Demand fixed: no riders attracted by faster trips, no fare effects</td><td>uncertain</td><td>Stated; time savings never counted as revenue</td></tr>
+        <tr><td>Bus crowding and denied boarding not modelled</td><td>buses</td><td>Stated; the combined service's relief of crowded buses is not counted</td></tr>
+        <tr><td>Riders do not time their arrival with live bus information</td><td>shuttles</td><td>Stated in Part 2; Part 1 tests arrival-app riders</td></tr>
+        <tr><td>Simple dispatcher with exact travel times</td><td>buses (a better dispatcher needs fewer vehicles)</td><td>Wider dispatcher searches tested: 375–400 vehicles instead of 450</td></tr>
+        <tr><td>A fixed fleet in service all day</td><td>buses (raises shuttle cost)</td><td>Hourly fleet needs reported as lower bounds</td></tr>
+        <tr><td>Remote supervision without anyone on board is not permitted today</td><td>shuttles, in the remote cases</td><td>Three staffing cases reported separately, today's requirement first</td></tr>
+        <tr><td>Vehicle prices without COE and registration taxes</td><td>shuttles, most of all 4-seat vehicles</td><td>Stated; listed as evidence needed</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small" style="margin-top:12px">Every limit of Part 2, with its treatment: <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/docs/phase2/limits.md">docs/phase2/limits.md</a>.</p>
+  </div>
+</section>
+
+<section class="chapter wrap" id="data" aria-labelledby="data-h">
+  <div class="inner">
+    <div class="kicker">Data files</div>
+    <h2 id="data-h">Every number on the site, as files you can open</h2>
+    <p>Raw LTA files are not redistributed, except the three static bus files the results depend on. Everything derived is in the repository.</p>
+    <div class="table-wrap"><table id="files">
+      <thead><tr><th>File</th><th>What is in it</th><th>Format</th></tr></thead>
+      <tbody>
+        <tr><td><a href="data/results.json">results.json</a></td><td>Part 1: every figure, curve and table on the study page, with the provenance of the experiments</td><td>JSON</td></tr>
+        <tr><td><a href="data/phase2.json">phase2.json</a></td><td>Part 2: every configuration's time, cost and service, per staffing and cost case</td><td>JSON</td></tr>
+        <tr><td><a href="https://github.com/BLTC-520/driverless-yishun/blob/main/data/processed/phase2/summary.json">summary.json</a></td><td>Part 2: the full summary the page and report are built from</td><td>JSON</td></tr>
+        <tr><td><a href="https://github.com/BLTC-520/driverless-yishun/tree/main/data/processed/phase2">phase2/&lt;grid&gt;/runs.parquet</a></td><td>Part 2: one row per simulated day (510 in all, stress tests included), with hourly and group tables beside it</td><td>Parquet</td></tr>
+        <tr><td><a href="https://github.com/BLTC-520/driverless-yishun/blob/main/data/processed/internal_od_202607_202608.csv.gz">internal_od_202607_202608.csv.gz</a></td><td>Observed demand: average-weekday rides between every pair of Yishun stops by hour</td><td>CSV</td></tr>
+        <tr><td><a href="https://github.com/BLTC-520/driverless-yishun/blob/main/data/processed/calibration.json">calibration.json</a></td><td>Fitted road speed, signal delay, bus dwell and headway regularity, with bootstrap intervals</td><td>JSON</td></tr>
+        <tr><td><a href="https://github.com/BLTC-520/driverless-yishun/blob/main/data/processed/gps_check.json">gps_check.json</a></td><td>Observed bus GPS movement against the model</td><td>JSON</td></tr>
+        <tr><td><a href="https://github.com/BLTC-520/driverless-yishun/blob/main/data/parameters/cost_cases.json">cost_cases.json</a> · <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/data/parameters/cost_register.csv">cost_register.csv</a></td><td>Part 2 cost parameters (low, central, high) and the 247 sources behind them</td><td>JSON, CSV</td></tr>
+        <tr><td><a href="https://github.com/BLTC-520/driverless-yishun/tree/main/data/processed/lta">lta/</a> · <a href="https://github.com/BLTC-520/driverless-yishun/tree/main/data/processed/osm">osm/</a></td><td>Pinned LTA bus stops, services and routes, and the OpenStreetMap extract, with checksums</td><td>xz</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Sources and licences</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Dataset</th><th>Provider</th><th>Used for</th><th>Licence</th></tr></thead>
+      <tbody>
+        <tr><td>Passenger Volume by Origin Destination Bus Stops (July, August, September 2026)</td><td>LTA DataMall</td><td>Observed demand; who uses Yishun's buses</td><td>Singapore Open Data Licence v1.0</td></tr>
+        <tr><td>Bus Stops, Bus Services, Bus Routes; live Bus Arrival (v3)</td><td>LTA DataMall</td><td>Bus network; calibration; GPS check</td><td>Singapore Open Data Licence v1.0</td></tr>
+        <tr><td>HDB Property Information; HDB Existing Building</td><td>HDB via data.gov.sg</td><td>Block heights and footprints</td><td>Singapore Open Data Licence v1.0</td></tr>
+        <tr><td>Master Plan 2019 planning areas, subzones, land use</td><td>URA via data.gov.sg</td><td>Study area; base map</td><td>Singapore Open Data Licence v1.0</td></tr>
+        <tr><td>Census of Population 2020, residents by subzone and age</td><td>SingStat via data.gov.sg</td><td>Age profile</td><td>Singapore Open Data Licence v1.0</td></tr>
+        <tr><td>Roads, signals, buildings, rail</td><td>OpenStreetMap contributors</td><td>Road network; context</td><td>ODbL 1.0</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section class="chapter wrap" id="reproduce" aria-labelledby="repro-h">
+  <div class="inner">
+    <div class="kicker">Reproduce</div>
+    <h2 id="repro-h">Rebuild every number from the raw data</h2>
+    <p>With a free <a href="https://datamall.lta.gov.sg/content/datamall/en/request-for-api.html">LTA DataMall</a> key in <code>LTA_DATAMALL_KEY</code>. The live bus data of 15 October 2026 cannot be downloaded again, so the calibration fitted on it is committed and used; DataMall serves fare-card months for three months only, so the Yishun OD table is committed too.</p>
+<pre>make setup                    # Python 3.12 environment, pinned packages
+make data                     # LTA, data.gov.sg; restores the pinned OSM and LTA bus files
+make reproduce-core-results   # Part 1: experiments, sensitivity, page data, tests (about 2.5 h on 4 cores)
+make phase2-allocation        # Part 2: who uses Yishun's bus-km (needs the July and August OD files)
+make phase2-experiments       # Part 2: options A, B and C on shared simulated days (about 1.5 h)
+make phase2-results           # Part 2: summary, page data, report charts and results tables
+make web &amp;&amp; make serve        # this site at http://localhost:8000</pre>
+    <h3>What these results were built from</h3>
+    <div class="prov" id="prov"><div><b>Part 1</b><span>—</span></div><div><b>Part 2</b><span>—</span></div></div>
+  </div>
+</section>
+
+<footer class="wrap">
+  <div class="inner">
+    <p>Contains information from LTA DataMall, HDB, URA and SingStat, accessed via LTA DataMall and data.gov.sg under the Singapore Open Data Licence v1.0. Map data © OpenStreetMap contributors, ODbL.</p>
+    <p>This is a simulation study. It is not a forecast of AV adoption, ridership, costs or safety, and not an LTA plan.</p>
+  </div>
+</footer>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="evidence.js"></script>
+</body>
+</html>

@@ -91,5 +91,45 @@ def main() -> None:
     (RAW / "manifest.json").write_text(json.dumps(meta, indent=2))
 
 
+# OSM changes every day, so the extract the Phase 2 results were computed from is committed
+# (xz-compressed, ODbL) and restored with `python -m yishun.fetch_osm pinned`.
+PINNED = ROOT / "data" / "processed" / "osm"
+PINNED_FILES = ("highways.osm", "context.json")
+
+
+def _sha256(b: bytes) -> str:
+    import hashlib
+    return hashlib.sha256(b).hexdigest()
+
+
+def pin() -> None:
+    """Write xz copies of the current extract and its checksums to data/processed/osm."""
+    import lzma
+    PINNED.mkdir(parents=True, exist_ok=True)
+    meta = json.loads((RAW / "manifest.json").read_text()) if (RAW / "manifest.json").exists() else {}
+    meta["files"] = {}
+    for name in PINNED_FILES:
+        raw = (RAW / name).read_bytes()
+        (PINNED / f"{name}.xz").write_bytes(lzma.compress(raw, preset=9))
+        meta["files"][name] = {"sha256": _sha256(raw), "bytes": len(raw)}
+    (PINNED / "manifest.json").write_text(json.dumps(meta, indent=2))
+    print(f"pinned {', '.join(PINNED_FILES)} -> {PINNED.relative_to(ROOT)}")
+
+
+def restore_pinned() -> None:
+    """Restore the committed extract into data/raw/osm, checking it against its checksums."""
+    import lzma
+    meta = json.loads((PINNED / "manifest.json").read_text())
+    RAW.mkdir(parents=True, exist_ok=True)
+    for name in PINNED_FILES:
+        raw = lzma.decompress((PINNED / f"{name}.xz").read_bytes())
+        if _sha256(raw) != meta["files"][name]["sha256"]:
+            sys.exit(f"{name}: checksum does not match {PINNED / 'manifest.json'}")
+        (RAW / name).write_bytes(raw)
+    (RAW / "manifest.json").write_text(json.dumps({k: v for k, v in meta.items() if k != "files"}, indent=2))
+    print(f"restored the OSM extract of {meta.get('retrieved_utc', '?')} into {RAW.relative_to(ROOT)}")
+
+
 if __name__ == "__main__":
-    main()
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "latest"
+    {"latest": main, "pin": pin, "pinned": restore_pinned}[cmd]()

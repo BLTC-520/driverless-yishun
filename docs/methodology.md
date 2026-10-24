@@ -159,6 +159,11 @@ This document describes how each number on the page is produced. Code references
   - In-vehicle time is the sum of calibrated network running times between consecutive stops
     of the route. It adds the calibrated dwell at the boarding stop and every intermediate
     stop, plus the extra at stations.
+  - Loops revisit the interchange, and figure-of-eight feeders (812) pass it mid-route. A rider
+    boards at whichever visit of the stop gives the shortest ride to the destination
+    (`BusBaseline.ride`). Before the Phase 2 review the model boarded at the first visit, which
+    timed riders for 812's second loop as riding the whole first loop as well; the bus day mean
+    was about 1.6 % too high.
 - **Realised waits (for tails and ride-by-ride comparisons).** Each simulated ride also gets
   one random bus wait. Headways are gamma-distributed with CV² = 2κ − 1, the CV that
   reproduces κ. A rider arriving at random lands in a length-biased headway and waits a
@@ -271,3 +276,60 @@ This document describes how each number on the page is produced. Code references
 - **Provenance.** Every output records the calibration values, demand months, model cache
   key and git revision it was computed from (`config.json`, `evaluated.json`,
   `sensitivity.json`).
+
+## 7. Phase 2: cost and passenger time of service options (`phase2/`, `costs.py`)
+
+Definitions are fixed in [`phase2/definitions.md`](phase2/definitions.md); limits and how each is
+handled are in [`phase2/limits.md`](phase2/limits.md); the Phase 1 audit is in
+[`phase2/audit.md`](phase2/audit.md).
+
+- **Options.**
+  - A is today's bus network.
+  - B is Phase 1's full shuttle replacement. Its bus costs are either kept in full, or, as a
+    theoretical bound, reduced by the 15 services that carry only internal riders.
+  - C keeps every bus and adds shuttles for the rides the timetable serves worst (rule C-θ,
+    `phase2/assign.py`).
+- **Rule C-θ.** A ride is offered a shuttle when its expected bus stop-to-stop time exceeds a
+  direct drive plus two shuttle stops by at least θ minutes.
+  - The expected bus time comes from published routes, headways and first/last buses.
+  - The rule is computed for the requested minute. It never uses the simulated wait.
+  - In stress scenarios, the table planned on the base case is kept.
+  - The operator's expected shuttle demand, used for initial positions and repositioning, is the
+    expected offered demand. Each OD cell is sampled at six minutes of its service window.
+- **Same rides, every option.**
+  - Every option runs on the same Poisson demand days (seeds 1–3; 1–10 for the reference options).
+  - Each ride gets exactly one mode: bus, shuttle, declined (C: the quoted pickup is more than
+    15 min away, and the rider takes the bus at Option A's time) or refused (B: no pickup within
+    45 min, counted at 45 min plus the direct ride).
+  - Passenger-hours are summed over the rides with a bus option (`phase2/runs.py`).
+- **Service level.** For each θ, the smallest simulated fleet that declines at most 1 % of offered
+  rides in every hour of every replicate, with every larger fleet also passing.
+  - Only such configurations, and B fleets with no refusals, enter the cost-time frontier and the
+    budget table.
+- **Bus cost allocation.** In-area bus passenger-km are split by rider group from LTA's full
+  weekday OD (`phase2/bus_allocation.py`), using a frequency-weighted line choice.
+  - Internal riders account for 53 % of in-area bus passenger-km. That share allocates bus cost for
+    context only.
+  - Bus cost cancels between A and C, because the bus network is identical.
+- **Costs** (`costs.py`): daily SGD at 2026 prices, excluding GST, by category.
+  - The availability estimate covers charging and maintenance reserves, and limits the overnight
+    top-up to what the chargers deliver in the hours without service.
+  - Low, central and high cases; one-at-a-time swings; thresholds by monotone bisection.
+  - Parameters and their sources are in `data/parameters/`.
+- **Stress tests** (`phase2/experiments.py`):
+  - slower roads and buses (calibration draw);
+  - evening-peak calibration all day;
+  - shuttles 25 % slower than buses (an assumption);
+  - 15 % of the fleet unavailable;
+  - kerbs of 10 or 7 shuttles per station;
+  - the three combined.
+  - B is sized at its threshold, so it is also stressed with a 10 % fleet margin (500 vehicles)
+    for unavailability, the 10-shuttle kerb and the combined case.
+  - B as defined accepts quoted pickups up to 45 minutes and refuses beyond that with no bus; C
+    declines beyond 15 minutes and the rider takes the bus. Every stress also runs B under C's
+    rule (450 shuttles offered every ride), and the base case on the same three days, so the
+    stress table compares like with like.
+- **Outputs.** `phase2/summary.py` writes `summary.json`. `export_web.py`, `charts.py` and
+  `report_tables.py` build the page data, the report charts and
+  [`phase2/results.md`](phase2/results.md) from it, so the page, the charts and the report quote
+  the same rounded numbers.
