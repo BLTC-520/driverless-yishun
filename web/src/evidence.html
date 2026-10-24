@@ -98,6 +98,15 @@ caption { caption-side: top; text-align: left; padding: 10px 12px 4px; color: va
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 48px; margin-top: 24px; }
 @media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
 .chart { min-width: 0; }
+.figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 48px; margin-top: 24px; align-items: start; }
+.figs figure { margin: 0; min-width: 0; }
+.figs figure.wide { grid-column: 1 / -1; }
+.figs a { display: block; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.figs a:hover, .figs a:focus-visible { border-color: var(--mute); }
+.figs img { display: block; width: 100%; height: auto; }
+.figs h3 { margin: 0 0 8px; font-size: var(--step-0); }
+.figs figcaption { font-size: var(--step--1); color: var(--mute); margin-top: 8px; max-width: 70ch; }
+@media (max-width: 900px) { .figs { grid-template-columns: minmax(0, 1fr); } }
 .chart figure { margin: 0; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart figcaption { font-size: var(--step--1); color: var(--mute); margin-top: 8px; max-width: 70ch; }
@@ -136,7 +145,7 @@ footer .inner { display: grid; gap: 10px; }
     <h1>How far to trust the numbers</h1>
     <p class="dek">What was checked and how it came out, what was found wrong and fixed, and the files and commands that rebuild every figure.</p>
     <nav class="toc" aria-label="Sections">
-      <a href="#checks">Scorecard</a><a href="#method">Observed, modelled, assumed</a><a href="#model">The road and bus model</a><a href="#sensitivity">What moves the answers</a><a href="#review">Part 2 review</a><a href="#limits">Limits</a><a href="#data">Data files</a><a href="#reproduce">Reproduce</a>
+      <a href="#checks">Scorecard</a><a href="#method">Observed, modelled, assumed</a><a href="#model">The road and bus model</a><a href="#sensitivity">What moves the answers</a><a href="#figures">Report figures</a><a href="#review">Part 2 review</a><a href="#limits">Limits</a><a href="#data">Data files</a><a href="#reproduce">Reproduce</a>
     </nav>
   </div>
 </section>
@@ -226,6 +235,17 @@ footer .inner { display: grid; gap: 10px; }
     <p class="small">Cost per passenger-hour saved when one cost parameter moves to its low or high value, the others central, for each staffing case, as a change from that case's central value. One axis for all three, so bar lengths compare.</p>
     <div class="chart"><figure><svg id="ev-tornado" viewBox="0 0 900 700" role="img" aria-label="Cost swings by parameter and staffing case"></svg>
       <figcaption id="ev-tornado-cap"></figcaption></figure></div>
+  </div>
+</section>
+
+<section class="chapter wrap" id="figures" aria-labelledby="figures-h">
+  <div class="inner">
+    <div class="kicker">Part 2: the figures behind the report</div>
+    <h2 id="figures-h">The analysis charts, as drawn from the results file</h2>
+    <p class="small">These static charts are drawn with matplotlib by <code>python -m yishun.phase2.charts</code> from <code>data/processed/phase2/summary.json</code>, the same file the interactive charts read. They show the whole data set where the study page shows the headline, so a figure here can be checked against a point on the page. Select a chart to open it at full size.</p>
+    <div class="figs">
+<!--phase2-figures-->
+    </div>
   </div>
 </section>
 
