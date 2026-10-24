@@ -26,6 +26,9 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+section[id], [id].chapter { scroll-margin-top: 16px; }
 body { color: var(--fg); font-family: var(--font); font-size: var(--step-0); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration-color: var(--faint); text-underline-offset: 3px; }
 a:hover { color: var(--mute); }
