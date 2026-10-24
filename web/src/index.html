@@ -273,15 +273,13 @@ button.show:not(.ride-cta):hover { background: var(--fg); color: var(--bg); }
 .p2-modes button[aria-pressed="true"] { color: var(--fg); border-color: var(--fg); background: var(--bg-2); }
 .p2-modenote { color: var(--mute); font-size: var(--step--1); margin: 8px 0 0; max-width: 70ch; }
 .p2-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; margin-top: 28px; }
-.p2 .chart svg { width: auto; max-width: 100%; }
+.p2 .chart .ec { width: 100%; max-width: 1040px; }   /* Apache ECharts, set up in charts.js */
 .p2 .legend-row i.sw { width: 12px; height: 12px; border-radius: 2px; }
 .p2 .legend-row i.ln { height: 0; border-top: 2px solid; }
 .p2 .legend-row svg { display: inline-block; width: 14px; max-width: none; height: 14px; overflow: visible; }
 #p2-stress th.cfg { text-align: right; text-transform: none; }
-.p2-tip { position: fixed; z-index: 30; pointer-events: none; background: var(--bg-2); border: 1px solid var(--rule); border-radius: 4px;
-  padding: 8px 10px; font-family: var(--font-data); font-size: 12px; color: var(--fg); max-width: 320px; line-height: 1.45;
-  box-shadow: 0 4px 16px rgb(0 0 0 / .08); }
-.p2-tip b { font-weight: 600; } .p2-tip .mute { color: var(--mute); }
+/* the ECharts tooltip (its paper, border and type come from charts.js) */
+.ec-tip b { font-weight: 600; } .ec-tip .mute { color: var(--mute); }
 #p2-stress td, #p2-budget td { white-space: nowrap; } #p2-stress td:first-child { white-space: normal; min-width: 14em; }
 @media (max-width: 860px) { .p2-grid { grid-template-columns: minmax(0, 1fr); } }
 
@@ -738,7 +736,7 @@ html.still .steps { padding-block: 0; }
     <div class="p2-modes" role="group" aria-label="Staffing case" id="p2-modes"></div>
     <p class="small p2-modenote" id="p2-modenote"></p>
     <div class="chart">
-      <figure><svg id="ch-p2-worth" viewBox="0 0 760 300" role="img" aria-label="Value of riders' time saved per SGD 1 of added operating cost, by option"></svg>
+      <figure><div id="ch-p2-worth" class="ec" style="height:300px" role="img" aria-label="Value of riders' time saved per SGD 1 of added operating cost, by option"></div>
       <div class="legend-row" id="p2-worth-legend"></div>
       <figcaption id="p2-worth-cap">What the riders' time saved is worth for each SGD 1 of added operating cost (central costs, all buses kept), for the selected staffing case. The dot uses the central value of time; the line spans the low and high values. Left of the dashed line the time saved is worth less than it costs.</figcaption></figure>
     </div>
@@ -750,7 +748,7 @@ html.still .steps { padding-block: 0; }
     </div>
     <div class="chart">
       <div class="chart-tabs p2-all-row"><button type="button" id="p2-all" aria-pressed="false">Show all <span data-v="p2_n_configs">—</span> simulated designs</button></div>
-      <figure><svg id="ch-p2-trade" viewBox="0 0 760 420" role="img" aria-label="Additional cost per day against passenger-hours saved per day"></svg>
+      <figure><div id="ch-p2-trade" class="ec" style="height:420px" role="img" aria-label="Additional cost per day against passenger-hours saved per day"></div>
       <div class="legend-row" id="p2-trade-legend"></div>
       <figcaption id="p2-trade-cap">Additional operating cost per weekday against today's buses (central case, all buses kept) and passenger-hours saved per weekday on the same rides (mean of the simulated days). Faint rays mark a constant cost per hour saved. With every design shown, hollow markers are variants (other vehicle sizes, evening only, a 45-minute decline limit) and crosses are designs whose service is not acceptable (more than 1 % of offered rides declined in some hour, or riders refused).</figcaption></figure>
     </div>
@@ -761,21 +759,21 @@ html.still .steps { padding-block: 0; }
       <h2>Riders on looping feeders and long headways</h2>
       <p>The time saved goes to riders whose bus trip is slow next to a direct drive: the feeders that loop through the estates, and the long waits early in the morning and late at night. Under the combined designs, riders who stay on the bus keep today's trip, and riders declined a shuttle take the bus as today.</p>
     </div>
-    <div class="chart"><figure><svg id="ch-p2-period" viewBox="0 0 760 300" role="img" aria-label="Passenger-hours saved by time of day"></svg>
+    <div class="chart"><figure><div id="ch-p2-period" class="ec" style="height:300px" role="img" aria-label="Passenger-hours saved by time of day"></div>
       <div class="legend-row" id="p2-period-legend"></div>
       <figcaption>Passenger-hours saved per weekday by the period in which the ride is requested, against today's buses on the same rides (sums, not averages of means).</figcaption></figure></div>
 
     <details class="notes p2-more" id="p2-more">
       <summary>More detail: cost structure, passenger time, cost sensitivity and stress tests</summary>
       <div class="p2-grid">
-        <div class="chart"><figure><svg id="ch-p2-cost" viewBox="0 0 640 300" role="img" aria-label="Daily cost by class for the reference options"></svg>
+        <div class="chart"><figure><div id="ch-p2-cost" class="ec" style="height:300px" role="img" aria-label="Daily cost by class for the reference options"></div>
           <div class="legend-row" id="p2-cost-legend"></div>
           <figcaption>Shuttle operating cost per weekday by class, central case, for the selected staffing case; the line spans the low- to high-cost cases. Today's buses inside Yishun cost <span data-v="p2_bus_cost">—</span> a weekday (<span data-v="p2_bus_cost_range">—</span>), shared with riders from outside the town.</figcaption></figure></div>
-        <div class="chart"><figure><svg id="ch-p2-time" viewBox="0 0 640 300" role="img" aria-label="Passenger-hours per weekday by option, waiting and in-vehicle"></svg>
+        <div class="chart"><figure><div id="ch-p2-time" class="ec" style="height:300px" role="img" aria-label="Passenger-hours per weekday by option, waiting and in-vehicle"></div>
           <div class="legend-row" id="p2-time-legend"></div>
           <figcaption>Passenger-hours per weekday on the same rides, stop to stop, split into waiting and in-vehicle time. Bus times are modelled; shuttle times are simulated.</figcaption></figure></div>
       </div>
-      <div class="chart"><figure><svg id="ch-p2-tornado" viewBox="0 0 640 360" role="img" aria-label="Cost per passenger-hour saved when one cost parameter moves to its low or high value"></svg>
+      <div class="chart"><figure><div id="ch-p2-tornado" class="ec" style="height:360px" role="img" aria-label="Cost per passenger-hour saved when one cost parameter moves to its low or high value"></div>
         <figcaption id="p2-tornado-cap">Cost per passenger-hour saved when one cost parameter at a time moves to its low-cost or high-cost value, the others central.</figcaption></figure></div>
       <div class="prose after">
         <h3>Stress tests</h3>
@@ -788,7 +786,6 @@ html.still .steps { padding-block: 0; }
         <p class="small">Full method, sources and limits: <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/docs/phase2/report.md">the Phase 2 report</a>, its <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/docs/phase2/review.md">independent review</a>, the <a href="https://github.com/BLTC-520/driverless-yishun/blob/main/data/parameters/cost_register.csv">source register</a> and the <a href="evidence.html">evidence page</a>.</p>
       </div>
     </details>
-    <div class="p2-tip" id="p2-tip" hidden></div>
   </div>
 </section>
 
@@ -818,5 +815,7 @@ html.still .steps { padding-block: 0; }
 
 <script src="https://unpkg.com/deck.gl@9.1.14/dist.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js"></script>
 <script src="app.js"></script>
+<script src="charts.js"></script>
 <script src="phase2.js"></script>

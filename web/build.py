@@ -102,6 +102,7 @@ def main() -> None:
     shutil.copy(SRC / "app.js", DIST / "app.js")
     shutil.copy(SRC / "phase2.js", DIST / "phase2.js")
     shutil.copy(SRC / "evidence.js", DIST / "evidence.js")
+    shutil.copy(SRC / "charts.js", DIST / "charts.js")   # the shared ECharts set-up for phase2.js and evidence.js
     for name in ("play.js", "physics.js", "shaders.js"):  # the game and its modules
         shutil.copy(SRC / name, DIST / name)
     shutil.copy(SRC / "play.html", DIST / "play.html")

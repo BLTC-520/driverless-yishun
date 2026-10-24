@@ -139,9 +139,10 @@ pipeline/yishun/   fetchers, network, routing, calibration, bus model, simulator
 tests/             insertion kernel vs brute force, simulator exact times and randomized invariants,
                    kerb queues, common lines, estimator check, demand sampling, bus wait draws,
                    real-network consistency
-web/               landing page, static explorer (deck.gl + d3), the game (WebGPU, physics.js + tests), build, screenshot and loop-recording scripts
+web/               landing page, static explorer (deck.gl + d3), Part 2 and evidence charts (Apache ECharts, see docs/echarts.md),
+                   the game (WebGPU, physics.js + tests), build, screenshot and loop-recording scripts
 tools/blender/     vehicle models for the explorer, generated in Blender
-docs/              decision record, methodology, validation, data registry
+docs/              decision record, methodology, validation, data registry, how the charts are built (echarts.md)
 data/processed/    calibration and experiment outputs (raw data is never committed)
 ```
 

@@ -1,33 +1,17 @@
 /* Driverless Yishun, evidence page: the scorecard tally, the charts behind the checks and the
    provenance of both parts. Reads the same data files as the study page (results.json,
-   calibration_points.json, phase2.json); nothing is computed here but positions and counts. */
+   calibration_points.json, phase2.json); nothing is computed here but positions and counts.
+   The charts are drawn with Apache ECharts through the shared set-up in charts.js. */
 (function () {
   "use strict";
-  if (typeof d3 === "undefined") return;
-  const css = getComputedStyle(document.documentElement);
-  const tok = (n) => css.getPropertyValue(n).trim();
-  const fmt = d3.format(",.0f");
-  const tip = document.getElementById("tip");
+  const hasCharts = typeof Charts !== "undefined";   // without ECharts the page still shows its numbers and tables
+  const { T, tok, lab, callout, xName, yName } = hasCharts ? Charts : { T: {} };
+  const fmt = (v) => Math.round(v).toLocaleString("en-US");
   const D = {};
-
-  function showTip(evt, html) {
-    tip.innerHTML = html; tip.hidden = false;
-    const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
-    let x = evt.clientX + pad, y = evt.clientY + pad;
-    if (x + w > innerWidth - 8) x = evt.clientX - w - pad;
-    if (y + h > innerHeight - 8) y = evt.clientY - h - pad;
-    tip.style.left = `${Math.max(8, x)}px`; tip.style.top = `${Math.max(8, y)}px`;
-  }
-  const hideTip = () => { tip.hidden = true; };
-
-  // charts are drawn at the container's real pixel width, so labels keep their size on phones
-  function frame(id, H, max = 900) {
-    const svg = d3.select(`#${id}`); svg.selectAll("*").remove();
-    const W = Math.max(300, Math.min(max, Math.round(svg.node().parentNode.getBoundingClientRect().width || 600)));
-    svg.attr("viewBox", `0 0 ${W} ${H}`).attr("width", W).attr("height", H);
-    return { svg, W, H };
-  }
   const pad2 = (h) => String(h).padStart(2, "0");
+  const max = (a, f) => Math.max(...a.map(f)), min = (a, f) => Math.min(...a.map(f));
+  // a hover band across the whole row or column under the pointer
+  const band = { type: "shadow", shadowStyle: { color: T.rule, opacity: 0.35 } };
 
   // ------------------------------------------------------------------ numbers and tally
   function fill() {
@@ -46,50 +30,57 @@
   }
 
   // ------------------------------------------------------------------ calibration
+  // one point per stop sequence: observed against modelled median running time, area by observations
   function drawCal() {
     const P = D.calpts; if (!P || !P.points) return;
-    const { svg, W, H } = frame("ev-cal", 320, 620);
-    const m = { t: 16, r: 16, b: 40, l: 44 };
-    const mx = Math.ceil(d3.max(P.points, (p) => Math.max(p[0], p[1])) / 60);
-    const x = d3.scaleLinear().domain([0, mx]).range([m.l, W - m.r]);
-    const y = d3.scaleLinear().domain([0, mx]).range([H - m.b, m.t]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
-    svg.append("line").attr("x1", x(0)).attr("y1", y(0)).attr("x2", x(mx)).attr("y2", y(mx)).attr("stroke", tok("--mute")).attr("stroke-dasharray", "3 4");
-    svg.append("g").selectAll("circle").data(P.points).join("circle")
-      .attr("cx", (p) => x(p[0] / 60)).attr("cy", (p) => y(p[1] / 60)).attr("r", (p) => Math.min(4, 1 + Math.sqrt(p[2]) / 6))
-      .attr("fill", tok("--bus")).attr("opacity", 0.45);
-    svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(6));
-    svg.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(6));
-    svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 6).attr("text-anchor", "end").text("observed median running time (min)");
-    svg.append("text").attr("class", "lab").attr("x", m.l + 6).attr("y", m.t + 4).text("modelled (min)");
+    const mx = 2 * Math.ceil(max(P.points, (p) => Math.max(p[0], p[1])) / 120);   // whole minutes, even, so ticks every 2
+    Charts.draw("ev-cal", {
+      grid: { left: 44, right: 16, top: 30, bottom: 44 },
+      xAxis: { type: "value", min: 0, max: mx, interval: 2, splitLine: { show: false }, ...xName("observed median running time (min)") },
+      yAxis: { type: "value", min: 0, max: mx, interval: 2, ...yName("modelled (min)") },
+      tooltip: { trigger: "item", formatter: (p) => `observed ${p.value[0].toFixed(1)} min<br>modelled ${p.value[1].toFixed(1)} min<br><span class="mute">${fmt(p.value[2])} observation${p.value[2] === 1 ? "" : "s"}</span>` },
+      series: [{
+        type: "scatter", data: P.points.map((p) => [p[0] / 60, p[1] / 60, p[2]]),
+        symbolSize: (v) => 2 * Math.min(4, 1 + Math.sqrt(v[2]) / 6),
+        itemStyle: { color: tok("--bus"), opacity: 0.45 }, emphasis: { scale: 1.6 },
+        // the dashed line where modelled equals observed
+        markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: T.mute, type: [3, 4], width: 1 },
+          data: [[{ coord: [0, 0] }, { coord: [mx, mx] }]] },
+      }],
+    }, 320);
   }
 
   // ------------------------------------------------------------------ GPS check by hour
+  // observed ÷ modelled time between GPS positions, pooled by hour, with its 95 % interval
   function drawGps() {
     const G = D.results.gps_check; if (!G || !G.by_hour) return;
     const rows = Object.entries(G.by_hour).map(([h, b]) => ({ h: +h, ...b })).filter((r) => r.n_pairs >= 20).sort((a, b) => a.h - b.h);
     if (!rows.length) return;
-    const { svg, W, H } = frame("ev-gps", 320, 620);
-    const m = { t: 30, r: 16, b: 34, l: 44 };
-    const hrs = d3.range(10, 20);
-    const x = d3.scaleBand().domain(hrs).range([m.l, W - m.r]).padding(0.3);
-    const lo = Math.min(0.8, d3.min(rows, (r) => r.pooled_ratio_ci[0])), hi = Math.max(1.2, d3.max(rows, (r) => r.pooled_ratio_ci[1]));
-    const y = d3.scaleLinear().domain([lo, hi]).nice().range([H - m.b, m.t]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(""));
-    svg.append("rect").attr("x", x(10) - 4).attr("width", x(12) + x.bandwidth() - x(10) + 8).attr("y", m.t).attr("height", H - m.b - m.t)
-      .attr("fill", tok("--bus")).attr("opacity", 0.07);
-    svg.append("text").attr("class", "lab").attr("x", x(10)).attr("y", m.t + 12).text("fitted here");
-    svg.append("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", y(1)).attr("y2", y(1)).attr("stroke", tok("--mute")).attr("stroke-dasharray", "3 4");
-    const g = svg.append("g").selectAll("g").data(rows).join("g").attr("transform", (r) => `translate(${x(r.h) + x.bandwidth() / 2},0)`);
-    g.append("line").attr("y1", (r) => y(r.pooled_ratio_ci[0])).attr("y2", (r) => y(r.pooled_ratio_ci[1])).attr("stroke", tok("--bus")).attr("stroke-width", 2);
-    g.append("circle").attr("cy", (r) => y(r.pooled_ratio)).attr("r", 5).attr("fill", tok("--bus")).attr("stroke", tok("--bg-2")).attr("stroke-width", 2);
-    g.append("rect").attr("x", -14).attr("width", 28).attr("y", m.t).attr("height", H - m.b - m.t).attr("fill", "transparent")
-      .on("mousemove", (evt, r) => showTip(evt, `<b>${pad2(r.h)}:00</b><br>observed ÷ model ${r.pooled_ratio.toFixed(2)}<br><span class="mute">95 % interval ${r.pooled_ratio_ci[0].toFixed(2)}–${r.pooled_ratio_ci[1].toFixed(2)} · ${fmt(r.n_pairs)} pairs</span>`))
-      .on("mouseleave", hideTip);
-    svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - m.b})`)
-      .call(d3.axisBottom(x).tickValues(W < 500 ? hrs.filter((h) => h % 2 === 0) : hrs).tickFormat((h) => `${pad2(h)}:00`));
-    svg.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".2f")));
-    svg.append("text").attr("class", "lab").attr("x", 4).attr("y", 12).text("observed ÷ model");
+    const narrow = Charts.width("ev-gps") < 500, hrs = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+    const lo = Math.floor(Math.min(0.8, min(rows, (r) => r.pooled_ratio_ci[0])) * 10) / 10;
+    const hi = Math.ceil(Math.max(1.2, max(rows, (r) => r.pooled_ratio_ci[1])) * 10) / 10;
+    const bus = tok("--bus");
+    Charts.draw("ev-gps", {
+      grid: { left: 44, right: 16, top: 34, bottom: 34 },
+      // hours as numbers, so the shading can cover whole hours (09:30 to 12:30 is "fitted here"); ticks on the hours themselves
+      xAxis: { type: "value", min: 9.5, max: 19.5, splitLine: { show: false },
+        axisTick: { customValues: hrs }, axisLabel: { customValues: narrow ? hrs.filter((h) => h % 2 === 0) : hrs, formatter: (h) => `${pad2(h)}:00` } },
+      yAxis: { type: "value", min: lo, max: hi, interval: hi - lo > 0.6 ? 0.2 : 0.1, axisLabel: { formatter: (v) => v.toFixed(2) }, ...yName("observed ÷ model") },
+      tooltip: { trigger: "axis", axisPointer: { type: "none" }, formatter: (ps) => {
+        const r = rows.find((x) => x.h === ps[0].value[0]); if (!r) return "";
+        return `<b>${pad2(r.h)}:00</b><br>observed ÷ model ${r.pooled_ratio.toFixed(2)}<br><span class="mute">95 % interval ${r.pooled_ratio_ci[0].toFixed(2)}–${r.pooled_ratio_ci[1].toFixed(2)} · ${fmt(r.n_pairs)} pairs</span>`;
+      } },
+      series: [
+        Charts.segments(rows.map((r) => ({ value: [r.h, r.pooled_ratio_ci[0], r.h, r.pooled_ratio_ci[1]], itemStyle: { color: bus } }))),
+        {
+          type: "scatter", z: 3, data: rows.map((r) => [r.h, r.pooled_ratio]), symbolSize: 10,
+          itemStyle: { color: bus, borderColor: T.surface, borderWidth: 2, opacity: 1 },
+          markArea: { silent: true, itemStyle: { color: bus, opacity: 0.07 }, label: lab({ position: "insideTopLeft", textBorderWidth: 0 }),
+            data: [[{ xAxis: 9.6, name: "fitted here" }, { xAxis: 12.4 }]] },
+          markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: T.mute, type: [3, 4], width: 1 }, data: [{ yAxis: 1 }] },
+        },
+      ],
+    }, 320);
   }
 
   // ------------------------------------------------------------------ Part 1 sensitivity
@@ -100,38 +91,38 @@
     const rows = S.filter((r) => r.id !== "base").map((r) => ({ ...r, d: r.parity_fleet == null ? Infinity : r.parity_fleet - b0 }))
       .sort((a, b) => Math.abs(b.d) - Math.abs(a.d) || a.label.localeCompare(b.label));
     const short = (s) => s.split(/[:(]/)[0].trim();
-    const narrow = (document.getElementById("ev-sens").parentNode.getBoundingClientRect().width || 600) < 640;
-    const rowH = narrow ? 44 : 26;
-    const m = narrow ? { t: 26, r: 46, b: 40, l: 8 } : { t: 26, r: 46, b: 40, l: 330 };
-    const { svg, W, H } = frame("ev-sens", m.t + m.b + rowH * rows.length);
+    const W = Charts.width("ev-sens"), narrow = W < 640, rowH = narrow ? 44 : 26, left = narrow ? 8 : 330;
     const known = rows.map((r) => r.parity_fleet).filter((v) => v != null).concat(b0);
-    const x = d3.scaleLinear().domain([d3.min(known) - 25, d3.max(known) + 25]).range([m.l, W - m.r]);
-    const y = d3.scaleBand().domain(rows.map((r) => r.id)).range([m.t, H - m.b]);
-    svg.append("g").attr("class", "grid").attr("transform", `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(6).tickSize(-(H - m.b - m.t)).tickFormat(""));
-    svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(6));
-    svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 6).attr("text-anchor", "end").text("10-seat shuttles needed all day");
-    if (b0 != null) {
-      svg.append("line").attr("x1", x(b0)).attr("x2", x(b0)).attr("y1", m.t - 8).attr("y2", H - m.b).attr("stroke", tok("--fg")).attr("stroke-width", 1.5);
-      svg.append("text").attr("class", "lab callout").attr("x", x(b0)).attr("y", m.t - 12).attr("text-anchor", "middle").text(`base ${b0}`);
-    }
+    const x0 = Math.floor((Math.min(...known) - 25) / 50) * 50, x1 = Math.ceil((Math.max(...known) + 25) / 50) * 50;
+    const at = (r) => r.parity_fleet ?? x1;   // more than the largest fleet searched: drawn at the right edge
+    const col = tok("--sodium");   // one series: position, not colour, says more or fewer
     const fav = { 1: "favours the bus", "-1": "favours the shuttle", 0: "favours either" };
-    for (const r of rows) {
-      const cy = y(r.id) + (narrow ? rowH - 12 : rowH / 2), v = r.parity_fleet;
-      const col = tok("--sodium");   // one series: position, not colour, says more or fewer
-      if (v != null && v !== b0) svg.append("line").attr("x1", x(b0)).attr("x2", x(v)).attr("y1", cy).attr("y2", cy).attr("stroke", col).attr("stroke-width", 2);
-      svg.append("circle").attr("cx", x(v ?? x.domain()[1])).attr("cy", cy).attr("r", 5).attr("fill", col).attr("stroke", tok("--bg")).attr("stroke-width", 2);
-      const lab = short(r.label);
-      if (narrow) svg.append("text").attr("class", "lab").attr("x", m.l).attr("y", cy - 11).text(lab.length > 46 ? lab.slice(0, 44) + "…" : lab);
-      else svg.append("text").attr("class", "lab").attr("x", m.l - 12).attr("y", cy + 4).attr("text-anchor", "end").text(lab.length > 48 ? lab.slice(0, 46) + "…" : lab);
-      svg.append("text").attr("class", "lab").attr("x", x(v ?? x.domain()[1]) + (v == null || v >= b0 ? 10 : -10)).attr("y", cy + 4)
-        .attr("text-anchor", v == null || v >= b0 ? "start" : "end").text(v == null ? "> 800" : fmt(v));
-      svg.append("rect").attr("x", 0).attr("width", W).attr("y", y(r.id)).attr("height", rowH).attr("fill", "transparent")
-        .on("mousemove", (evt) => showTip(evt, `<b>${r.label}</b><br>${v == null ? "more than 800" : fmt(v)} shuttles (base ${b0}) · ${fav[String(r.direction ?? 0)] || ""}${r.bus_day_min != null ? `<br><span class="mute">bus, day mean ${r.bus_day_min.toFixed(1)} min</span>` : ""}`))
-        .on("mouseleave", hideTip);
-    }
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+    Charts.draw("ev-sens", {
+      grid: { left, right: 46, top: 30, bottom: 40, ...(narrow && { outerBoundsMode: "none" }) },
+      xAxis: { type: "value", min: x0, max: x1, ...xName("10-seat shuttles needed all day", 24) },
+      yAxis: { type: "category", inverse: true, data: rows.map((r) => r.id), axisTick: { show: false }, axisLine: { show: false },
+        axisLabel: narrow ? Charts.rowNamesAbove((id) => short(byId[id].label), W - 16) : Charts.rowNames((id) => short(byId[id].label), left - 16) },
+      tooltip: { trigger: "axis", axisPointer: band, formatter: (ps) => {
+        const r = byId[ps[0].axisValue], v = r.parity_fleet;
+        return `<b>${r.label}</b><br>${v == null ? "more than 800" : fmt(v)} shuttles (base ${b0}) · ${fav[String(r.direction ?? 0)] || ""}` +
+          (r.bus_day_min != null ? `<br><span class="mute">bus, day mean ${r.bus_day_min.toFixed(1)} min</span>` : "");
+      } },
+      series: [
+        Charts.segments(rows.map((r, i) => ({ value: [b0, i, at(r), i], itemStyle: { color: col } })).filter((s) => s.value[2] !== b0), { dy: narrow ? 8 : 0 }),
+        {
+          type: "scatter", z: 3, symbolSize: 10, itemStyle: { color: col, borderColor: T.bg, borderWidth: 2, opacity: 1 },
+          data: rows.map((r, i) => ({ value: [at(r), i], label: { position: at(r) >= b0 ? "right" : "left" } })),
+          label: lab({ show: true, distance: 8, formatter: (p) => (rows[p.dataIndex].parity_fleet == null ? "> 800" : fmt(p.value[0])) }),
+          symbolOffset: [0, narrow ? 8 : 0],
+          // the base case: a vertical line through every row
+          markLine: b0 == null ? undefined : { silent: true, symbol: "none", lineStyle: { color: T.fg, width: 1.5, type: "solid" },
+            label: callout({ formatter: `base ${b0}`, position: "start" }), data: [{ xAxis: b0 }] },
+        },
+      ],
+    }, 30 + 40 + rowH * rows.length);
     const ex = D.results.sensitivity_excluded || [];
-    const cap = document.getElementById("ev-sens-cap");
-    cap.textContent = `Right of the line: more shuttles than the base case; left: fewer. Hover a row for the full assumption, the side it was chosen to favour and the bus's mean time under it.` +
+    document.getElementById("ev-sens-cap").textContent = `Right of the line: more shuttles than the base case; left: fewer. Hover a row for the full assumption, the side it was chosen to favour and the bus's mean time under it.` +
       (ex.length ? ` Not shown: ${ex.map((r) => `${r.name} (${r.parity_fleet ?? "n/a"} vehicles), because ${r.reason}`).join("; ")}.` : "");
   }
 
@@ -141,37 +132,39 @@
     const modes = P.modes.filter((m) => (P.tornado[m] || {}).rows && P.tornado[m].rows.length);
     if (!modes.length) return;
     const cfg = Object.fromEntries(P.configs.map((c) => [c.id, c]));
-    const narrow = (document.getElementById("ev-tornado").parentNode.getBoundingClientRect().width || 600) < 640;
-    const per = 8, rowH = narrow ? 34 : 22, headH = 34;
-    const m = narrow ? { t: 8, r: 16, b: 40, l: 8 } : { t: 8, r: 24, b: 40, l: 230 };
-    const blocks = modes.map((md) => ({ md, rows: P.tornado[md].rows.slice(0, per), c0: P.tornado[md].rows[0].central_cost_per_hour_saved }));
-    const H = m.t + m.b + blocks.reduce((s, b) => s + headH + rowH * b.rows.length, 0);
-    const { svg, W } = frame("ev-tornado", H);
+    const W = Charts.width("ev-tornado"), narrow = W < 640, per = 8, rowH = narrow ? 34 : 24, left = narrow ? 8 : 230;
     const pct = (v, c0) => 100 * (v / c0 - 1);
-    const span = d3.max(blocks, (b) => d3.max(b.rows, (r) => Math.max(Math.abs(pct(r.low.cost_per_hour_saved, b.c0)), Math.abs(pct(r.high.cost_per_hour_saved, b.c0)))));
-    const x = d3.scaleLinear().domain([-span * 1.08, span * 1.08]).range([m.l, W - m.r]).nice();
-    svg.append("g").attr("class", "grid").attr("transform", `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(narrow ? 5 : 8).tickSize(-(H - m.b - m.t)).tickFormat(""));
-    svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(narrow ? 5 : 8).tickFormat((v) => (v ? `${v > 0 ? "+" : ""}${v}%` : "0")));
-    svg.append("line").attr("x1", x(0)).attr("x2", x(0)).attr("y1", m.t).attr("y2", H - m.b).attr("stroke", tok("--fg")).attr("stroke-width", 1.5);
-    svg.append("text").attr("class", "lab").attr("x", W - m.r).attr("y", H - 6).attr("text-anchor", "end").text("change in cost per passenger-hour saved");
-    let top = m.t;
-    for (const b of blocks) {
-      const name = ((P.staff_modes || {})[b.md] || {}).short || b.md;
-      svg.append("text").attr("class", "callout").attr("x", narrow ? m.l : 0).attr("y", top + 22)
-        .text(`${name}: central SGD ${b.c0.toFixed(1)} per hour saved`);
-      top += headH;
-      for (const r of b.rows) {
-        const lo = pct(r.low.cost_per_hour_saved, b.c0), hi = pct(r.high.cost_per_hour_saved, b.c0);
-        const a = Math.min(lo, hi), z = Math.max(lo, hi), cy = top + (narrow ? rowH - 12 : 4);
-        svg.append("rect").attr("x", x(a)).attr("y", cy).attr("width", Math.max(1, x(z) - x(a))).attr("height", 12).attr("rx", 3).attr("fill", tok("--p2-c"));
-        if (narrow) svg.append("text").attr("class", "lab").attr("x", m.l).attr("y", cy - 5).text(r.label);
-        else svg.append("text").attr("class", "lab").attr("x", m.l - 12).attr("y", cy + 10).attr("text-anchor", "end").text(r.label);
-        svg.append("rect").attr("x", 0).attr("width", W).attr("y", top).attr("height", rowH).attr("fill", "transparent")
-          .on("mousemove", (evt) => showTip(evt, `<b>${r.label}</b> · ${name}<br>low ${r.low.text}: SGD ${r.low.cost_per_hour_saved.toFixed(1)}/h<br>central ${r.central_text}: SGD ${b.c0.toFixed(1)}/h<br>high ${r.high.text}: SGD ${r.high.cost_per_hour_saved.toFixed(1)}/h`))
-          .on("mouseleave", hideTip);
-        top += rowH;
+    // one category per row, with a heading row before each staffing case
+    const cats = [], heads = [], bars = [];
+    for (const md of modes) {
+      const t = P.tornado[md], c0 = t.rows[0].central_cost_per_hour_saved, name = ((P.staff_modes || {})[md] || {}).short || md;
+      heads.push({ value: [0, cats.length], text: `${name}: central SGD ${c0.toFixed(1)} per hour saved` });
+      cats.push({ id: `h|${md}`, label: "" });
+      for (const r of t.rows.slice(0, per)) {
+        const lo = pct(r.low.cost_per_hour_saved, c0), hi = pct(r.high.cost_per_hour_saved, c0);
+        bars.push({ value: [Math.min(lo, hi), cats.length, Math.max(lo, hi)], r, name, c0 });
+        cats.push({ id: `${md}|${r.param_id}`, label: r.label });
       }
     }
+    const span = Charts.nice(Math.max(...bars.map((b) => Math.max(Math.abs(b.value[0]), Math.abs(b.value[2])))) * 1.08);
+    Charts.draw("ev-tornado", {
+      grid: { left, right: 24, top: 8, bottom: 40, ...(narrow && { outerBoundsMode: "none" }) },
+      xAxis: { type: "value", min: -span, max: span, splitNumber: narrow ? 4 : 8, axisLabel: { formatter: (v) => (v ? `${v > 0 ? "+" : ""}${v}%` : "0") },
+        ...xName("change in cost per passenger-hour saved", 24) },
+      yAxis: { type: "category", inverse: true, data: cats.map((c) => c.id), axisTick: { show: false }, axisLine: { show: false },
+        axisLabel: narrow ? Charts.rowNamesAbove((id, i) => cats[i].label, W - 16) : Charts.rowNames((id, i) => cats[i].label, left - 16) },
+      tooltip: { trigger: "item", formatter: (p) => {
+        const { r, name, c0 } = p.data;
+        return `<b>${r.label}</b> · ${name}<br>low ${r.low.text}: SGD ${r.low.cost_per_hour_saved.toFixed(1)}/h<br>central ${r.central_text}: SGD ${c0.toFixed(1)}/h<br>high ${r.high.text}: SGD ${r.high.cost_per_hour_saved.toFixed(1)}/h`;
+      } },
+      series: [
+        Charts.spans(bars.map((b) => ({ ...b, itemStyle: { color: tok("--p2-c") } })), { height: 12, dy: narrow ? 8 : 0 }),
+        // the staffing-case headings: labels on invisible points, moved left to the chart's edge
+        { type: "scatter", silent: true, symbolSize: 0, data: heads.map((h) => ({ value: [-span, h.value[1]], text: h.text })),
+          label: callout({ show: true, position: "right", distance: 0, offset: [-left + 2, 2], formatter: (p) => p.data.text, width: W - 8, overflow: "truncate", ellipsis: "…" }),
+          markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: T.fg, width: 1.5, type: "solid" }, data: [{ xAxis: 0 }] } },
+      ],
+    }, 8 + 40 + rowH * cats.length);
     const id = (P.tornado[modes[0]] || {}).id;
     document.getElementById("ev-tornado-cap").textContent = `For the combined design with ${cfg[id] ? cfg[id].phrase : id}. The ${per} widest swings per staffing case are shown; hover a bar for the parameter's low, central and high values.`;
   }
@@ -192,6 +185,7 @@
   }
 
   function drawAll() {
+    if (!hasCharts) return;
     for (const f of [drawCal, drawGps, drawSens, drawTornado]) { try { f(); } catch (e) { console.error(f.name, e); } }
   }
 

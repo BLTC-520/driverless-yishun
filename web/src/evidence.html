@@ -108,17 +108,10 @@ caption { caption-side: top; text-align: left; padding: 10px 12px 4px; color: va
 .figs figcaption { font-size: var(--step--1); color: var(--mute); margin-top: 8px; max-width: 70ch; }
 @media (max-width: 900px) { .figs { grid-template-columns: minmax(0, 1fr); } }
 .chart figure { margin: 0; }
-.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .ec { width: 100%; }
 .chart figcaption { font-size: var(--step--1); color: var(--mute); margin-top: 8px; max-width: 70ch; }
-.chart .axis text, .chart .lab { fill: var(--mute); font-family: var(--font-data); font-size: 12px; }
-.chart .axis path, .chart .axis line { stroke: var(--rule); }
-.chart .grid line { stroke: var(--rule); stroke-opacity: 0.7; }
-.chart .grid path { display: none; }
-.chart .callout { fill: var(--fg); font-family: var(--font-data); font-size: 12px; }
-.chart .callout, .chart .lab { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
-.tip { position: fixed; z-index: 30; pointer-events: none; background: var(--bg-2); border: 1px solid var(--rule); border-radius: 4px;
-  padding: 8px 10px; font-family: var(--font-data); font-size: 12px; max-width: 320px; line-height: 1.45; box-shadow: 0 4px 16px rgb(0 0 0 / .08); }
-.tip .mute { color: var(--mute); }
+/* charts are Apache ECharts (charts.js sets their colours and type from these tokens); its tooltip carries .ec-tip */
+.ec-tip b { font-weight: 600; } .ec-tip .mute { color: var(--mute); }
 
 pre { background: var(--bg-3); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; overflow-x: auto;
   font-family: var(--font-data); font-size: 0.78rem; line-height: 1.55; }
@@ -215,9 +208,9 @@ footer .inner { display: grid; gap: 10px; }
     <div class="kicker">The road and bus model</div>
     <h2 id="model-h">Fitted on live bus data, checked against bus GPS</h2>
     <div class="grid2">
-      <div class="chart"><figure><svg id="ev-cal" viewBox="0 0 560 320" role="img" aria-label="Modelled against observed bus running times"></svg>
+      <div class="chart"><figure><div id="ev-cal" class="ec" style="height:320px" role="img" aria-label="Modelled against observed bus running times"></div>
         <figcaption>Calibration: modelled against observed median running time for stop sequences of one to six stops (circle area: observations). The dashed line is a perfect fit.</figcaption></figure></div>
-      <div class="chart"><figure><svg id="ev-gps" viewBox="0 0 560 320" role="img" aria-label="Observed bus GPS movement against the model, by hour"></svg>
+      <div class="chart"><figure><div id="ev-gps" class="ec" style="height:320px" role="img" aria-label="Observed bus GPS movement against the model, by hour"></div>
         <figcaption>Elapsed time between GPS positions of the same bus, divided by the model's time between those positions, pooled by hour (bars: 95 % interval over routes). 1 means the model matches what buses did. The shaded hours were used for fitting; later hours are out of sample. Nothing was collected between 15:00 and 17:30.</figcaption></figure></div>
     </div>
   </div>
@@ -229,11 +222,11 @@ footer .inner { display: grid; gap: 10px; }
     <h2 id="sens-h">One assumption at a time</h2>
     <h3>Part 1: the fleet that keeps up with the bus all day</h3>
     <p class="small">Smallest fixed fleet of 10-seat shuttles that keeps up with the bus in every hour on all three simulated days, when one assumption changes. The base case is the vertical line; fleets are searched on a 25-vehicle grid.</p>
-    <div class="chart"><figure><svg id="ev-sens" viewBox="0 0 900 600" role="img" aria-label="Fleet needed under each alternative assumption"></svg>
+    <div class="chart"><figure><div id="ev-sens" class="ec" style="height:600px" role="img" aria-label="Fleet needed under each alternative assumption"></div>
       <figcaption id="ev-sens-cap"></figcaption></figure></div>
     <h3>Part 2: the cost of an hour of riders' time saved</h3>
     <p class="small">Cost per passenger-hour saved when one cost parameter moves to its low or high value, the others central, for each staffing case, as a change from that case's central value. One axis for all three, so bar lengths compare.</p>
-    <div class="chart"><figure><svg id="ev-tornado" viewBox="0 0 900 700" role="img" aria-label="Cost swings by parameter and staffing case"></svg>
+    <div class="chart"><figure><div id="ev-tornado" class="ec" style="height:700px" role="img" aria-label="Cost swings by parameter and staffing case"></div>
       <figcaption id="ev-tornado-cap"></figcaption></figure></div>
   </div>
 </section>
@@ -352,9 +345,9 @@ make web &amp;&amp; make serve        # this site at http://localhost:8000</pre>
     <p>This is a simulation study. It is not a forecast of AV adoption, ridership, costs or safety, and not an LTA plan.</p>
   </div>
 </footer>
-<div class="tip" id="tip" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js"></script>
+<script src="charts.js"></script>
 <script src="evidence.js"></script>
 </body>
 </html>
