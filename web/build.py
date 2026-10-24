@@ -15,9 +15,11 @@ Usage: python web/build.py
 """
 from __future__ import annotations
 
+import html
 import json
 import re
 import shutil
+import struct
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -49,6 +51,37 @@ def numbers() -> dict[str, str]:
     if p2.exists():
         vals = {**vals, **json.loads(p2.read_text()).get("numbers", {})}
     return vals
+
+
+P2_IMG = ROOT.parent / "docs" / "phase2" / "img"  # matplotlib charts from yishun.phase2.charts, with captions.md
+P2_TITLES = {
+    "tradeoff.png": "Every configuration: cost against time saved",
+    "tradeoff_staffing.png": "The best saving for the cost, by staffing",
+    "budget.png": "What a budget buys",
+    "cost_classes.png": "Where the shuttle cost goes",
+    "passenger_time.png": "Passenger time, waiting and in vehicle",
+    "periods.png": "When the time is saved",
+    "tornado.png": "Which cost parameters move the answer",
+}
+P2_WIDE = {"tradeoff.png", "tornado.png"}
+
+
+def phase2_figures() -> str:
+    """The Phase 2 charts as <figure>s for the evidence page, captions taken from captions.md so they cannot drift."""
+    caps = {}
+    for block in re.split(r"^## ", (P2_IMG / "captions.md").read_text(), flags=re.M)[1:]:
+        name, _, rest = block.partition("\n")
+        caps[name.strip()] = [ln for ln in rest.splitlines() if ln.strip() and not ln.startswith("![")][0]
+    out = []
+    for name, title in P2_TITLES.items():
+        w, h = struct.unpack(">II", (P2_IMG / name).read_bytes()[16:24])
+        cls = ' class="wide"' if name in P2_WIDE else ""
+        out.append(
+            f'      <figure{cls}><h3>{html.escape(title)}</h3>'
+            f'<a href="img/phase2/{name}"><img src="img/phase2/{name}" width="{w}" height="{h}" loading="lazy" alt="{html.escape(title)}"></a>'
+            f'<figcaption>{html.escape(caps[name])}</figcaption></figure>'
+        )
+    return "\n".join(out)
 
 
 def main() -> None:
@@ -85,7 +118,13 @@ def main() -> None:
         ev = FILL.sub(lambda m: m.group(1) + vals.get(m.group(2), "—") + m.group(3), ev)
     except FileNotFoundError as e:
         print(f"evidence numbers not pre-filled ({e})")
+    ev = ev.replace("<!--phase2-figures-->", phase2_figures())
     (DIST / "evidence.html").write_text(ev)
+    if (DIST / "img").exists():
+        shutil.rmtree(DIST / "img")
+    (DIST / "img" / "phase2").mkdir(parents=True)
+    for name in P2_TITLES:
+        shutil.copy(P2_IMG / name, DIST / "img" / "phase2" / name)
     if (DIST / "data").exists():
         shutil.rmtree(DIST / "data")
     shutil.copytree(DATA, DIST / "data")
